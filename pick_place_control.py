@@ -356,6 +356,8 @@ class robot_control:
         self.Abort_Prog = self.client.get_node('ns=3;s="HMIKuka"."robot"."powerRobot"."command"."abort"')
         self.Rob_Stopped = self.client.get_node('ns=3;s="InstKukaControl"."instAutomaticExternal"."ROB_STOPPED"')
         self.Gripper_State = self.client.get_node('ns=3;s="gripper_control"')
+        self.Encoder_Vel = self.client.get_node('ns=3;s="Encoder_1".ActualVelocity')
+        self.Encoder_Pos = self.client.get_node('ns=3;s="Encoder_1".ActualPosition')
 
         self.Act_Pos_X = self.client.get_node('ns=3;s="InstKukaControl"."instReadActualPos"."X"')
         self.Act_Pos_Y = self.client.get_node('ns=3;s="InstKukaControl"."instReadActualPos"."Y"')
@@ -501,11 +503,13 @@ class robot_control:
         d = 2.61
         # d = 3
         bbox = True
+        f_rate = False
         ct = CentroidTracker()    
         dc = DepthCamera()    
         pack_detect = packet_detector(self.paths, self.files, self.checkpt)
         homography = None
         while True:
+            start_time = time.time()
             ret, depth_frame, color_frame, colorized_depth = dc.get_frame()
             
             color_frame = color_frame[:,240:1680]
@@ -548,13 +552,15 @@ class robot_control:
 
             cv2.circle(img_np_detect, (int(width/2),int(height/2) ), 4, (0, 0, 255), -1)
             added_image = cv2.addWeighted(img_np_detect, 0.8, heatmap, 0.3, 0)
+            if f_rate:
+                cv2.putText(added_image,'FPS:'+ str( 1.0 / (time.time() - start_time)),(60,30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+                print("FPS: ", 1.0 / (time.time() - start_time))
             
             cv2.imshow("Frame", cv2.resize(added_image, (1280,960)))
             # cv2.imshow("result", result)
             # cv2.imshow('object detection', cv2.resize(img_np_detect, (1280,960)))
             # cv2.imshow("Heatmap",cv2.resize(heatmap, (1280,960)))
             # cv2.imshow("Color", color_frame)
-            
             key = cv2.waitKey(1)
             if key== ord('w'):
                 a+=0.1
@@ -573,6 +579,11 @@ class robot_control:
                     bbox = True
                 else:
                     bbox = False
+            if key== ord('f'):
+                if f_rate == False:
+                    f_rate = True
+                else:
+                    f_rate = False
             if key== 27:
                 # cv2.destroyAllWindows()
                 break
@@ -604,6 +615,8 @@ class robot_control:
             start = self.Start_Prog.get_value()
             rob_stopped = self.Rob_Stopped.get_value()
             abort = self.Abort_Prog.get_value()
+            encoder_vel = self.Encoder_Vel.get_value()
+            encoder_pos = self.Encoder_Pos.get_value()
 
             x_pos = self.Act_Pos_X.get_value()
             y_pos = self.Act_Pos_Y.get_value()
@@ -633,6 +646,8 @@ class robot_control:
             a_pos = round(a_pos,2)
             b_pos = round(b_pos,2)
             c_pos = round(c_pos,2)
+            encoder_vel = round(encoder_vel,2)
+            encoder_pos = round(encoder_pos,2)
 
             cv2.circle(color_frame, (int(width/2),int(height/2) ), 4, (0, 0, 255), -1)
             cv2.putText(color_frame,'x:'+ str(x_pos),(60,30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
@@ -643,7 +658,8 @@ class robot_control:
             cv2.putText(color_frame,'c:'+ str(c_pos),(60,130),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             cv2.putText(color_frame,'Status:'+ str(status_pos),(60,150),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             cv2.putText(color_frame,'Turn:'+ str(turn_pos),(60,170),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-
+            cv2.putText(color_frame,'Enc. Speed:'+ str(encoder_vel),(60,190),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(color_frame,'Enc. Position:'+ str(encoder_pos),(60,210),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             color_frame = cv2.addWeighted(color_frame, 0.8, detected_img, 0.4, 0)
 
             cv2.imshow("Frame", cv2.resize(color_frame, (1280,960)))
