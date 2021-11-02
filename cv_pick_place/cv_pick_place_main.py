@@ -35,6 +35,8 @@ Pick_place_dict = {
 #           }
 
 if __name__ == '__main__':
-    while True:
-        rc = robot_control(Pick_place_dict, paths, files, check_point)
-        rc.main_robot_control()
+    # while True:
+        # rc = robot_control(Pick_place_dict, paths, files, check_point)
+        # rc.main_robot_control_demo()
+    rc = robot_control(Pick_place_dict, paths, files, check_point)
+    rc.main_pick_place()
