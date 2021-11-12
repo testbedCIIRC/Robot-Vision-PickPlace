@@ -8,7 +8,6 @@ import cv2
 from opcua import ua
 import pyrealsense2
 import numpy as np
-# from realsense_depth import *
 import random
 import matplotlib as mpl
 import scipy.signal
@@ -21,11 +20,11 @@ from object_detection.utils import visualization_utils as viz_utils
 from object_detection.builders import model_builder
 from object_detection.utils import config_util
 from cvzone.HandTrackingModule import HandDetector
-from packet_detection.packet_detector import packet_detector
-from cv2_apriltag.apriltag_detection import processing_apriltag
+from packet_detection.packet_detector import PacketDetector
+from cv2_apriltag.apriltag_detection import ProcessingApriltag
 from realsense_config.realsense_depth import DepthCamera
 from centroid_tracker.centroidtracker import CentroidTracker
-class robot_control:
+class RobotControl:
     def __init__(self, Pick_place_dict, paths, files, checkpt):
         self.Pick_place_dict = Pick_place_dict
         self.paths = paths
@@ -126,7 +125,22 @@ class robot_control:
     def compute_gripper_rot(self, angle):
         rot = 90.0 - abs(angle)
         return rot
-        
+    def get_actual_pos(self):
+        x_pos = self.Act_Pos_X.get_value()
+        y_pos = self.Act_Pos_Y.get_value()
+        z_pos = self.Act_Pos_Z.get_value()
+        a_pos = self.Act_Pos_A.get_value()
+        b_pos = self.Act_Pos_B.get_value()
+        c_pos =self.Act_Pos_C.get_value()
+        status_pos = self.Act_Pos_Status.get_value()
+        turn_pos = self.Act_Pos_Turn.get_value()
+        x_pos = round(x_pos,2)
+        y_pos = round(y_pos,2)
+        z_pos = round(z_pos,2)
+        a_pos = round(a_pos,2)
+        b_pos = round(b_pos,2)
+        c_pos = round(c_pos,2)
+        return x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos  
     def gripper_gesture_control(self,detector, cap, show = False):
         
         if show:
@@ -186,7 +200,7 @@ class robot_control:
         f_rate = False
         ct = CentroidTracker()    
         dc = DepthCamera()    
-        pack_detect = packet_detector(self.paths, self.files, self.checkpt)
+        pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
         homography = None
         while True:
             start_time = time.time()
@@ -196,7 +210,7 @@ class robot_control:
             # color_frame = cv2.resize(color_frame, (640,480))
             height, width, depth = color_frame.shape[0],color_frame.shape[1],color_frame.shape[2]
             
-            apriltag = processing_apriltag(None, color_frame, None)
+            apriltag = ProcessingApriltag(None, color_frame, None)
             try:
                 color_frame = apriltag.detect_tags()
                 homography = apriltag.compute_homog()
@@ -310,8 +324,6 @@ class robot_control:
             prePick_done = self.PrePick_Done.get_value()
             place_done = self.Place_Done.get_value()
 
-            # print(start, x_pos, y_pos, z_pos, a_pos, b_pos, c_pos)
-
             ret, depth_frame, color_frame, colorized_depth = dc.get_frame()
             color_frame = color_frame[:,240:1680]
             frame_num += 1
@@ -354,7 +366,6 @@ class robot_control:
                 self.client.disconnect()
                 self.gripper_gesture_control(detector, cap, show = False)
                 cv2.destroyWindow("Object detected")
-                # cv2.destroyAllWindows()
                 time.sleep(0.5)
                 break
 
@@ -395,39 +406,29 @@ class robot_control:
         self.get_nodes()
         warn_count = 0
         bbox = True
+        depth_map = True
         f_data = False
         ct = CentroidTracker()    
         dc = DepthCamera()    
         self.show_boot_screen('STARTING NEURAL NET...')
-        pack_detect = packet_detector(self.paths, self.files, self.checkpt)
+        pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
         homography = None
         start = self.Start_Prog.get_value()
-        rob_stopped = self.Rob_Stopped.get_value()
         abort = self.Abort_Prog.get_value()
         encoder_vel = self.Encoder_Vel.get_value()
         encoder_pos = self.Encoder_Pos.get_value()
 
-        x_pos = self.Act_Pos_X.get_value()
-        y_pos = self.Act_Pos_Y.get_value()
-        z_pos = self.Act_Pos_Z.get_value()
-        a_pos = self.Act_Pos_A.get_value()
-        b_pos = self.Act_Pos_B.get_value()
-        c_pos =self.Act_Pos_C.get_value()
-        status_pos = self.Act_Pos_Status.get_value()
-        turn_pos = self.Act_Pos_Turn.get_value()
-
         prePick_done = self.PrePick_Done.get_value()
         place_done = self.Place_Done.get_value()
         while True:
-
             start_time = time.time()
+            rob_stopped = self.Rob_Stopped.get_value()
             ret, depth_frame, color_frame, colorized_depth = dc.get_frame()
             
             color_frame = color_frame[:,240:1680]
-            # color_frame = cv2.resize(color_frame, (640,480))
             height, width, depth = color_frame.shape[0],color_frame.shape[1],color_frame.shape[2]
             
-            apriltag = processing_apriltag(None, color_frame, None)
+            apriltag = ProcessingApriltag(None, color_frame, None)
             try:
                 color_frame = apriltag.detect_tags()
                 homography = apriltag.compute_homog()
@@ -435,7 +436,6 @@ class robot_control:
                 is_marker_detect= type(homography).__module__ == np.__name__ or homography == None
                 if is_marker_detect:
                     warn_count = 0
-                    # print(homography)
                     
             except:
             #Triggered when no markers are in the frame:
@@ -455,39 +455,18 @@ class robot_control:
             
             objects = ct.update(rects)
             self.objects_update(objects, img_np_detect)
-
-            cv2.circle(img_np_detect, (int(width/2), int(height/2)), 4, (0, 0, 255), -1)
-            added_image = cv2.addWeighted(img_np_detect, 0.8, heatmap, 0.3, 0)
+            
+            if depth_map:
+                img_np_detect = cv2.addWeighted(img_np_detect, 0.8, heatmap, 0.3, 0)
 
             if f_data:
-                x_pos = round(x_pos,2)
-                y_pos = round(y_pos,2)
-                z_pos = round(z_pos,2)
-                a_pos = round(a_pos,2)
-                b_pos = round(b_pos,2)
-                c_pos = round(c_pos,2)
+                x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos = self.get_actual_pos()
                 encoder_vel = round(encoder_vel,2)
                 encoder_pos = round(encoder_pos,2)
-
-                cv2.circle(added_image, (int(width/2),int(height/2) ), 4, (0, 0, 255), -1)
-                cv2.putText(added_image,'x:'+ str(x_pos),(60,30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                cv2.putText(added_image,'y:'+ str(y_pos),(60,50),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                cv2.putText(added_image,'z:'+ str(z_pos),(60,70),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                cv2.putText(added_image,'a:'+ str(a_pos),(60,90),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                cv2.putText(added_image,'b:'+ str(b_pos),(60,110),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                cv2.putText(added_image,'c:'+ str(c_pos),(60,130),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                cv2.putText(added_image,'Status:'+ str(status_pos),(60,150),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                cv2.putText(added_image,'Turn:'+ str(turn_pos),(60,170),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                cv2.putText(added_image,'Enc. Speed:'+ str(encoder_vel),(60,190),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                cv2.putText(added_image,'Enc. Position:'+ str(encoder_pos),(60,210),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                cv2.putText(added_image,'FPS:'+ str( 1.0 / (time.time() - start_time)),(60,10),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+                print(x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos, encoder_vel, encoder_pos)
                 print("FPS: ", 1.0 / (time.time() - start_time))
-            
-            cv2.imshow("Frame", cv2.resize(added_image, (1280,960)))
-            # cv2.imshow("result", result)
-            # cv2.imshow('object detection', cv2.resize(img_np_detect, (1280,960)))
-            # cv2.imshow("Heatmap",cv2.resize(heatmap, (1280,960)))
-            # cv2.imshow("Color", color_frame)
+
+            cv2.imshow("Frame", cv2.resize(img_np_detect, (1280,960)))
 
             key = cv2.waitKey(1)
 
@@ -524,6 +503,13 @@ class robot_control:
                     bbox = True
                 else:
                     bbox = False
+            
+            if key == ord('h'):
+                if depth_map == False:
+                    depth_map = True
+                else:
+                    depth_map = False
+                    
             if key == ord('f'):
                 if f_data == False:
                     f_data = True
