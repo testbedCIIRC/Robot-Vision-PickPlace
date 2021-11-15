@@ -64,17 +64,19 @@ def robot_server(server_out):
     rc.connect_OPCUA_server()
     rc.get_nodes()
     while True:
-        robot_server_dict = {
-        'pos' : rc.get_actual_pos(),
-        'rob_stopped' : rc.Rob_Stopped.get_value(),
-        'start' : rc.Start_Prog.get_value(),
-        'abort' : rc.Abort_Prog.get_value(),
-        'encoder_vel' : rc.Encoder_Vel.get_value(),
-        'encoder_pos' : rc.Encoder_Pos.get_value(),
-        'prePick_done' : rc.PrePick_Done.get_value(),
-        'place_done' : rc.Place_Done.get_value()
-        }
-        server_out.put(robot_server_dict)
+        try:
+            robot_server_dict = {
+            'pos':rc.get_actual_pos(),
+            'encoder_vel':round(rc.Encoder_Vel.get_value(),2),
+            'encoder_pos':round(rc.Encoder_Pos.get_value(),2),
+            'start':rc.Start_Prog.get_value(),
+            'abort':rc.Abort_Prog.get_value(),
+            'rob_stopped':rc.Rob_Stopped.get_value()
+            }
+            server_out.put(robot_server_dict)
+        except:
+            print('[INFO]: Queue empty.')
+            break
 
 def main_robot_control(server_in):
     apriltag = ProcessingApriltag(None, None, None)
@@ -129,18 +131,9 @@ def main_robot_control(server_in):
 
         if f_data:
             x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos = robot_server_dict['pos']
-            encoder_vel = round(robot_server_dict['encoder_vel'],2)
-            encoder_pos = round(robot_server_dict['encoder_pos'],2)
-            cv2.putText(img_np_detect,'x:'+ str(x_pos),(60,30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(img_np_detect,'y:'+ str(y_pos),(60,50),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(img_np_detect,'z:'+ str(z_pos),(60,70),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(img_np_detect,'a:'+ str(a_pos),(60,90),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(img_np_detect,'b:'+ str(b_pos),(60,110),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(img_np_detect,'c:'+ str(c_pos),(60,130),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(img_np_detect,'Status:'+ str(status_pos),(60,150),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(img_np_detect,'Turn:'+ str(turn_pos),(60,170),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(img_np_detect,'Enc. Speed:'+ str(encoder_vel),(60,190),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(img_np_detect,'Enc. Position:'+ str(encoder_pos),(60,210),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            encoder_vel = robot_server_dict['encoder_vel']
+            encoder_pos = robot_server_dict['encoder_pos']
+            cv2.putText(img_np_detect,str(robot_server_dict),(10,25),cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
 
             print("FPS: ", 1.0 / (time.time() - start_time))
 
@@ -196,6 +189,7 @@ def main_robot_control(server_in):
             rc.Abort_Prog.set_value(ua.DataValue(False))
             rc.client.disconnect()
             cv2.destroyAllWindows()
+            print('[INFO]: Client disconnected.')
             time.sleep(0.5)
             break
 
@@ -206,12 +200,10 @@ if __name__ == '__main__':
     # rc = RobotControl(Pick_place_dict, paths, files, check_point)
     # rc.main_pick_place()
 
-    try:
         rc = RobotControl(Pick_place_dict, paths, files, check_point)
         q = Queue()
         t1 = Thread(target = main_robot_control, args =(q, ))
         t2 = Thread(target = robot_server, args =(q, ))
         t1.start()
         t2.start()
-    except:
-        print('Program Closed')
+        

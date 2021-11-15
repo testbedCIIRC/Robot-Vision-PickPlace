@@ -91,7 +91,7 @@ class RobotControl:
         password = "CIIRC"
         self.client = Client("opc.tcp://user:"+str(password)+"@10.35.91.101:4840/")
         self.client.connect()
-        print("client connected")
+        print('[INFO]: Client connected.')
 
     def change_trajectory(self, x, y, rot, packet_type):
 
@@ -510,6 +510,7 @@ class RobotControl:
                 print('Program Aborted: ',abort)
                 self.Abort_Prog.set_value(ua.DataValue(False))
                 self.client.disconnect()
+                print('[INFO]: Client disconnected.')
                 cv2.destroyAllWindows()
                 time.sleep(0.5)
                 break
