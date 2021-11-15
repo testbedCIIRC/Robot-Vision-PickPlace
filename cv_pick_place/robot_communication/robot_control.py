@@ -1,29 +1,30 @@
-from opcua import Client
-import datetime
-import time
-import sys
 import os
-import json
+import sys
 import cv2 
-from opcua import ua
-import pyrealsense2
-import numpy as np
+import json
+import time
 import random
-import matplotlib as mpl
+import datetime
+import numpy as np
+import pyrealsense2
 import scipy.signal
-from scipy import ndimage
-from scipy.spatial import distance as dist
-from collections import OrderedDict
+from opcua import ua
 import tensorflow as tf
-from object_detection.utils import label_map_util
-from object_detection.utils import visualization_utils as viz_utils
-from object_detection.builders import model_builder
-from object_detection.utils import config_util
+from opcua import Client
+import matplotlib as mpl
+from scipy import ndimage
+from collections import OrderedDict
+from scipy.spatial import distance as dist
 from cvzone.HandTrackingModule import HandDetector
+from object_detection.utils import config_util
+from object_detection.utils import label_map_util
+from object_detection.builders import model_builder
+from object_detection.utils import visualization_utils as viz_utils
 from packet_detection.packet_detector import PacketDetector
 from cv2_apriltag.apriltag_detection import ProcessingApriltag
 from realsense_config.realsense_depth import DepthCamera
 from centroid_tracker.centroidtracker import CentroidTracker
+
 class RobotControl:
     def __init__(self, Pick_place_dict, paths, files, checkpt):
         self.Pick_place_dict = Pick_place_dict
@@ -86,7 +87,7 @@ class RobotControl:
         cv2.waitKey(1)
 
     def connect_OPCUA_server(self):
-        self.show_boot_screen('CONNECTING TO OPC UA SERVER...')
+        # self.show_boot_screen('CONNECTING TO OPC UA SERVER...')
         password = "CIIRC"
         self.client = Client("opc.tcp://user:"+str(password)+"@10.35.91.101:4840/")
         self.client.connect()
@@ -200,6 +201,7 @@ class RobotControl:
         f_rate = False
         ct = CentroidTracker()    
         dc = DepthCamera()    
+        apriltag = ProcessingApriltag(None, None, None)
         pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
         homography = None
         while True:
@@ -210,9 +212,8 @@ class RobotControl:
             # color_frame = cv2.resize(color_frame, (640,480))
             height, width, depth = color_frame.shape[0],color_frame.shape[1],color_frame.shape[2]
             
-            apriltag = ProcessingApriltag(None, color_frame, None)
             try:
-                color_frame = apriltag.detect_tags()
+                color_frame = apriltag.detect_tags(color_frame)
                 homography = apriltag.compute_homog()
 
                 is_marker_detect= type(homography).__module__ == np.__name__ or homography == None
@@ -268,16 +269,10 @@ class RobotControl:
                 d+=2
             if key== ord('x'):
                 d-=2
-            if key== ord('b'):
-                if bbox == False:
-                    bbox = True
-                else:
-                    bbox = False
-            if key== ord('f'):
-                if f_rate == False:
-                    f_rate = True
-                else:
-                    f_rate = False
+            if key == ord('l'):
+                bbox = not bbox
+            if key == ord('f'):
+                f_rate = not f_rate
             if key== 27:
                 # cv2.destroyAllWindows()
                 break
@@ -391,10 +386,8 @@ class RobotControl:
                 time.sleep(0.1)
             
             if key == ord('g'):
-                if show_gestures == False:
-                    show_gestures = True
-                else:
-                    show_gestures = False
+                show_gestures = not show_gestures
+                
 
             if key == ord('a'):
                 self.Abort_Prog.set_value(ua.DataValue(True))
@@ -409,7 +402,8 @@ class RobotControl:
         depth_map = True
         f_data = False
         ct = CentroidTracker()    
-        dc = DepthCamera()    
+        dc = DepthCamera()
+        apriltag = ProcessingApriltag(None, None, None)    
         self.show_boot_screen('STARTING NEURAL NET...')
         pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
         homography = None
@@ -428,9 +422,8 @@ class RobotControl:
             color_frame = color_frame[:,240:1680]
             height, width, depth = color_frame.shape[0],color_frame.shape[1],color_frame.shape[2]
             
-            apriltag = ProcessingApriltag(None, color_frame, None)
             try:
-                color_frame = apriltag.detect_tags()
+                color_frame = apriltag.detect_tags(color_frame)
                 homography = apriltag.compute_homog()
 
                 is_marker_detect= type(homography).__module__ == np.__name__ or homography == None
@@ -455,7 +448,7 @@ class RobotControl:
             
             objects = ct.update(rects)
             self.objects_update(objects, img_np_detect)
-            
+
             if depth_map:
                 img_np_detect = cv2.addWeighted(img_np_detect, 0.8, heatmap, 0.3, 0)
 
@@ -499,22 +492,13 @@ class RobotControl:
                 time.sleep(0.1)
 
             if key == ord('l'):
-                if bbox == False:
-                    bbox = True
-                else:
-                    bbox = False
-            
+                bbox = not bbox
+        
             if key == ord('h'):
-                if depth_map == False:
-                    depth_map = True
-                else:
-                    depth_map = False
+                depth_map = not depth_map
                     
             if key == ord('f'):
-                if f_data == False:
-                    f_data = True
-                else:
-                    f_data = False
+                f_data = not f_data
 
             if key == ord('a'):
                 self.Abort_Prog.set_value(ua.DataValue(True))

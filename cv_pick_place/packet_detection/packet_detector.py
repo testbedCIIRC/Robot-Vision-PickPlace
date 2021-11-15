@@ -14,7 +14,7 @@ from object_detection.builders import model_builder
 from object_detection.utils import config_util
 from cvzone.HandTrackingModule import HandDetector
 
-class packet_detector:
+class PacketDetector:
     def __init__(self,paths,files,checkpt):
         self.paths = paths
         self.files = files

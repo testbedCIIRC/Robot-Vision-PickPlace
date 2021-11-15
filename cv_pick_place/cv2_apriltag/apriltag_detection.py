@@ -1,7 +1,7 @@
 import json
 import cv2 
 import numpy as np
-class processing_apriltag:
+class ProcessingApriltag:
 	
 	def __init__(self,intrinsic,color_image,depth_frame):
 		self.color_image = color_image
@@ -35,9 +35,9 @@ class processing_apriltag:
 			print("[INFO]: Less than 4 corresponding points found")
 			return self.homography
 
-	def detect_tags(self):
+	def detect_tags(self,color_image):
 		rect1 = []
-		image = self.color_image.copy()
+		image = color_image.copy()
 		self.load_original_points()
 		gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 		(corners, ids, rejected) = cv2.aruco.detectMarkers( image, cv2.aruco.Dictionary_get(
