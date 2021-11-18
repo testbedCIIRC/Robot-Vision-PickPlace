@@ -74,6 +74,7 @@ def robot_server(server_out):
             'rob_stopped':rc.Rob_Stopped.get_value()
             }
             server_out.put(robot_server_dict)
+            # print('out size:',server_out.qsize())
         except:
             print('[INFO]: Queue empty.')
             break
@@ -90,6 +91,7 @@ def main_robot_control(server_in):
     f_data = False
     homography = None
     while True:
+        # print('in size:',server_in.qsize())
         robot_server_dict = server_in.get()
         start_time = time.time()
         rob_stopped = robot_server_dict['rob_stopped']
@@ -124,6 +126,7 @@ def main_robot_control(server_in):
         img_np_detect, result, rects = pack_detect.deep_detector(color_frame, depth_frame, homography, bnd_box = bbox)
         
         objects = ct.update(rects)
+        # print(objects)
         rc.objects_update(objects, img_np_detect)
         
         if depth_map:
@@ -201,7 +204,7 @@ if __name__ == '__main__':
     # rc.main_pick_place()
 
         rc = RobotControl(Pick_place_dict, paths, files, check_point)
-        q = Queue()
+        q = Queue(maxsize = 1)
         t1 = Thread(target = main_robot_control, args =(q, ))
         t2 = Thread(target = robot_server, args =(q, ))
         t1.start()
