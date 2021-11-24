@@ -33,8 +33,12 @@ class RobotControl:
         self.checkpt = checkpt
     def get_nodes(self):
         self.Start_Prog = self.client.get_node('ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."start"')
+        self.Conti_Prog = self.client.get_node('ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."continue"')
+        self.Stop_Prog = self.client.get_node('ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."interrupt"')
         self.Abort_Prog = self.client.get_node('ns=3;s="HMIKuka"."robot"."powerRobot"."command"."abort"')
         self.Rob_Stopped = self.client.get_node('ns=3;s="InstKukaControl"."instAutomaticExternal"."ROB_STOPPED"')
+        self.Conveyor_Left = self.client.get_node('ns=3;s="conveyor_left"')
+        self.Conveyor_Right = self.client.get_node('ns=3;s="conveyor_right"')
         self.Gripper_State = self.client.get_node('ns=3;s="gripper_control"')
         self.Encoder_Vel = self.client.get_node('ns=3;s="Encoder_1".ActualVelocity')
         self.Encoder_Pos = self.client.get_node('ns=3;s="Encoder_1".ActualPosition')
@@ -414,6 +418,7 @@ class RobotControl:
 
         prePick_done = self.PrePick_Done.get_value()
         place_done = self.Place_Done.get_value()
+        self.Conti_Prog.set_value(ua.DataValue(True))
         while True:
             start_time = time.time()
             rob_stopped = self.Rob_Stopped.get_value()
@@ -506,6 +511,7 @@ class RobotControl:
                 time.sleep(0.5)
             
             if key == 27:
+                self.Conti_Prog.set_value(ua.DataValue(False))
                 self.Abort_Prog.set_value(ua.DataValue(True))
                 print('Program Aborted: ',abort)
                 self.Abort_Prog.set_value(ua.DataValue(False))

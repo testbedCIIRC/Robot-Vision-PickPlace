@@ -86,6 +86,8 @@ def main_robot_control(server_in):
     rc.show_boot_screen('STARTING NEURAL NET...')
     pack_detect = PacketDetector(rc.paths, rc.files, rc.checkpt)
     warn_count = 0
+    conv_left = False
+    conv_right = False
     bbox = True
     depth_map = True
     f_data = False
@@ -172,6 +174,16 @@ def main_robot_control(server_in):
             rc.Gripper_State.set_value(ua.DataValue(True))
             time.sleep(0.1)
 
+        if key == ord('n') :
+            conv_right = not conv_right
+            rc.Conveyor_Right.set_value(ua.DataValue(conv_right))
+            time.sleep(0.1)
+        
+        if key == ord('m'):
+            conv_left = not conv_left
+            rc.Conveyor_Left.set_value(ua.DataValue(conv_left))
+            time.sleep(0.1)
+
         if key == ord('l'):
             bbox = not bbox
         
@@ -185,6 +197,18 @@ def main_robot_control(server_in):
             rc.Abort_Prog.set_value(ua.DataValue(True))
             print('Program Aborted: ',robot_server_dict['abort'])
             time.sleep(0.5)
+        
+        if key == ord('c'):
+            rc.Conti_Prog.set_value(ua.DataValue(True))
+            print('Continue Program')
+            time.sleep(0.5)
+            rc.Conti_Prog.set_value(ua.DataValue(False))
+        
+        if key == ord('s'):
+            rc.Stop_Prog.set_value(ua.DataValue(True))
+            print('Program Interrupted')
+            time.sleep(0.5)
+            rc.Stop_Prog.set_value(ua.DataValue(False))
         
         if key == 27:
             rc.Abort_Prog.set_value(ua.DataValue(True))
@@ -203,10 +227,10 @@ if __name__ == '__main__':
     # rc = RobotControl(Pick_place_dict, paths, files, check_point)
     # rc.main_pick_place()
 
-        rc = RobotControl(Pick_place_dict, paths, files, check_point)
-        q = Queue(maxsize = 1)
-        t1 = Thread(target = main_robot_control, args =(q, ))
-        t2 = Thread(target = robot_server, args =(q, ))
-        t1.start()
-        t2.start()
+    rc = RobotControl(Pick_place_dict, paths, files, check_point)
+    q = Queue(maxsize = 1)
+    t1 = Thread(target = main_robot_control, args =(q, ))
+    t2 = Thread(target = robot_server, args =(q, ))
+    t1.start()
+    t2.start()
         
