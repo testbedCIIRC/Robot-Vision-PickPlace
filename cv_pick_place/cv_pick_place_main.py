@@ -35,11 +35,11 @@ check_point ='ckpt-3'
 # check_point ='ckpt-6'
 LABEL_MAP_NAME = 'label_map.pbtxt'
 paths = {
-    'ANNOTATION_PATH': os.path.join('Tensorflow', 'workspace','annotations'),
-    'CHECKPOINT_PATH': os.path.join('Tensorflow', 'workspace','models',CUSTOM_MODEL_NAME) 
+    'ANNOTATION_PATH': os.path.join('cv_pick_place','Tensorflow', 'workspace','annotations'),
+    'CHECKPOINT_PATH': os.path.join('cv_pick_place','Tensorflow', 'workspace','models',CUSTOM_MODEL_NAME) 
 }
 files = {
-    'PIPELINE_CONFIG':os.path.join('Tensorflow', 'workspace','models', CUSTOM_MODEL_NAME, 'pipeline.config'),
+    'PIPELINE_CONFIG':os.path.join('cv_pick_place','Tensorflow', 'workspace','models', CUSTOM_MODEL_NAME, 'pipeline.config'),
     'LABELMAP': os.path.join(paths['ANNOTATION_PATH'], LABEL_MAP_NAME)
 }
 
