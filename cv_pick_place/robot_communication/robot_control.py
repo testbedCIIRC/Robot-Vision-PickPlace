@@ -194,6 +194,30 @@ class RobotControl:
             cv2.putText(image, text, (centroid[0] , centroid[1] - 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             cv2.circle(image, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
+
+    def packet_tracking_update(self, objects, image, homography, enable, x_fixed, frames_lim, y_list = [],x_list = []):
+        # loop over the tracked objects
+        for (objectID, centroid) in objects.items():
+            # draw both the ID of the object and the centroid of the
+            # object on the output frame
+            text = "ID {}".format(objectID)
+            cv2.putText(image, text, (centroid[0] , centroid[1] - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.circle(image, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
+    
+            if enable:
+                x_list.append(centroid[0])
+                y_list.append(centroid[1])
+                if frames_lim == 20:    
+                    mean_x = float(np.mean(x_list))
+                    mean_y = float(np.mean(y_list))
+                    new_centroid = np.append((mean_x, mean_y),1)
+                    world_centroid = homography.dot(new_centroid)
+                    world_centroid = world_centroid[0], world_centroid[1]
+                    print(world_centroid)
+                    y_list = []
+                    x_list = []
+                    # return world_centroid
+    
     def main_packet_detect(self):
         self.show_boot_screen('STARTING NEURAL NET...')
         warn_count = 0

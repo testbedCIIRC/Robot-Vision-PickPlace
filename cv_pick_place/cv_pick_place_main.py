@@ -86,6 +86,8 @@ def main_robot_control(server_in):
     rc.show_boot_screen('STARTING NEURAL NET...')
     pack_detect = PacketDetector(rc.paths, rc.files, rc.checkpt)
     warn_count = 0
+    frames_lim = 0
+    is_detect = False
     conv_left = False
     conv_right = False
     bbox = True
@@ -129,7 +131,12 @@ def main_robot_control(server_in):
         
         objects = ct.update(rects)
         # print(objects)
-        rc.objects_update(objects, img_np_detect)
+        # rc.objects_update(objects, img_np_detect)
+        if is_detect:
+            frames_lim += 1
+            if frames_lim == 21:
+                frames_lim = 0
+        rc.packet_tracking_update(objects, img_np_detect, homography, is_detect, x_fixed = 0, frames_lim = frames_lim)
         
         if depth_map:
             img_np_detect = cv2.addWeighted(img_np_detect, 0.8, heatmap, 0.3, 0)
@@ -192,6 +199,9 @@ def main_robot_control(server_in):
                 
         if key == ord('f'):
             f_data = not f_data
+        
+        if key == ord('e'):
+            is_detect = not is_detect
 
         if key == ord('a'):
             rc.Abort_Prog.set_value(ua.DataValue(True))
