@@ -209,18 +209,18 @@ class RobotControl:
             if enable:
                 x_list.append(centroid[0])
                 y_list.append(centroid[1])
-                if frames_lim == 20:    
+                if frames_lim == 10:    
                     mean_x = float(x_list[-1])
                     mean_y = float(np.mean(y_list))
                     new_centroid = np.append((mean_x, mean_y),1)
                     world_centroid = homography.dot(new_centroid)
                     world_centroid = world_centroid[0], world_centroid[1]
-                    print(world_centroid)
-                    print(x_list,x_list[-1])
+                    # print(x_list,x_list[-1])
                     y_list.clear()
                     x_list.clear()
                     mean_x = 0
                     mean_y = 0
+                    return x_fixed, round(world_centroid[1] * 10.0, 2)
                     # return world_centroid
     
     def main_packet_detect(self):
@@ -479,12 +479,12 @@ class RobotControl:
             
             objects = ct.update(rects)
             # print(objects)
-            # self.objects_update(objects, img_np_detect)
-            if is_detect:
-                frames_lim += 1
-                if frames_lim > 20:
-                    frames_lim = 0
-            self.packet_tracking_update(objects, img_np_detect, homography, is_detect, x_fixed = 0, frames_lim = frames_lim)
+            self.objects_update(objects, img_np_detect)
+            # if is_detect:
+            #     frames_lim += 1
+            #     if frames_lim > 20:
+            #         frames_lim = 0
+            # self.packet_tracking_update(objects, img_np_detect, homography, is_detect, x_fixed = 0, frames_lim = frames_lim)
             
             if depth_map:
                 img_np_detect = cv2.addWeighted(img_np_detect, 0.8, heatmap, 0.3, 0)

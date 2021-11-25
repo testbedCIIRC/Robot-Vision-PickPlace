@@ -43,6 +43,17 @@ files = {
     'LABELMAP': os.path.join(paths['ANNOTATION_PATH'], LABEL_MAP_NAME)
 }
 
+Pick_place_dict_conv_mov = {
+"home_pos":[{'x':830.0,'y':245.0,'z':130.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}],
+
+"pick_pos_base": [{'x':830.0,'y':245.0,'z':130.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}],
+
+# place on conveyor points
+"place_pos":[{'x':1079.44,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
+            {'x':1250,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
+            {'x':1420.73,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
+            {'x':1420.73,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}]
+          }
 Pick_place_dict = {
 "home_pos":[{'x':697.1,'y':0.0,'z':260.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':43}],
 
@@ -85,6 +96,7 @@ def main_pick_place_conveyor(server_in):
     dc = DepthCamera()    
     rc.show_boot_screen('STARTING NEURAL NET...')
     pack_detect = PacketDetector(rc.paths, rc.files, rc.checkpt)
+    x_fixed = rc.Pick_place_dict['pick_pos_base'][0]['x']
     warn_count = 0
     frames_lim = 0
     is_detect = False
@@ -93,6 +105,7 @@ def main_pick_place_conveyor(server_in):
     bbox = True
     depth_map = True
     f_data = False
+    pick_world_point = None
     homography = None
     while True:
         # print('in size:',server_in.qsize())
@@ -128,39 +141,29 @@ def main_pick_place_conveyor(server_in):
         heatmap = cv2.resize(heatmap, (width,height))
         
         img_np_detect, result, rects = pack_detect.deep_detector(color_frame, depth_frame, homography, bnd_box = bbox)
-        
+        # print(rects)
         objects = ct.update(rects)
         # print(objects)
         # rc.objects_update(objects, img_np_detect)
-        if is_detect:
-            frames_lim += 1
-            if frames_lim > 20:
-                frames_lim = 0
-        rc.packet_tracking_update(objects, img_np_detect, homography, is_detect, x_fixed = 0, frames_lim = frames_lim)
         
-        if depth_map:
-            img_np_detect = cv2.addWeighted(img_np_detect, 0.8, heatmap, 0.3, 0)
+        is_detect = len(rects) is not 0
+        is_conv_mov = robot_server_dict['encoder_vel'] < - 100.0
 
-        if f_data:
-            x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos = robot_server_dict['pos']
-            encoder_vel = robot_server_dict['encoder_vel']
-            encoder_pos = robot_server_dict['encoder_pos']
-            cv2.putText(img_np_detect,str(robot_server_dict),(10,25),cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
-
-            print("FPS: ", 1.0 / (time.time() - start_time))
-
-        cv2.imshow("Frame", cv2.resize(img_np_detect, (1280,960)))
-
-        key = cv2.waitKey(1)
-
-        if rob_stopped:
-            if key == ord('b'):
-                bpressed += 1
-                if bpressed == 5:
+        if is_detect:
+            if is_conv_mov:
+                frames_lim += 1
+                if frames_lim > 10:
+                    frames_lim = 0
+            else:
+                frames_lim = 0
+            pick_world_point = rc.packet_tracking_update(objects, img_np_detect, homography, is_detect, x_fixed = x_fixed, frames_lim = frames_lim)
+            print(pick_world_point)
+            if pick_world_point is not None:
+                if rob_stopped:
                     print(rects)
-                    world_centroid = rects[0][2]
-                    packet_x = round(world_centroid[0] * 10.0, 2)
-                    packet_y = round(world_centroid[1] * 10.0, 2)
+                    # world_centroid = rects[0][2]
+                    packet_x = pick_world_point[0]
+                    packet_y = pick_world_point[1]
                     angle = rects[0][3]
                     gripper_rot = rc.compute_gripper_rot(angle)
                     packet_type = rects[0][4]
@@ -169,9 +172,42 @@ def main_pick_place_conveyor(server_in):
                     print('Program Started: ',robot_server_dict['start'])
                     rc.Start_Prog.set_value(ua.DataValue(False))
                     time.sleep(0.5)
-                    bpressed = 0
-            elif key != ord('b'):
-                bpressed = 0
+
+        if depth_map:
+            img_np_detect = cv2.addWeighted(img_np_detect, 0.8, heatmap, 0.3, 0)
+
+        if f_data:
+            x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos = robot_server_dict['pos']
+            encoder_vel = robot_server_dict['encoder_vel']
+            encoder_pos = robot_server_dict['encoder_pos']
+            cv2.putText(img_np_detect,str(robot_server_dict),(10,25),cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
+            cv2.putText(img_np_detect,"FPS:"+str(1.0/(time.time() - start_time)),(10,40),cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
+
+            # print("FPS: ", 1.0 / (time.time() - start_time))
+
+        cv2.imshow("Frame", cv2.resize(img_np_detect, (1280,960)))
+
+        key = cv2.waitKey(1)
+
+        # if rob_stopped:
+        #     if key == ord('b'):
+        #         bpressed += 1
+        #         if bpressed == 5:
+        #             print(rects)
+        #             world_centroid = rects[0][2]
+        #             packet_x = round(world_centroid[0] * 10.0, 2)
+        #             packet_y = round(world_centroid[1] * 10.0, 2)
+        #             angle = rects[0][3]
+        #             gripper_rot = rc.compute_gripper_rot(angle)
+        #             packet_type = rects[0][4]
+        #             rc.change_trajectory(packet_x, packet_y, gripper_rot, packet_type)
+        #             rc.Start_Prog.set_value(ua.DataValue(True))
+        #             print('Program Started: ',robot_server_dict['start'])
+        #             rc.Start_Prog.set_value(ua.DataValue(False))
+        #             time.sleep(0.5)
+        #             bpressed = 0
+        #     elif key != ord('b'):
+        #         bpressed = 0
 
         if key == ord('o'):
             rc.Gripper_State.set_value(ua.DataValue(False))
@@ -243,7 +279,7 @@ if __name__ == '__main__':
     # t2 = Thread(target = robot_server, args =(q, ))
 
     # Pick and place with moving conveyor and multithreading
-    rc = RobotControl(Pick_place_dict, paths, files, check_point)
+    rc = RobotControl(Pick_place_dict_conv_mov, paths, files, check_point)
     q = Queue(maxsize = 1)
     t1 = Thread(target = main_pick_place_conveyor, args =(q, ))
     t2 = Thread(target = robot_server, args =(q, ))
