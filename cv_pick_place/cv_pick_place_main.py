@@ -79,7 +79,7 @@ def robot_server(server_out):
             print('[INFO]: Queue empty.')
             break
 
-def main_robot_control(server_in):
+def main_pick_place_conveyor(server_in):
     apriltag = ProcessingApriltag(None, None, None)
     ct = CentroidTracker()    
     dc = DepthCamera()    
@@ -134,7 +134,7 @@ def main_robot_control(server_in):
         # rc.objects_update(objects, img_np_detect)
         if is_detect:
             frames_lim += 1
-            if frames_lim == 21:
+            if frames_lim > 20:
                 frames_lim = 0
         rc.packet_tracking_update(objects, img_np_detect, homography, is_detect, x_fixed = 0, frames_lim = frames_lim)
         
@@ -181,12 +181,12 @@ def main_robot_control(server_in):
             rc.Gripper_State.set_value(ua.DataValue(True))
             time.sleep(0.1)
 
-        if key == ord('n') :
+        if key == ord('m') :
             conv_right = not conv_right
             rc.Conveyor_Right.set_value(ua.DataValue(conv_right))
             time.sleep(0.1)
         
-        if key == ord('m'):
+        if key == ord('n'):
             conv_left = not conv_left
             rc.Conveyor_Left.set_value(ua.DataValue(conv_left))
             time.sleep(0.1)
@@ -231,16 +231,22 @@ def main_robot_control(server_in):
             break
 
 if __name__ == '__main__':
+    # Pick and place with static conveyor and async detection
     # while True:
         # rc = RobotControl(Pick_place_dict, paths, files, check_point)
         # rc.main_robot_control_demo()
-    # rc = RobotControl(Pick_place_dict, paths, files, check_point)
-    # rc.main_pick_place()
 
+    # Pick and place with static conveyor and multithreading
+    # rc = RobotControl(Pick_place_dict, paths, files, check_point)
+    # q = Queue(maxsize = 1)
+    # t1 = Thread(target = rc.main_pick_place, args =(q, ))
+    # t2 = Thread(target = robot_server, args =(q, ))
+
+    # Pick and place with moving conveyor and multithreading
     rc = RobotControl(Pick_place_dict, paths, files, check_point)
     q = Queue(maxsize = 1)
-    t1 = Thread(target = main_robot_control, args =(q, ))
+    t1 = Thread(target = main_pick_place_conveyor, args =(q, ))
     t2 = Thread(target = robot_server, args =(q, ))
+
     t1.start()
     t2.start()
-        

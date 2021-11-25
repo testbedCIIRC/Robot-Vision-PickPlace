@@ -13,6 +13,8 @@ import tensorflow as tf
 from opcua import Client
 import matplotlib as mpl
 from scipy import ndimage
+from queue import Queue
+from threading import Thread
 from collections import OrderedDict
 from scipy.spatial import distance as dist
 from cvzone.HandTrackingModule import HandDetector
@@ -208,14 +210,17 @@ class RobotControl:
                 x_list.append(centroid[0])
                 y_list.append(centroid[1])
                 if frames_lim == 20:    
-                    mean_x = float(np.mean(x_list))
+                    mean_x = float(x_list[-1])
                     mean_y = float(np.mean(y_list))
                     new_centroid = np.append((mean_x, mean_y),1)
                     world_centroid = homography.dot(new_centroid)
                     world_centroid = world_centroid[0], world_centroid[1]
                     print(world_centroid)
-                    y_list = []
-                    x_list = []
+                    print(x_list,x_list[-1])
+                    y_list.clear()
+                    x_list.clear()
+                    mean_x = 0
+                    mean_y = 0
                     # return world_centroid
     
     def main_packet_detect(self):
@@ -422,30 +427,27 @@ class RobotControl:
                 print('Program Aborted: ',abort)
                 time.sleep(0.5)
                 
-    def main_pick_place(self):
-        self.connect_OPCUA_server()
-        self.get_nodes()
+    def main_pick_place(self,server_in):
+        apriltag = ProcessingApriltag(None, None, None)
+        ct = CentroidTracker()    
+        dc = DepthCamera()    
+        self.show_boot_screen('STARTING NEURAL NET...')
+        pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
         warn_count = 0
+        frames_lim = 0
+        is_detect = False
+        conv_left = False
+        conv_right = False
         bbox = True
         depth_map = True
         f_data = False
-        ct = CentroidTracker()    
-        dc = DepthCamera()
-        apriltag = ProcessingApriltag(None, None, None)    
-        self.show_boot_screen('STARTING NEURAL NET...')
-        pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
         homography = None
-        start = self.Start_Prog.get_value()
-        abort = self.Abort_Prog.get_value()
-        encoder_vel = self.Encoder_Vel.get_value()
-        encoder_pos = self.Encoder_Pos.get_value()
-
-        prePick_done = self.PrePick_Done.get_value()
-        place_done = self.Place_Done.get_value()
-        self.Conti_Prog.set_value(ua.DataValue(True))
         while True:
+            # print('in size:',server_in.qsize())
+            robot_server_dict = server_in.get()
             start_time = time.time()
-            rob_stopped = self.Rob_Stopped.get_value()
+            rob_stopped = robot_server_dict['rob_stopped']
+
             ret, depth_frame, color_frame, colorized_depth = dc.get_frame()
             
             color_frame = color_frame[:,240:1680]
@@ -476,16 +478,23 @@ class RobotControl:
             img_np_detect, result, rects = pack_detect.deep_detector(color_frame, depth_frame, homography, bnd_box = bbox)
             
             objects = ct.update(rects)
-            self.objects_update(objects, img_np_detect)
-
+            # print(objects)
+            # self.objects_update(objects, img_np_detect)
+            if is_detect:
+                frames_lim += 1
+                if frames_lim > 20:
+                    frames_lim = 0
+            self.packet_tracking_update(objects, img_np_detect, homography, is_detect, x_fixed = 0, frames_lim = frames_lim)
+            
             if depth_map:
                 img_np_detect = cv2.addWeighted(img_np_detect, 0.8, heatmap, 0.3, 0)
 
             if f_data:
-                x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos = self.get_actual_pos()
-                encoder_vel = round(encoder_vel,2)
-                encoder_pos = round(encoder_pos,2)
-                print(x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos, encoder_vel, encoder_pos)
+                x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos = robot_server_dict['pos']
+                encoder_vel = robot_server_dict['encoder_vel']
+                encoder_pos = robot_server_dict['encoder_pos']
+                cv2.putText(img_np_detect,str(robot_server_dict),(10,25),cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
+
                 print("FPS: ", 1.0 / (time.time() - start_time))
 
             cv2.imshow("Frame", cv2.resize(img_np_detect, (1280,960)))
@@ -505,7 +514,7 @@ class RobotControl:
                         packet_type = rects[0][4]
                         self.change_trajectory(packet_x, packet_y, gripper_rot, packet_type)
                         self.Start_Prog.set_value(ua.DataValue(True))
-                        print('Program Started: ',start)
+                        print('Program Started: ',robot_server_dict['start'])
                         self.Start_Prog.set_value(ua.DataValue(False))
                         time.sleep(0.5)
                         bpressed = 0
@@ -520,27 +529,51 @@ class RobotControl:
                 self.Gripper_State.set_value(ua.DataValue(True))
                 time.sleep(0.1)
 
+            if key == ord('m') :
+                conv_right = not conv_right
+                self.Conveyor_Right.set_value(ua.DataValue(conv_right))
+                time.sleep(0.1)
+            
+            if key == ord('n'):
+                conv_left = not conv_left
+                self.Conveyor_Left.set_value(ua.DataValue(conv_left))
+                time.sleep(0.1)
+
             if key == ord('l'):
                 bbox = not bbox
-        
+            
             if key == ord('h'):
                 depth_map = not depth_map
                     
             if key == ord('f'):
                 f_data = not f_data
+            
+            if key == ord('e'):
+                is_detect = not is_detect
 
             if key == ord('a'):
                 self.Abort_Prog.set_value(ua.DataValue(True))
-                print('Program Aborted: ',abort)
+                print('Program Aborted: ',robot_server_dict['abort'])
                 time.sleep(0.5)
             
-            if key == 27:
+            if key == ord('c'):
+                self.Conti_Prog.set_value(ua.DataValue(True))
+                print('Continue Program')
+                time.sleep(0.5)
                 self.Conti_Prog.set_value(ua.DataValue(False))
+            
+            if key == ord('s'):
+                self.Stop_Prog.set_value(ua.DataValue(True))
+                print('Program Interrupted')
+                time.sleep(0.5)
+                self.Stop_Prog.set_value(ua.DataValue(False))
+            
+            if key == 27:
                 self.Abort_Prog.set_value(ua.DataValue(True))
-                print('Program Aborted: ',abort)
+                print('Program Aborted: ',robot_server_dict['abort'])
                 self.Abort_Prog.set_value(ua.DataValue(False))
                 self.client.disconnect()
-                print('[INFO]: Client disconnected.')
                 cv2.destroyAllWindows()
+                print('[INFO]: Client disconnected.')
                 time.sleep(0.5)
                 break
