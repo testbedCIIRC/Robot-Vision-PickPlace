@@ -44,9 +44,9 @@ files = {
 }
 
 Pick_place_dict_conv_mov = {
-"home_pos":[{'x':830.0,'y':245.0,'z':130.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}],
+"home_pos":[{'x':930.0,'y':245.0,'z':25.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}],
 
-"pick_pos_base": [{'x':830.0,'y':245.0,'z':130.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}],
+"pick_pos_base": [{'x':930.0,'y':245.0,'z':25.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}],
 
 # place on conveyor points
 "place_pos":[{'x':1079.44,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
@@ -111,6 +111,7 @@ def main_pick_place_conveyor(server_in):
         # print('in size:',server_in.qsize())
         robot_server_dict = server_in.get()
         start_time = time.time()
+        rc.Conti_Prog.set_value(ua.DataValue(True))
         rob_stopped = robot_server_dict['rob_stopped']
 
         ret, depth_frame, color_frame, colorized_depth = dc.get_frame()
@@ -170,8 +171,9 @@ def main_pick_place_conveyor(server_in):
                     rc.change_trajectory(packet_x, packet_y, gripper_rot, packet_type)
                     rc.Start_Prog.set_value(ua.DataValue(True))
                     print('Program Started: ',robot_server_dict['start'])
+                    time.sleep(0.3)
                     rc.Start_Prog.set_value(ua.DataValue(False))
-                    time.sleep(0.5)
+                    time.sleep(1)
 
         if depth_map:
             img_np_detect = cv2.addWeighted(img_np_detect, 0.8, heatmap, 0.3, 0)
@@ -260,6 +262,7 @@ def main_pick_place_conveyor(server_in):
             rc.Abort_Prog.set_value(ua.DataValue(True))
             print('Program Aborted: ',robot_server_dict['abort'])
             rc.Abort_Prog.set_value(ua.DataValue(False))
+            rc.Conti_Prog.set_value(ua.DataValue(False))
             rc.client.disconnect()
             cv2.destroyAllWindows()
             print('[INFO]: Client disconnected.')

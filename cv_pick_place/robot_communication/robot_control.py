@@ -54,6 +54,15 @@ class RobotControl:
         self.Act_Pos_Turn = self.client.get_node('ns=3;s="InstKukaControl"."instReadActualPos"."Turn"')
         self.Act_Pos_Status = self.client.get_node('ns=3;s="InstKukaControl"."instReadActualPos"."Status"')
 
+        self.Home_X = self.client.get_node('ns=3;s="InstPickPlace"."positions"[0]."E6POS"."X"')
+        self.Home_Y = self.client.get_node('ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Y"')
+        self.Home_Z = self.client.get_node('ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Z"')
+        self.Home_A = self.client.get_node('ns=3;s="InstPickPlace"."positions"[0]."E6POS"."A"')
+        self.Home_B = self.client.get_node('ns=3;s="InstPickPlace"."positions"[0]."E6POS"."B"')
+        self.Home_C = self.client.get_node('ns=3;s="InstPickPlace"."positions"[0]."E6POS"."C"')
+        self.Home_Status = self.client.get_node('ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Status"')
+        self.Home_Turn = self.client.get_node('ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Turn"')
+
         self.PrePick_Pos_X = self.client.get_node('ns=3;s="InstPickPlace"."positions"[1]."E6POS"."X"')
         self.PrePick_Pos_Y = self.client.get_node('ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Y"')
         self.PrePick_Pos_Z = self.client.get_node('ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Z"')
@@ -100,6 +109,15 @@ class RobotControl:
         print('[INFO]: Client connected.')
 
     def change_trajectory(self, x, y, rot, packet_type):
+
+        self.Home_X.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['x'], ua.VariantType.Float)))
+        self.Home_Y.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['y'], ua.VariantType.Float)))
+        self.Home_Z.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['z'], ua.VariantType.Float)))
+        self.Home_A.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['a'], ua.VariantType.Float)))
+        self.Home_B.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['b'], ua.VariantType.Float)))
+        self.Home_C.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['c'], ua.VariantType.Float)))
+        self.Home_Status.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['status'], ua.VariantType.Int16)))
+        self.Home_Turn.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['turn'], ua.VariantType.Int16)))
 
         self.PrePick_Pos_X.set_value(ua.DataValue(ua.Variant(x, ua.VariantType.Float)))
         self.PrePick_Pos_Y.set_value(ua.DataValue(ua.Variant(y, ua.VariantType.Float)))
