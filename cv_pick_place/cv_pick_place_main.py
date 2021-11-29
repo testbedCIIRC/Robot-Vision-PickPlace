@@ -15,6 +15,7 @@ import matplotlib as mpl
 from scipy import ndimage
 from queue import Queue
 from threading import Thread
+from threading import Timer
 from collections import OrderedDict
 from scipy.spatial import distance as dist
 from cvzone.HandTrackingModule import HandDetector
@@ -54,6 +55,7 @@ Pick_place_dict_conv_mov = {
             {'x':1420.73,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
             {'x':1420.73,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}]
           }
+
 Pick_place_dict = {
 "home_pos":[{'x':697.1,'y':0.0,'z':260.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':43}],
 
@@ -71,6 +73,16 @@ Pick_place_dict = {
 #             {'x':1284.27,'y':145.21,'z':274.95,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
 #             {'x':1284.27,'y':145.21,'z':274.95,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}]
 #           }
+#1 full conveyor rotation = 4527.164 mm in encoder
+#encoder circumference = 188.5 mm
+# 4527.164/188.5 =~ 24
+#gear ratio = 24
+
+def pick():
+    rc.Conti_Prog.set_value(ua.DataValue(True))
+    time.sleep(0.5)
+    rc.Conti_Prog.set_value(ua.DataValue(False))
+    print('continue pick')
 def robot_server(server_out):
     rc.connect_OPCUA_server()
     rc.get_nodes()
@@ -99,19 +111,19 @@ def main_pick_place_conveyor(server_in):
     x_fixed = rc.Pick_place_dict['pick_pos_base'][0]['x']
     warn_count = 0
     frames_lim = 0
+    bbox = True
+    f_data = False
+    depth_map = True
     is_detect = False
     conv_left = False
     conv_right = False
-    bbox = True
-    depth_map = True
-    f_data = False
-    pick_world_point = None
     homography = None
+    tracking_result = None
     while True:
         # print('in size:',server_in.qsize())
         robot_server_dict = server_in.get()
         start_time = time.time()
-        rc.Conti_Prog.set_value(ua.DataValue(True))
+        # rc.Conti_Prog.set_value(ua.DataValue(True))
         rob_stopped = robot_server_dict['rob_stopped']
 
         ret, depth_frame, color_frame, colorized_depth = dc.get_frame()
@@ -153,18 +165,23 @@ def main_pick_place_conveyor(server_in):
         if is_detect:
             if is_conv_mov:
                 frames_lim += 1
-                if frames_lim > 10:
+                if frames_lim > 15:
                     frames_lim = 0
             else:
                 frames_lim = 0
-            pick_world_point = rc.packet_tracking_update(objects, img_np_detect, homography, is_detect, x_fixed = x_fixed, frames_lim = frames_lim)
-            print(pick_world_point)
-            if pick_world_point is not None:
+            tracking_result = rc.packet_tracking_update(objects, img_np_detect, homography, is_detect, x_fixed = x_fixed, frames_lim = frames_lim)
+            print(tracking_result)
+            if tracking_result is not None:
+                dist_to_pack = tracking_result[2]
+                delay = round(dist_to_pack/(abs(robot_server_dict['encoder_vel'])/10),2)
+                print(delay)
+                start_pick = Timer(delay, pick)
+                start_pick.start()
                 if rob_stopped:
                     print(rects)
                     # world_centroid = rects[0][2]
-                    packet_x = pick_world_point[0]
-                    packet_y = pick_world_point[1]
+                    packet_x = tracking_result[0]
+                    packet_y = tracking_result[1]
                     angle = rects[0][3]
                     gripper_rot = rc.compute_gripper_rot(angle)
                     packet_type = rects[0][4]

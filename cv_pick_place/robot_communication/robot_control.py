@@ -227,18 +227,24 @@ class RobotControl:
             if enable:
                 x_list.append(centroid[0])
                 y_list.append(centroid[1])
-                if frames_lim == 10:    
+                if frames_lim == 15:    
                     mean_x = float(x_list[-1])
                     mean_y = float(np.mean(y_list))
                     new_centroid = np.append((mean_x, mean_y),1)
                     world_centroid = homography.dot(new_centroid)
-                    world_centroid = world_centroid[0], world_centroid[1]
+                    world_x, world_y = round(world_centroid[0]* 10.0,2), round(world_centroid[1]* 10.0,2)
+                    dist_to_pack = x_fixed - world_x
+                    if world_y < 0.0:
+                        world_y = 0.0
+
+                    elif world_y > 470.0:
+                        world_y = 470.0 
                     # print(x_list,x_list[-1])
                     y_list.clear()
                     x_list.clear()
                     mean_x = 0
                     mean_y = 0
-                    return x_fixed, round(world_centroid[1] * 10.0, 2)
+                    return x_fixed, world_y, dist_to_pack
                     # return world_centroid
     
     def main_packet_detect(self):
