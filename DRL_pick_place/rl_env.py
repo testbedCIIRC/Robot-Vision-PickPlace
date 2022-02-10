@@ -21,7 +21,7 @@ RED = (255,0,0)
 BLACK = (0,0,0)
 
 BLOCK_SIZE = 20
-SPEED = 5
+SPEED = 40
 
 class GripperGame:
     
@@ -36,15 +36,9 @@ class GripperGame:
         self.reset_env()
 
     def reset_env(self):
-        self.direction = Direction.RIGHT
-        self.head = Point(BLOCK_SIZE, (((self.h-BLOCK_SIZE)//BLOCK_SIZE ) *BLOCK_SIZE))
-        self.packet = [self.head, 
-                        Point(self.head.x-BLOCK_SIZE, self.head.y),
-                        Point(self.head.x-(2*BLOCK_SIZE), self.head.y),
-                        Point(self.head.x-(3*BLOCK_SIZE), self.head.y),
-                        Point(self.head.x-(4*BLOCK_SIZE), self.head.y),
-                        Point(self.head.x-(5*BLOCK_SIZE), self.head.y)]
+        self.place_packet()
         self.score = 0
+        self.tracking_reward = 0
         self.gripper = None
         self.place_gripper()
         self.frame_count = 0
@@ -79,16 +73,24 @@ class GripperGame:
         self.move(action) # update the head
         self.packet.insert(0, self.head)
         reward = 0
+        
         game_over = False
-        max_frames = 100
-        if self.is_collision() or self.frame_count > max_frames:
+        max_frames = 300
+        # if self.is_collision() or self.frame_count > max_frames:
+        if self.is_collision():
             game_over = True
-            reward = -10
+            reward = -20 + self.tracking_reward
+            print('reward:', reward) 
             return reward, game_over, self.score
-        # place new gripper or just move
+
+        if (self.packet[2].x == self.gripper.x or self.packet[3].x == self.gripper.x) and (self.gripper.y > int(self.h*0.7)):
+            self.tracking_reward += 1
+        # if self.gripper.y > self.h//2:
+        #     self.tracking_reward += 1
+
         if self.packet[2] == self.gripper or self.packet[3] == self.gripper:
             self.score += 1
-            reward = 10
+            reward = 20
             # time.sleep(0.5)
             # self.reset_env()
             self.place_packet()
@@ -98,6 +100,8 @@ class GripperGame:
         # update environment
         self.update_ui()
         self.clock.tick(SPEED)
+        reward = reward + self.tracking_reward
+        print('reward:', reward)
         return reward, game_over, self.score
     
     def is_collision(self,packet_head = None, gripper = None):
