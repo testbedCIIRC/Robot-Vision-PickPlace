@@ -28,11 +28,12 @@ from realsense_config.realsense_depth import DepthCamera
 from centroid_tracker.centroidtracker import CentroidTracker
 
 class RobotControl:
-    def __init__(self, Pick_place_dict, paths, files, checkpt):
-        self.Pick_place_dict = Pick_place_dict
+    def __init__(self, rob_dict, paths, files, checkpt):
+        self.rob_dict = rob_dict
         self.paths = paths
         self.files = files
         self.checkpt = checkpt
+
     def get_nodes(self):
         self.Start_Prog = self.client.get_node('ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."start"')
         self.Conti_Prog = self.client.get_node('ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."continue"')
@@ -102,7 +103,6 @@ class RobotControl:
         cv2.waitKey(1)
 
     def connect_OPCUA_server(self):
-        # self.show_boot_screen('CONNECTING TO OPC UA SERVER...')
         password = "CIIRC"
         self.client = Client("opc.tcp://user:"+str(password)+"@10.35.91.101:4840/")
         self.client.connect()
@@ -110,46 +110,52 @@ class RobotControl:
 
     def change_trajectory(self, x, y, rot, packet_type):
 
-        self.Home_X.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['x'], ua.VariantType.Float)))
-        self.Home_Y.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['y'], ua.VariantType.Float)))
-        self.Home_Z.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['z'], ua.VariantType.Float)))
-        self.Home_A.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['a'], ua.VariantType.Float)))
-        self.Home_B.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['b'], ua.VariantType.Float)))
-        self.Home_C.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['c'], ua.VariantType.Float)))
-        self.Home_Status.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['status'], ua.VariantType.Int16)))
-        self.Home_Turn.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['home_pos'][0]['turn'], ua.VariantType.Int16)))
+        self.Home_X.set_value(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['x'], ua.VariantType.Float)))
+        self.Home_Y.set_value(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['y'], ua.VariantType.Float)))
+        self.Home_Z.set_value(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['z'], ua.VariantType.Float)))
+        self.Home_A.set_value(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['a'], ua.VariantType.Float)))
+        self.Home_B.set_value(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['b'], ua.VariantType.Float)))
+        self.Home_C.set_value(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['c'], ua.VariantType.Float)))
+        self.Home_Status.set_value(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['status'], ua.VariantType.Int16)))
+        self.Home_Turn.set_value(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['turn'], ua.VariantType.Int16)))
 
         self.PrePick_Pos_X.set_value(ua.DataValue(ua.Variant(x, ua.VariantType.Float)))
         self.PrePick_Pos_Y.set_value(ua.DataValue(ua.Variant(y, ua.VariantType.Float)))
-        self.PrePick_Pos_Z.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['pick_pos_base'][0]['z'], ua.VariantType.Float)))
+        self.PrePick_Pos_Z.set_value(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['z'], ua.VariantType.Float)))
         self.PrePick_Pos_A.set_value(ua.DataValue(ua.Variant(rot, ua.VariantType.Float)))
-        self.PrePick_Pos_B.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
-        self.PrePick_Pos_C.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['pick_pos_base'][0]['c'], ua.VariantType.Float)))
-        self.PrePick_Pos_Status.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['pick_pos_base'][0]['status'], ua.VariantType.Int16)))
-        self.PrePick_Pos_Turn.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
+        self.PrePick_Pos_B.set_value(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
+        self.PrePick_Pos_C.set_value(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['c'], ua.VariantType.Float)))
+        self.PrePick_Pos_Status.set_value(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['status'], ua.VariantType.Int16)))
+        self.PrePick_Pos_Turn.set_value(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
 
         self.Pick_Pos_X.set_value(ua.DataValue(ua.Variant(x, ua.VariantType.Float)))
         self.Pick_Pos_Y.set_value(ua.DataValue(ua.Variant(y, ua.VariantType.Float)))
         self.Pick_Pos_Z.set_value(ua.DataValue(ua.Variant(3.0, ua.VariantType.Float)))
         self.Pick_Pos_A.set_value(ua.DataValue(ua.Variant(rot, ua.VariantType.Float)))
-        self.Pick_Pos_B.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
-        self.Pick_Pos_C.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['pick_pos_base'][0]['c'], ua.VariantType.Float)))
-        self.Pick_Pos_Status.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['pick_pos_base'][0]['status'], ua.VariantType.Int16)))
-        self.Pick_Pos_Turn.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
+        self.Pick_Pos_B.set_value(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
+        self.Pick_Pos_C.set_value(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['c'], ua.VariantType.Float)))
+        self.Pick_Pos_Status.set_value(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['status'], ua.VariantType.Int16)))
+        self.Pick_Pos_Turn.set_value(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
 
-        self.Place_Pos_X.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['place_pos'][packet_type]['x'], ua.VariantType.Float)))
-        self.Place_Pos_Y.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['place_pos'][packet_type]['y'], ua.VariantType.Float)))
-        self.Place_Pos_Z.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['place_pos'][packet_type]['z'], ua.VariantType.Float)))
-        self.Place_Pos_A.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['place_pos'][packet_type]['a'], ua.VariantType.Float)))
-        self.Place_Pos_B.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['place_pos'][packet_type]['b'], ua.VariantType.Float)))
-        self.Place_Pos_C.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['place_pos'][packet_type]['c'], ua.VariantType.Float)))
-        self.Place_Pos_Status.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['place_pos'][packet_type]['status'], ua.VariantType.Int16)))
-        self.Place_Pos_Turn.set_value(ua.DataValue(ua.Variant(self.Pick_place_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
+        self.Place_Pos_X.set_value(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['x'], ua.VariantType.Float)))
+        self.Place_Pos_Y.set_value(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['y'], ua.VariantType.Float)))
+        self.Place_Pos_Z.set_value(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['z'], ua.VariantType.Float)))
+        self.Place_Pos_A.set_value(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['a'], ua.VariantType.Float)))
+        self.Place_Pos_B.set_value(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['b'], ua.VariantType.Float)))
+        self.Place_Pos_C.set_value(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['c'], ua.VariantType.Float)))
+        self.Place_Pos_Status.set_value(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['status'], ua.VariantType.Int16)))
+        self.Place_Pos_Turn.set_value(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
     
         time.sleep(0.5)
+
     def compute_gripper_rot(self, angle):
-        rot = 90.0 - abs(angle)
+        angle = abs(angle)
+        if angle > 45:
+            rot = 90 + (90 - angle)
+        if angle < 45:
+            rot = 90 - angle
         return rot
+
     def get_actual_pos(self):
         x_pos = self.Act_Pos_X.get_value()
         y_pos = self.Act_Pos_Y.get_value()
@@ -166,6 +172,7 @@ class RobotControl:
         b_pos = round(b_pos,2)
         c_pos = round(c_pos,2)
         return x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos  
+
     def gripper_gesture_control(self,detector, cap, show = False):
         
         if show:
@@ -221,7 +228,8 @@ class RobotControl:
             # draw both the ID of the object and the centroid of the
             # object on the output frame
             text = "ID {}".format(objectID)
-            cv2.putText(image, text, (centroid[0] , centroid[1] - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(image, text, (centroid[0] , centroid[1] - 40), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             cv2.circle(image, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
     
             if enable:
@@ -245,7 +253,6 @@ class RobotControl:
                     mean_x = 0
                     mean_y = 0
                     return x_fixed, world_y, dist_to_pack
-                    # return world_centroid
     
     def main_packet_detect(self):
         self.show_boot_screen('STARTING NEURAL NET...')
@@ -297,7 +304,10 @@ class RobotControl:
             heatmap = heatmap[90:400,97:507,:]
             heatmap = cv2.resize(heatmap, (width,height))
             
-            img_np_detect, result, rects = pack_detect.deep_detector(color_frame, depth_frame, homography, bnd_box = bbox)
+            img_np_detect, result, rects = pack_detect.deep_detector(color_frame, 
+                                                                    depth_frame, 
+                                                                    homography, 
+                                                                    bnd_box = bbox)
             
             objects = ct.update(rects)
             self.objects_update(objects, img_np_detect)
@@ -305,7 +315,8 @@ class RobotControl:
             cv2.circle(img_np_detect, (int(width/2),int(height/2) ), 4, (0, 0, 255), -1)
             added_image = cv2.addWeighted(img_np_detect, 0.8, heatmap, 0.3, 0)
             if f_rate:
-                cv2.putText(added_image,'FPS:'+ str( 1.0 / (time.time() - start_time)),(60,30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+                cv2.putText(added_image,'FPS:'+ str( 1.0 / (time.time() - start_time)),
+                            (60,30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
                 print("FPS: ", 1.0 / (time.time() - start_time))
             
             cv2.imshow("Frame", cv2.resize(added_image, (1280,960)))
@@ -394,16 +405,26 @@ class RobotControl:
             encoder_pos = round(encoder_pos,2)
 
             cv2.circle(color_frame, (int(width/2),int(height/2) ), 4, (0, 0, 255), -1)
-            cv2.putText(color_frame,'x:'+ str(x_pos),(60,30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(color_frame,'y:'+ str(y_pos),(60,50),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(color_frame,'z:'+ str(z_pos),(60,70),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(color_frame,'a:'+ str(a_pos),(60,90),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(color_frame,'b:'+ str(b_pos),(60,110),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(color_frame,'c:'+ str(c_pos),(60,130),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(color_frame,'Status:'+ str(status_pos),(60,150),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(color_frame,'Turn:'+ str(turn_pos),(60,170),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(color_frame,'Enc. Speed:'+ str(encoder_vel),(60,190),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.putText(color_frame,'Enc. Position:'+ str(encoder_pos),(60,210),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(color_frame,'x:'+ str(x_pos),(60,30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(color_frame,'y:'+ str(y_pos),(60,50),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(color_frame,'z:'+ str(z_pos),(60,70),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(color_frame,'a:'+ str(a_pos),(60,90),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(color_frame,'b:'+ str(b_pos),(60,110),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(color_frame,'c:'+ str(c_pos),(60,130),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(color_frame,'Status:'+ str(status_pos),(60,150),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(color_frame,'Turn:'+ str(turn_pos),(60,170),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(color_frame,'Enc. Speed:'+ str(encoder_vel),(60,190),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(color_frame,'Enc. Position:'+ str(encoder_pos),(60,210),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             color_frame = cv2.addWeighted(color_frame, 0.8, detected_img, 0.4, 0)
 
             cv2.imshow("Frame", cv2.resize(color_frame, (1280,960)))
@@ -499,16 +520,14 @@ class RobotControl:
             heatmap = heatmap[90:400,97:507,:]
             heatmap = cv2.resize(heatmap, (width,height))
             
-            img_np_detect, result, rects = pack_detect.deep_detector(color_frame, depth_frame, homography, bnd_box = bbox)
+            img_np_detect, result, rects = pack_detect.deep_detector(color_frame, 
+                                                                    depth_frame, 
+                                                                    homography, 
+                                                                    bnd_box = bbox)
             
             objects = ct.update(rects)
             # print(objects)
             self.objects_update(objects, img_np_detect)
-            # if is_detect:
-            #     frames_lim += 1
-            #     if frames_lim > 20:
-            #         frames_lim = 0
-            # self.packet_tracking_update(objects, img_np_detect, homography, is_detect, x_fixed = 0, frames_lim = frames_lim)
             
             if depth_map:
                 img_np_detect = cv2.addWeighted(img_np_detect, 0.8, heatmap, 0.3, 0)
@@ -517,7 +536,8 @@ class RobotControl:
                 x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos = robot_server_dict['pos']
                 encoder_vel = robot_server_dict['encoder_vel']
                 encoder_pos = robot_server_dict['encoder_pos']
-                cv2.putText(img_np_detect,str(robot_server_dict),(10,25),cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
+                cv2.putText(img_np_detect,str(robot_server_dict),(10,25),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
 
                 print("FPS: ", 1.0 / (time.time() - start_time))
 

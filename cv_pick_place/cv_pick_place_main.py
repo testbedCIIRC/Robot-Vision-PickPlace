@@ -108,7 +108,7 @@ def main_pick_place_conveyor(server_in):
     dc = DepthCamera()    
     rc.show_boot_screen('STARTING NEURAL NET...')
     pack_detect = PacketDetector(rc.paths, rc.files, rc.checkpt)
-    x_fixed = rc.Pick_place_dict['pick_pos_base'][0]['x']
+    x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
     warn_count = 0
     frames_lim = 0
     bbox = True
@@ -135,7 +135,7 @@ def main_pick_place_conveyor(server_in):
             color_frame = apriltag.detect_tags(color_frame)
             homography = apriltag.compute_homog()
 
-            is_marker_detect= type(homography).__module__ == np.__name__ or homography == None
+            is_marker_detect = type(homography).__module__ == np.__name__ or homography == None
             if is_marker_detect:
                 warn_count = 0
                 
@@ -153,7 +153,10 @@ def main_pick_place_conveyor(server_in):
         heatmap = heatmap[90:400,97:507,:]
         heatmap = cv2.resize(heatmap, (width,height))
         
-        img_np_detect, result, rects = pack_detect.deep_detector(color_frame, depth_frame, homography, bnd_box = bbox)
+        img_np_detect, result, rects = pack_detect.deep_detector(color_frame, 
+                                                                depth_frame, 
+                                                                homography, 
+                                                                bnd_box = bbox)
         # print(rects)
         objects = ct.update(rects)
         # print(objects)
@@ -169,17 +172,21 @@ def main_pick_place_conveyor(server_in):
                     frames_lim = 0
             else:
                 frames_lim = 0
-            tracking_result = rc.packet_tracking_update(objects, img_np_detect, homography, is_detect, x_fixed = x_fixed, frames_lim = frames_lim)
+            tracking_result = rc.packet_tracking_update(objects, 
+                                                        img_np_detect, 
+                                                        homography, 
+                                                        is_detect, 
+                                                        x_fixed = x_fixed, 
+                                                        frames_lim = frames_lim)
             print(tracking_result)
             if tracking_result is not None:
                 dist_to_pack = tracking_result[2]
                 delay = round(dist_to_pack/(abs(robot_server_dict['encoder_vel'])/10),2)
-                print(delay)
-                start_pick = Timer(delay, pick)
-                start_pick.start()
+                print('delay, distance',delay,dist_to_pack)
+                # start_pick = Timer(delay, pick)
+                # start_pick.start()
                 if rob_stopped:
                     print(rects)
-                    # world_centroid = rects[0][2]
                     packet_x = tracking_result[0]
                     packet_y = tracking_result[1]
                     angle = rects[0][3]
@@ -199,8 +206,10 @@ def main_pick_place_conveyor(server_in):
             x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos = robot_server_dict['pos']
             encoder_vel = robot_server_dict['encoder_vel']
             encoder_pos = robot_server_dict['encoder_pos']
-            cv2.putText(img_np_detect,str(robot_server_dict),(10,25),cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
-            cv2.putText(img_np_detect,"FPS:"+str(1.0/(time.time() - start_time)),(10,40),cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
+            cv2.putText(img_np_detect,str(robot_server_dict),(10,25),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
+            cv2.putText(img_np_detect,"FPS:"+str(1.0/(time.time() - start_time)),
+                        (10,40),cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
 
             # print("FPS: ", 1.0 / (time.time() - start_time))
 
