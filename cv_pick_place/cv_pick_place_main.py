@@ -31,48 +31,98 @@ from robot_communication.robot_control import RobotControl
 
 CUSTOM_MODEL_NAME = 'my_ssd_mobnet' 
 check_point ='ckpt-3'
-
 # CUSTOM_MODEL_NAME = 'my_ssd_mobnet_improved_1' 
 # check_point ='ckpt-6'
+
 LABEL_MAP_NAME = 'label_map.pbtxt'
-paths = {
-    'ANNOTATION_PATH': os.path.join('cv_pick_place','Tensorflow', 'workspace','annotations'),
-    'CHECKPOINT_PATH': os.path.join('cv_pick_place','Tensorflow', 'workspace','models',CUSTOM_MODEL_NAME) 
-}
-files = {
-    'PIPELINE_CONFIG':os.path.join('cv_pick_place','Tensorflow', 'workspace','models', CUSTOM_MODEL_NAME, 'pipeline.config'),
-    'LABELMAP': os.path.join(paths['ANNOTATION_PATH'], LABEL_MAP_NAME)
-}
+paths = {'ANNOTATION_PATH':os.path.join('cv_pick_place',
+                                        'Tensorflow',
+                                        'workspace',
+                                        'annotations'),
+        'CHECKPOINT_PATH': os.path.join('cv_pick_place',
+                                        'Tensorflow', 
+                                        'workspace',
+                                        'models',
+                                        CUSTOM_MODEL_NAME) 
+        }
+files = {'PIPELINE_CONFIG':os.path.join('cv_pick_place',
+                                        'Tensorflow', 
+                                        'workspace',
+                                        'models',
+                                        CUSTOM_MODEL_NAME,
+                                        'pipeline.config'),
+        'LABELMAP': os.path.join(paths['ANNOTATION_PATH'], 
+                                    LABEL_MAP_NAME)
+        }
 
 Pick_place_dict_conv_mov = {
-"home_pos":[{'x':930.0,'y':245.0,'z':25.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}],
+"home_pos" : [{'x':930.0,'y':245.0,'z':25.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42}],
 
-"pick_pos_base": [{'x':930.0,'y':245.0,'z':25.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}],
-
+"pick_pos_base" : [{'x':930.0,'y':245.0,'z':25.0,
+                    'a':90.0,'b':0.0,'c':-180.0,
+                    'status':2,'turn':42}],
 # place on conveyor points
-"place_pos":[{'x':1079.44,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
-            {'x':1250,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
-            {'x':1420.73,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
-            {'x':1420.73,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}]
+"place_pos" : [{'x':1079.44,'y':276.21,'z':45.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42},
+
+                {'x':1250,'y':276.21,'z':45.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42},
+
+                {'x':1420.73,'y':276.21,'z':45.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42},
+
+                {'x':1420.73,'y':276.21,'z':45.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42}]
           }
 
 Pick_place_dict = {
-"home_pos":[{'x':697.1,'y':0.0,'z':260.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':43}],
+"home_pos" : [{'x':697.1,'y':0.0,'z':260.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':43}],
 
-"pick_pos_base": [{'x':368.31,'y':226.34,'z':34.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':43}],
-
+"pick_pos_base" : [{'x':368.31,'y':226.34,'z':34.0,
+                    'a':90.0,'b':0.0,'c':-180.0,
+                    'status':2,'turn':43}],
 # place on conveyor points
-"place_pos":[{'x':1079.44,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
-            {'x':1250,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
-            {'x':1420.73,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
-            {'x':1420.73,'y':276.21,'z':45.0,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}]
-          }
+"place_pos" : [{'x':1079.44,'y':276.21,'z':45.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42},
+
+                {'x':1250,'y':276.21,'z':45.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42},
+
+                {'x':1420.73,'y':276.21,'z':45.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42},
+
+                {'x':1420.73,'y':276.21,'z':45.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42}]
+                }
 #place on boxes points
-# "place_pos":[{'x':1704.34,'y':143.92,'z':295.65,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
-#             {'x':944.52,'y':124.84,'z':177.56,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
-#             {'x':1284.27,'y':145.21,'z':274.95,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42},
-#             {'x':1284.27,'y':145.21,'z':274.95,'a':90.0,'b':0.0,'c':-180.0,'status':2,'turn':42}]
-#           }
+# ,"place_pos" : [{'x':1704.34,'y':143.92,'z':295.65,
+#                 'a':90.0,'b':0.0,'c':-180.0,
+#                 'status':2,'turn':42},
+
+#                 {'x':944.52,'y':124.84,'z':177.56,
+#                 'a':90.0,'b':0.0,'c':-180.0,
+#                 'status':2,'turn':42},
+
+#                 {'x':1284.27,'y':145.21,'z':274.95,
+#                 'a':90.0,'b':0.0,'c':-180.0,
+#                 'status':2,'turn':42},
+
+#                 {'x':1284.27,'y':145.21,'z':274.95,
+#                 'a':90.0,'b':0.0,'c':-180.0,
+#                 'status':2,'turn':42}]
+#                     }
 #1 full conveyor rotation = 4527.164 mm in encoder
 #encoder circumference = 188.5 mm
 # 4527.164/188.5 =~ 24
@@ -83,9 +133,11 @@ def pick():
     time.sleep(0.5)
     rc.Conti_Prog.set_value(ua.DataValue(False))
     print('continue pick')
+
 def robot_server(server_out):
     rc.connect_OPCUA_server()
     rc.get_nodes()
+
     while True:
         try:
             robot_server_dict = {
@@ -118,7 +170,8 @@ def main_pick_place_conveyor(server_in):
     conv_left = False
     conv_right = False
     homography = None
-    tracking_result = None
+    track_result = None
+
     while True:
         # print('in size:',server_in.qsize())
         robot_server_dict = server_in.get()
@@ -126,16 +179,16 @@ def main_pick_place_conveyor(server_in):
         # rc.Conti_Prog.set_value(ua.DataValue(True))
         rob_stopped = robot_server_dict['rob_stopped']
 
-        ret, depth_frame, color_frame, colorized_depth = dc.get_frame()
+        ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
         
-        color_frame = color_frame[:,240:1680]
-        height, width, depth = color_frame.shape[0],color_frame.shape[1],color_frame.shape[2]
+        rgb_frame = rgb_frame[:,240:1680]
+        height, width, depth = rgb_frame.shape
         
         try:
-            color_frame = apriltag.detect_tags(color_frame)
+            rgb_frame = apriltag.detect_tags(rgb_frame)
             homography = apriltag.compute_homog()
-
-            is_marker_detect = type(homography).__module__ == np.__name__ or homography == None
+            is_type_np = type(homography).__module__ == np.__name__
+            is_marker_detect = is_type_np or homography == None
             if is_marker_detect:
                 warn_count = 0
                 
@@ -153,15 +206,11 @@ def main_pick_place_conveyor(server_in):
         heatmap = heatmap[90:400,97:507,:]
         heatmap = cv2.resize(heatmap, (width,height))
         
-        img_np_detect, result, rects = pack_detect.deep_detector(color_frame, 
+        img_detect, result, rects = pack_detect.deep_detector(rgb_frame, 
                                                                 depth_frame, 
                                                                 homography, 
                                                                 bnd_box = bbox)
-        # print(rects)
         objects = ct.update(rects)
-        # print(objects)
-        # rc.objects_update(objects, img_np_detect)
-        
         is_detect = len(rects) is not 0
         is_conv_mov = robot_server_dict['encoder_vel'] < - 100.0
 
@@ -172,27 +221,31 @@ def main_pick_place_conveyor(server_in):
                     frames_lim = 0
             else:
                 frames_lim = 0
-            tracking_result = rc.packet_tracking_update(objects, 
-                                                        img_np_detect, 
-                                                        homography, 
-                                                        is_detect, 
-                                                        x_fixed = x_fixed, 
-                                                        frames_lim = frames_lim)
-            print(tracking_result)
-            if tracking_result is not None:
-                dist_to_pack = tracking_result[2]
-                delay = round(dist_to_pack/(abs(robot_server_dict['encoder_vel'])/10),2)
+            track_result = rc.packet_tracking_update(objects, 
+                                                    img_detect, 
+                                                    homography, 
+                                                    is_detect, 
+                                                    x_fixed = x_fixed, 
+                                                    frames_lim = frames_lim)
+            print(track_result)
+            if track_result is not None:
+                dist_to_pack = track_result[2]
+                delay = dist_to_pack/(abs(robot_server_dict['encoder_vel'])/10)
+                delay = round(delay,2)
                 print('delay, distance',delay,dist_to_pack)
                 # start_pick = Timer(delay, pick)
                 # start_pick.start()
                 if rob_stopped:
                     print(rects)
-                    packet_x = tracking_result[0]
-                    packet_y = tracking_result[1]
+                    packet_x = track_result[0]
+                    packet_y = track_result[1]
                     angle = rects[0][3]
                     gripper_rot = rc.compute_gripper_rot(angle)
                     packet_type = rects[0][4]
-                    rc.change_trajectory(packet_x, packet_y, gripper_rot, packet_type)
+                    rc.change_trajectory(packet_x,
+                                        packet_y, 
+                                        gripper_rot, 
+                                        packet_type)
                     rc.Start_Prog.set_value(ua.DataValue(True))
                     print('Program Started: ',robot_server_dict['start'])
                     time.sleep(0.3)
@@ -200,42 +253,19 @@ def main_pick_place_conveyor(server_in):
                     time.sleep(1)
 
         if depth_map:
-            img_np_detect = cv2.addWeighted(img_np_detect, 0.8, heatmap, 0.3, 0)
+            img_detect = cv2.addWeighted(img_detect, 0.8, heatmap, 0.3, 0)
 
         if f_data:
-            x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos = robot_server_dict['pos']
-            encoder_vel = robot_server_dict['encoder_vel']
-            encoder_pos = robot_server_dict['encoder_pos']
-            cv2.putText(img_np_detect,str(robot_server_dict),(10,25),
+            cv2.putText(img_detect,str(robot_server_dict),(10,25),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
-            cv2.putText(img_np_detect,"FPS:"+str(1.0/(time.time() - start_time)),
-                        (10,40),cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
+            cv2.putText(img_detect,
+                        "FPS:"+str(1.0/(time.time() - start_time)),
+                        (10,40),cv2.FONT_HERSHEY_SIMPLEX, 0.57, 
+                        (255, 255, 0), 2)
 
-            # print("FPS: ", 1.0 / (time.time() - start_time))
-
-        cv2.imshow("Frame", cv2.resize(img_np_detect, (1280,960)))
+        cv2.imshow("Frame", cv2.resize(img_detect, (1280,960)))
 
         key = cv2.waitKey(1)
-
-        # if rob_stopped:
-        #     if key == ord('b'):
-        #         bpressed += 1
-        #         if bpressed == 5:
-        #             print(rects)
-        #             world_centroid = rects[0][2]
-        #             packet_x = round(world_centroid[0] * 10.0, 2)
-        #             packet_y = round(world_centroid[1] * 10.0, 2)
-        #             angle = rects[0][3]
-        #             gripper_rot = rc.compute_gripper_rot(angle)
-        #             packet_type = rects[0][4]
-        #             rc.change_trajectory(packet_x, packet_y, gripper_rot, packet_type)
-        #             rc.Start_Prog.set_value(ua.DataValue(True))
-        #             print('Program Started: ',robot_server_dict['start'])
-        #             rc.Start_Prog.set_value(ua.DataValue(False))
-        #             time.sleep(0.5)
-        #             bpressed = 0
-        #     elif key != ord('b'):
-        #         bpressed = 0
 
         if key == ord('o'):
             rc.Gripper_State.set_value(ua.DataValue(False))
