@@ -236,7 +236,7 @@ class RobotControl:
         angle = abs(angle)
         if angle > 45:
             rot = 90 + (90 - angle)
-        if angle < 45:
+        if angle <= 45:
             rot = 90 - angle
         return rot
 

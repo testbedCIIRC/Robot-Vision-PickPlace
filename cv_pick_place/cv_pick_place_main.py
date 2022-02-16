@@ -56,19 +56,19 @@ files = {'PIPELINE_CONFIG':os.path.join('cv_pick_place',
         }
 
 Pick_place_dict_conv_mov = {
-"home_pos" : [{'x':930.0,'y':245.0,'z':25.0,
+"home_pos" : [{'x':1175.0,'y':267.5,'z':25.0,
                 'a':90.0,'b':0.0,'c':-180.0,
                 'status':2,'turn':42}],
 
-"pick_pos_base" : [{'x':930.0,'y':245.0,'z':25.0,
+"pick_pos_base" : [{'x':1175.0,'y':267.5,'z':25.0,
                     'a':90.0,'b':0.0,'c':-180.0,
                     'status':2,'turn':42}],
 # place on conveyor points
-"place_pos" : [{'x':1079.44,'y':276.21,'z':45.0,
+"place_pos" : [{'x':1420.73,'y':276.21,'z':45.0,
                 'a':90.0,'b':0.0,'c':-180.0,
                 'status':2,'turn':42},
 
-                {'x':1250,'y':276.21,'z':45.0,
+                {'x':1420.73,'y':276.21,'z':45.0,
                 'a':90.0,'b':0.0,'c':-180.0,
                 'status':2,'turn':42},
 
