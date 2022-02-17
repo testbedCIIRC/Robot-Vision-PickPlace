@@ -169,6 +169,7 @@ def main_pick_place_conveyor(server_in):
     is_detect = False
     conv_left = False
     conv_right = False
+    frame_count = 1
     homography = None
     track_result = None
 
@@ -176,7 +177,6 @@ def main_pick_place_conveyor(server_in):
         # print('in size:',server_in.qsize())
         robot_server_dict = server_in.get()
         start_time = time.time()
-        # rc.Conti_Prog.set_value(ua.DataValue(True))
         rob_stopped = robot_server_dict['rob_stopped']
 
         ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
@@ -186,7 +186,9 @@ def main_pick_place_conveyor(server_in):
         
         try:
             rgb_frame = apriltag.detect_tags(rgb_frame)
-            homography = apriltag.compute_homog()
+            if frame_count == 1:
+                homography = apriltag.compute_homog()
+                print('[INFO]: Homography matrix updated.')
             is_type_np = type(homography).__module__ == np.__name__
             is_marker_detect = is_type_np or homography == None
             if is_marker_detect:
@@ -206,13 +208,13 @@ def main_pick_place_conveyor(server_in):
         heatmap = heatmap[90:400,97:507,:]
         heatmap = cv2.resize(heatmap, (width,height))
         
-        img_detect, result, rects = pack_detect.deep_detector(rgb_frame, 
+        img_detect, result, rects = pack_detect.deep_detector_v2(rgb_frame, 
                                                                 depth_frame, 
-                                                                homography, 
                                                                 bnd_box = bbox)
         objects = ct.update(rects)
         is_detect = len(rects) is not 0
-        is_conv_mov = robot_server_dict['encoder_vel'] < - 100.0
+        encoder_vel = robot_server_dict['encoder_vel']
+        is_conv_mov = encoder_vel < - 100.0
 
         if is_detect:
             if is_conv_mov:
@@ -230,18 +232,18 @@ def main_pick_place_conveyor(server_in):
             print(track_result)
             if track_result is not None:
                 dist_to_pack = track_result[2]
-                delay = dist_to_pack/(abs(robot_server_dict['encoder_vel'])/10)
+                delay = dist_to_pack/(abs(encoder_vel)/10)
                 delay = round(delay,2)
-                print('delay, distance',delay,dist_to_pack)
+                # print('delay, distance',delay,dist_to_pack)
                 # start_pick = Timer(delay, pick)
                 # start_pick.start()
                 if rob_stopped:
                     print(rects)
                     packet_x = track_result[0]
                     packet_y = track_result[1]
-                    angle = rects[0][3]
+                    angle = rects[0][2]
                     gripper_rot = rc.compute_gripper_rot(angle)
-                    packet_type = rects[0][4]
+                    packet_type = rects[0][3]
                     rc.change_trajectory(packet_x,
                                         packet_y, 
                                         gripper_rot, 
@@ -264,6 +266,9 @@ def main_pick_place_conveyor(server_in):
                         (255, 255, 0), 2)
 
         cv2.imshow("Frame", cv2.resize(img_detect, (1280,960)))
+        frame_count += 1
+        if frame_count == 100:
+            frame_count = 1
 
         key = cv2.waitKey(1)
 
@@ -325,23 +330,36 @@ def main_pick_place_conveyor(server_in):
             time.sleep(0.5)
             break
 
+def program_mode(rc):
+    mode = input('Select mode \n'+
+    '1 : Pick and place with static conveyor and async detection\n'+
+    '2 : Pick and place with static conveyor and multithreading\n'+
+    '3 : Pick and place with moving conveyor and multithreading\n')
+    
+    if mode == '1':
+        while True:
+            rc.rob_dict = Pick_place_dict
+            rc.main_robot_control_demo()
+
+    if mode == '2':
+        rc.rob_dict = Pick_place_dict
+        q = Queue(maxsize = 1)
+        t1 = Thread(target = rc.main_pick_place, args =(q, ))
+        t2 = Thread(target = robot_server, args =(q, ))
+        t1.start()
+        t2.start()
+
+    if mode == '3':
+        rc.rob_dict = Pick_place_dict_conv_mov
+        q = Queue(maxsize = 1)
+        t1 = Thread(target = main_pick_place_conveyor, args =(q, ))
+        t2 = Thread(target = robot_server, args =(q, ))
+        t1.start()
+        t2.start()
+    else:
+        print('Enter valid number')
+        program_mode()
+
 if __name__ == '__main__':
-    # Pick and place with static conveyor and async detection
-    # while True:
-        # rc = RobotControl(Pick_place_dict, paths, files, check_point)
-        # rc.main_robot_control_demo()
-
-    # Pick and place with static conveyor and multithreading
-    # rc = RobotControl(Pick_place_dict, paths, files, check_point)
-    # q = Queue(maxsize = 1)
-    # t1 = Thread(target = rc.main_pick_place, args =(q, ))
-    # t2 = Thread(target = robot_server, args =(q, ))
-
-    # Pick and place with moving conveyor and multithreading
-    rc = RobotControl(Pick_place_dict_conv_mov, paths, files, check_point)
-    q = Queue(maxsize = 1)
-    t1 = Thread(target = main_pick_place_conveyor, args =(q, ))
-    t2 = Thread(target = robot_server, args =(q, ))
-
-    t1.start()
-    t2.start()
+    rc = RobotControl(None, paths, files, check_point)
+    program_mode(rc)

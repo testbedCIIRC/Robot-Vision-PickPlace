@@ -20,12 +20,15 @@ class PacketDetector:
         self.files = files
         self.checkpt = checkpt
         self.world_centroid = None
-        self.category_index = label_map_util.create_category_index_from_labelmap(self.files['LABELMAP'])
+        self.category_index = label_map_util.create_category_index_from_labelmap(
+            self.files['LABELMAP'])
         configs = config_util.get_configs_from_pipeline_file(self.files['PIPELINE_CONFIG'])
-        self.detection_model = model_builder.build(model_config=configs['model'], is_training=False)
+        self.detection_model = model_builder.build(model_config=configs['model'], 
+                                                    is_training=False)
         # Restore checkpoint
         ckpt = tf.compat.v2.train.Checkpoint(model= self.detection_model)
-        ckpt.restore(os.path.join(self.paths['CHECKPOINT_PATH'], self.checkpt)).expect_partial()
+        ckpt.restore(os.path.join(self.paths['CHECKPOINT_PATH'], 
+                                    self.checkpt)).expect_partial()
 
     @tf.function
     def detect_fn(self, image):
@@ -110,29 +113,43 @@ class PacketDetector:
             
             if scores is None or scores[i] > min_score_thresh:
                 # boxes[i] is the box which will be drawn
-                # print ("This box is gonna get used", boxes[i], detections['detection_classes'][i])
+                # print ("This box is gonna get used", boxes[i], 
+                        # detections['detection_classes'][i])
                 ymin, xmin = boxes[i][0]*height, boxes[i][1]*width
                 ymax, xmax = boxes[i][2]*height, boxes[i][3]*width
                 cx,cy = (xmax+xmin)/2,(ymax+ymin)/2
                 centroid = (int(cx),int(cy))
-                box, angle, centroid = self.find_packet_contours(color_frame, ymin, ymax, xmin, xmax, centroid)
+                box, angle, centroid = self.find_packet_contours(color_frame, 
+                                                                    ymin, 
+                                                                    ymax, 
+                                                                    xmin, 
+                                                                    xmax, 
+                                                                    centroid)
                 box_array.append(box)
 
                 cv2.circle(img_np_detect, centroid, 4, (255, 0, 0),5)
                 distance = depth_frame[centroid[1], centroid[0]]
-                cv2.putText(img_np_detect, "{} deg".format(round(angle, 1)), (centroid[0], centroid[1] + 20),
+                cv2.putText(img_np_detect, "{} deg".format(round(angle, 1)), 
+                            (centroid[0], centroid[1] + 20),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                cv2.putText(img_np_detect, "{}mm".format(distance), (centroid[0], centroid[1] - 20), 
+                cv2.putText(img_np_detect, "{}mm".format(distance), 
+                            (centroid[0], centroid[1] - 20), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
                 
                 if homography is not None:
                     new_centroid = np.append(centroid,1)
                     self.world_centroid = homography.dot(new_centroid)
                     self.world_centroid = self.world_centroid[0], self.world_centroid[1]
-                    cv2.putText(img_np_detect, str(round(self.world_centroid[0],2)) +','+ str(round(self.world_centroid[1],2)), centroid, 
+                    cv2.putText(img_np_detect, 
+                                str(round(self.world_centroid[0],2)) +','+ 
+                                str(round(self.world_centroid[1],2)), centroid, 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
                     
-                rects.append([box, centroid, self.world_centroid, angle, detections['detection_classes'][i]])
+                rects.append([box, 
+                                centroid, 
+                                self.world_centroid, 
+                                angle, 
+                                detections['detection_classes'][i]])
         img_np_detect, box_mask = self.compute_mask(img_np_detect,box_mask, box_array)
                      
         if bnd_box:
@@ -149,4 +166,74 @@ class PacketDetector:
                         line_thickness=1)
         detection_result = np.bitwise_and(color_frame,box_mask)
         # detection_result = box_mask
+        return img_np_detect, detection_result, rects
+
+    def deep_detector_v2(self, color_frame, depth_frame, bnd_box = True):
+        box_array = []
+        rects = []
+        box_mask = np.zeros_like(color_frame)
+        image_np = np.array(color_frame)
+        height, width, depth = image_np.shape[0],image_np.shape[1],image_np.shape[2]
+        input_tensor = tf.convert_to_tensor(np.expand_dims(image_np, 0), dtype=tf.float32)
+        detections = self.detect_fn(input_tensor)
+        num_detections = int(detections.pop('num_detections'))
+        detections = {key: value[0, :num_detections].numpy()
+                    for key, value in detections.items()}
+        detections['num_detections'] = num_detections
+        detections['detection_classes'] = detections['detection_classes'].astype(np.int64)
+        label_id_offset = 1
+        img_np_detect = image_np.copy()
+        boxes = detections['detection_boxes']
+        max_boxes_to_draw = 1
+        # get scores to get a threshold
+        scores = detections['detection_scores']
+        # set as a default but free to adjust it to your needs
+        min_score_thresh=.7
+        # iterate over all objects found
+        for i in range(min(max_boxes_to_draw, boxes.shape[0])):
+            
+            if scores is None or scores[i] > min_score_thresh:
+                # boxes[i] is the box which will be drawn
+                # print ("This box is gonna get used", boxes[i], 
+                        # detections['detection_classes'][i])
+                ymin, xmin = boxes[i][0]*height, boxes[i][1]*width
+                ymax, xmax = boxes[i][2]*height, boxes[i][3]*width
+                cx,cy = (xmax+xmin)/2,(ymax+ymin)/2
+                centroid = (int(cx),int(cy))
+                box, angle, centroid = self.find_packet_contours(color_frame, 
+                                                                    ymin, 
+                                                                    ymax, 
+                                                                    xmin, 
+                                                                    xmax, 
+                                                                    centroid)
+                box_array.append(box)
+
+                cv2.circle(img_np_detect, centroid, 4, (255, 0, 0),5)
+                distance = depth_frame[centroid[1], centroid[0]]
+                cv2.putText(img_np_detect, "{} deg".format(round(angle, 1)), 
+                            (centroid[0], centroid[1] + 20),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+                cv2.putText(img_np_detect, "{}mm".format(distance), 
+                            (centroid[0], centroid[1] - 20), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+                
+                rects.append([box, 
+                                centroid, 
+                                angle, 
+                                detections['detection_classes'][i]])
+        img_np_detect, box_mask = self.compute_mask(img_np_detect,box_mask, box_array)
+                     
+        if bnd_box:
+            viz_utils.visualize_boxes_and_labels_on_image_array(
+                        img_np_detect,
+                        detections['detection_boxes'],
+                        detections['detection_classes']+label_id_offset,
+                        detections['detection_scores'],
+                        self.category_index,
+                        use_normalized_coordinates=True,
+                        max_boxes_to_draw=1,
+                        min_score_thresh=.7,
+                        agnostic_mode=False, 
+                        line_thickness=1)
+        detection_result = np.bitwise_and(color_frame,box_mask)
         return img_np_detect, detection_result, rects
