@@ -230,7 +230,7 @@ class RobotControl:
         self.Place_Pos_Turn.set_value(ua.DataValue(ua.Variant(
             self.rob_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
     
-        time.sleep(0.5)
+        time.sleep(0.7)
 
     def compute_gripper_rot(self, angle):
         angle = abs(angle)
@@ -335,19 +335,20 @@ class RobotControl:
                 if enable:
                     x_list.append(world_centroid[0])
                     y_list.append(world_centroid[1])
-                    if frames_lim == 15:    
+                    if frames_lim == 15:
                         mean_x = float(x_list[-1])
-                        mean_y = float(np.mean(y_list))
+                        # mean_y = float(np.mean(y_list))
+                        mean_y = float(y_list[-1])
+                        print(y_list,mean_y)    
                         
                         world_x = round(mean_x* 10.0,2)
                         world_y = round(mean_y* 10.0,2)
                         dist_to_pack = x_fixed - world_x
-                        if world_y < 0.0:
-                            world_y = 0.0
+                        if world_y < 75.0:
+                            world_y = 75.0
 
                         elif world_y > 470.0:
                             world_y = 470.0 
-                        # print(x_list,x_list[-1])
                         y_list.clear()
                         x_list.clear()
                         mean_x = 0
