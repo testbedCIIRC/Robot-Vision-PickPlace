@@ -106,10 +106,27 @@ Pick_place_dict = {
                 'a':90.0,'b':0.0,'c':-180.0,
                 'status':2,'turn':42}]
                 }
+#place on boxes points
+# ,"place_pos" : [{'x':1704.34,'y':143.92,'z':295.65,
+#                 'a':90.0,'b':0.0,'c':-180.0,
+#                 'status':2,'turn':42},
+
+#                 {'x':944.52,'y':124.84,'z':177.56,
+#                 'a':90.0,'b':0.0,'c':-180.0,
+#                 'status':2,'turn':42},
+
+#                 {'x':1284.27,'y':145.21,'z':274.95,
+#                 'a':90.0,'b':0.0,'c':-180.0,
+#                 'status':2,'turn':42},
+
+#                 {'x':1284.27,'y':145.21,'z':274.95,
+#                 'a':90.0,'b':0.0,'c':-180.0,
+#                 'status':2,'turn':42}]
+#                     }
 #1 full conveyor rotation = 4527.164 mm in encoder
 #encoder circumference = 188.5 mm
 # 4527.164/188.5 =~ 24
-#gear ratio = 24 ?
+#gear ratio = 24
 
 def pick():
     rc.Conti_Prog.set_value(ua.DataValue(True))
@@ -139,7 +156,7 @@ def robot_server(server_out):
 
 def main_pick_place_conveyor(server_in):
     apriltag = ProcessingApriltag(None, None, None)
-    ct = CentroidTracker(maxDisappeared=10)    
+    ct = CentroidTracker()    
     dc = DepthCamera()    
     rc.show_boot_screen('STARTING NEURAL NET...')
     pack_detect = PacketDetector(rc.paths, rc.files, rc.checkpt)
@@ -212,7 +229,7 @@ def main_pick_place_conveyor(server_in):
                                                     is_detect, 
                                                     x_fixed = x_fixed, 
                                                     frames_lim = frames_lim)
-            # print(track_result)
+            print(track_result)
             if track_result is not None:
                 dist_to_pack = track_result[2]
                 delay = dist_to_pack/(abs(encoder_vel)/10)
@@ -221,12 +238,12 @@ def main_pick_place_conveyor(server_in):
                 # start_pick = Timer(delay, pick)
                 # start_pick.start()
                 if rob_stopped:
+                    print(rects)
                     packet_x = track_result[0]
                     packet_y = track_result[1]
                     angle = rects[0][2]
                     gripper_rot = rc.compute_gripper_rot(angle)
                     packet_type = rects[0][3]
-                    print(packet_x,packet_y)
                     rc.change_trajectory(packet_x,
                                         packet_y, 
                                         gripper_rot, 
@@ -235,7 +252,7 @@ def main_pick_place_conveyor(server_in):
                     print('Program Started: ',robot_server_dict['start'])
                     time.sleep(0.3)
                     rc.Start_Prog.set_value(ua.DataValue(False))
-                    time.sleep(0.5)
+                    time.sleep(1)
 
         if depth_map:
             img_detect = cv2.addWeighted(img_detect, 0.8, heatmap, 0.3, 0)
