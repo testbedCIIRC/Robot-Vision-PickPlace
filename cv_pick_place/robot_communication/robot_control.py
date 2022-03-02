@@ -317,7 +317,9 @@ class RobotControl:
     def packet_tracking_update(self, objects, img, homog, enable, x_fixed, 
                                 frames_lim, y_list = [],x_list = []):
         # loop over the tracked objects
-        for (objectID, centroid) in objects.items():
+        for (objectID, data) in objects.items():
+            centroid = data[:2]
+            centroid = centroid.astype('int')
             # draw both the ID of the object and the centroid of the
             # object on the output frame
             text = "ID {}".format(objectID)

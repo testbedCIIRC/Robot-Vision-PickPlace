@@ -194,7 +194,9 @@ def main_pick_place_conveyor(server_in):
         img_detect, result, rects = pack_detect.deep_detector_v2(rgb_frame, 
                                                                 depth_frame, 
                                                                 bnd_box = bbox)
-        objects = ct.update(rects)
+        # objects = ct.update(rects)
+        objects = ct.update_rects(rects)
+        print(objects)
         is_detect = len(rects) is not 0
         encoder_vel = robot_server_dict['encoder_vel']
         is_conv_mov = encoder_vel < - 100.0
@@ -212,7 +214,6 @@ def main_pick_place_conveyor(server_in):
                                                     is_detect, 
                                                     x_fixed = x_fixed, 
                                                     frames_lim = frames_lim)
-            # print(track_result)
             if track_result is not None:
                 dist_to_pack = track_result[2]
                 delay = dist_to_pack/(abs(encoder_vel)/10)
