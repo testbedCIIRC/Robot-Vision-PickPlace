@@ -315,7 +315,7 @@ class RobotControl:
             cv2.circle(image, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
 
     def packet_tracking_update(self, objects, img, homog, enable, x_fixed, 
-                                frames_lim, y_list = [],x_list = []):
+                                track_frame,frames_lim, track_list = []):
         # loop over the tracked objects
         for (objectID, data) in objects.items():
             centroid = data[:2]
@@ -335,13 +335,17 @@ class RobotControl:
                             str(round(world_centroid[1],2)), centroid, 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
                 if enable:
-                    x_list.append(world_centroid[0])
-                    y_list.append(world_centroid[1])
-                    if frames_lim == 15:
-                        mean_x = float(x_list[-1])
-                        # mean_y = float(np.mean(y_list))
-                        mean_y = float(y_list[-1])
-                        print(y_list,mean_y)    
+                    track_list.append([objectID,world_centroid[0],world_centroid[1]])
+
+                    if track_frame == 15:
+                        track_array = np.array(track_list)
+                        track_IDs = track_array[:,0]
+                        max_ID = np.max(track_IDs)
+                        track_data = track_array[track_IDs == max_ID]
+                        
+                        mean_x = float(track_data[-1,1])
+                        mean_y = float(np.mean(track_data[:,2]))
+                        print(track_data[:,2],mean_y)    
                         
                         world_x = round(mean_x* 10.0,2)
                         world_y = round(mean_y* 10.0,2)
@@ -351,8 +355,8 @@ class RobotControl:
 
                         elif world_y > 470.0:
                             world_y = 470.0 
-                        y_list.clear()
-                        x_list.clear()
+                        
+                        track_list.clear()
                         mean_x = 0
                         mean_y = 0
                         return x_fixed, world_y, dist_to_pack
@@ -584,7 +588,7 @@ class RobotControl:
         self.show_boot_screen('STARTING NEURAL NET...')
         pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
         warn_count = 0
-        frames_lim = 0
+        track_frame = 0
         is_detect = False
         conv_left = False
         conv_right = False

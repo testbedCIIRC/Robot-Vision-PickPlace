@@ -145,7 +145,8 @@ def main_pick_place_conveyor(server_in):
     pack_detect = PacketDetector(rc.paths, rc.files, rc.checkpt)
     x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
     warn_count = 0
-    frames_lim = 0
+    track_frame = 0
+    frames_lim = 15
     bbox = True
     f_data = False
     depth_map = True
@@ -203,16 +204,17 @@ def main_pick_place_conveyor(server_in):
 
         if is_detect:
             if is_conv_mov:
-                frames_lim += 1
-                if frames_lim > 15:
-                    frames_lim = 0
+                track_frame += 1
+                if track_frame > frames_lim:
+                    track_frame = 0
             else:
-                frames_lim = 0
+                track_frame = 0
             track_result = rc.packet_tracking_update(objects, 
                                                     img_detect, 
                                                     homography, 
                                                     is_detect, 
                                                     x_fixed = x_fixed, 
+                                                    track_frame = track_frame,
                                                     frames_lim = frames_lim)
             if track_result is not None:
                 dist_to_pack = track_result[2]
@@ -234,7 +236,7 @@ def main_pick_place_conveyor(server_in):
                                         packet_type)
                     rc.Start_Prog.set_value(ua.DataValue(True))
                     print('Program Started: ',robot_server_dict['start'])
-                    time.sleep(0.3)
+                    time.sleep(0.5)
                     rc.Start_Prog.set_value(ua.DataValue(False))
                     time.sleep(0.5)
 
