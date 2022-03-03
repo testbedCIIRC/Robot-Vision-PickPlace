@@ -43,6 +43,10 @@ class RobotControl:
             'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."interrupt"')
         self.Abort_Prog = self.client.get_node(
             'ns=3;s="HMIKuka"."robot"."powerRobot"."command"."abort"')
+        self.Prog_Done = self.client.get_node(
+            'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."status"."done"')
+        self.Stop_Active = self.client.get_node(
+            'ns=3;s="InstPickPlace"."instInterrupt"."BrakeActive"')
         self.Rob_Stopped = self.client.get_node(
             'ns=3;s="InstKukaControl"."instAutomaticExternal"."ROB_STOPPED"')
         self.Conveyor_Left = self.client.get_node(
@@ -337,7 +341,7 @@ class RobotControl:
                 if enable:
                     track_list.append([objectID,world_centroid[0],world_centroid[1]])
 
-                    if track_frame == 15:
+                    if track_frame == frames_lim:
                         track_array = np.array(track_list)
                         track_IDs = track_array[:,0]
                         max_ID = np.max(track_IDs)

@@ -129,7 +129,9 @@ def robot_server(server_out):
             'encoder_pos':round(rc.Encoder_Pos.get_value(),2),
             'start':rc.Start_Prog.get_value(),
             'abort':rc.Abort_Prog.get_value(),
-            'rob_stopped':rc.Rob_Stopped.get_value()
+            'rob_stopped':rc.Rob_Stopped.get_value(),
+            'stop_active':rc.Stop_Active.get_value(),
+            'prog_done':rc.Prog_Done.get_value()
             }
             server_out.put(robot_server_dict)
             # print('out size:',server_out.qsize())
@@ -162,6 +164,8 @@ def main_pick_place_conveyor(server_in):
         robot_server_dict = server_in.get()
         start_time = time.time()
         rob_stopped = robot_server_dict['rob_stopped']
+        stop_active = robot_server_dict['stop_active']
+        prog_done = robot_server_dict['prog_done']
 
         ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
         
@@ -195,9 +199,8 @@ def main_pick_place_conveyor(server_in):
         img_detect, result, rects = pack_detect.deep_detector_v2(rgb_frame, 
                                                                 depth_frame, 
                                                                 bnd_box = bbox)
-        # objects = ct.update(rects)
         objects = ct.update_rects(rects)
-        print(objects)
+        print(objects, rob_stopped, stop_active, prog_done)
         is_detect = len(rects) is not 0
         encoder_vel = robot_server_dict['encoder_vel']
         is_conv_mov = encoder_vel < - 100.0
@@ -223,7 +226,7 @@ def main_pick_place_conveyor(server_in):
                 # print('delay, distance',delay,dist_to_pack)
                 # start_pick = Timer(delay, pick)
                 # start_pick.start()
-                if rob_stopped:
+                if  prog_done and (rob_stopped or not stop_active):
                     packet_x = track_result[0]
                     packet_y = track_result[1]
                     angle = rects[0][2]
@@ -344,7 +347,7 @@ def program_mode(rc):
         t2.start()
     else:
         print('Enter valid number')
-        program_mode()
+        program_mode(rc)
 
 if __name__ == '__main__':
     rc = RobotControl(None, paths, files, check_point)
