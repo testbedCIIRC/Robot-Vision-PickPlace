@@ -16,6 +16,15 @@ from cvzone.HandTrackingModule import HandDetector
 
 class PacketDetector:
     def __init__(self,paths,files,checkpt):
+        """
+        PacketDetector object constructor.
+    
+        Parameters:
+        paths (dict): Dictionary with annotation and checkpoint paths.
+        files (dict): Dictionary with pipeline and config paths. 
+        checkpt (str): Name of training checkpoint to be restored. 
+
+        """
         self.paths = paths
         self.files = files
         self.checkpt = checkpt
@@ -32,12 +41,29 @@ class PacketDetector:
 
     @tf.function
     def detect_fn(self, image):
+        """
+        Neural net detection function.
+    
+        Parameters:
+        image (tf.Tensor): Input image where objects are to be detected.
+
+        Returns:
+        dict: dictionary with detections.
+        
+        """
         image, shapes = self.detection_model.preprocess(image)
         prediction_dict = self.detection_model.predict(image, shapes)
         detections = self.detection_model.postprocess(prediction_dict, shapes)
         return detections
 
     def detect_corners(self, img):
+        """
+        Corner detection algorithm.
+    
+        Parameters:
+        image (numpy.ndarray): Input image where corners are to be detected.
+
+        """
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         corners = cv2.goodFeaturesToTrack(gray, 100, 0.01, 10)
         corners = np.int0(corners)
@@ -47,8 +73,22 @@ class PacketDetector:
         cv2.imshow("corners",img)
 
     def find_packet_contours(self, img, ymin, ymax, xmin, xmax, centroid):
+        """
+        Finds packet coutours.
+    
+        Parameters:
+        image (numpy.ndarray): Input image where coutours are to be detected.
+        ymin (int): Lower Y coordinate of bounding box.
+        ymax (int): Upper Y coordinate of bounding box.
+        xmin (int): Lower X coordinate of bounding box.
+        xmax (int): Upper X coordinate of bounding box.
+        centroid (tuple): Centroid to be updated.
+
+        Returns:
+        tuple: Points of the contour box, angle of rotation and updated centroid.
+        
+        """
         box = np.int64(np.array([[xmin,ymin],[xmax,ymin],[xmax,ymax],[xmin,ymax]]))
-        # box = None
         angle = 0
         crop = img[int(ymin):int(ymax),int(xmin):int(xmax),:]
         
@@ -74,6 +114,18 @@ class PacketDetector:
         return box, angle, centroid
 
     def compute_mask(self, img, box_mask, box_array):
+        """
+        Compute and packet mask and draw contours.
+    
+        Parameters:
+        img (numpy.ndarray): Input image where coutours are to be detected.
+        box_mask (numpy.ndarray): Output mask.
+        box_array (list): list of contour box points.
+
+        Returns:
+        tuple: output image with contours, computed output mask.
+        
+        """
         is_box_empty = len(box_array) == 0
         if is_box_empty:
             return img, box_mask
@@ -84,6 +136,19 @@ class PacketDetector:
             return img, box_mask
 
     def deep_detector(self, color_frame, depth_frame, homography, bnd_box = True):
+        """
+        Main packet detector function with homography transformation.
+    
+        Parameters:
+        color_frame (numpy.ndarray): Input image where packets are to be detected.
+        depth_frame (numpy.ndarray): Depth frame.
+        homography (numpy.ndarray): homography matrix.
+        bnd_box (bool): Bool to enable or disable bounding box visualization.
+
+        Returns:
+        tuple: Image with detected packets, segmented packets, detections.
+        
+        """
         box_array = []
         rects = []
         box_mask = np.zeros_like(color_frame)
@@ -169,6 +234,18 @@ class PacketDetector:
         return img_np_detect, detection_result, rects
 
     def deep_detector_v2(self, color_frame, depth_frame, bnd_box = True):
+        """
+        Main packet detector function.
+    
+        Parameters:
+        color_frame (numpy.ndarray): Input image where packets are to be detected.
+        depth_frame (numpy.ndarray): Depth frame.
+        bnd_box (bool): Bool to enable or disable bounding box visualization.
+
+        Returns:
+        tuple: Image with detected packets, segmented packets, detections.
+        
+        """
         box_array = []
         rects = []
         box_mask = np.zeros_like(color_frame)

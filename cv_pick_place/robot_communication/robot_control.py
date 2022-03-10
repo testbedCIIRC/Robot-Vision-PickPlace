@@ -29,12 +29,35 @@ from centroid_tracker.centroidtracker import CentroidTracker
 
 class RobotControl:
     def __init__(self, rob_dict, paths, files, checkpt):
+        """
+        RobotControl object constructor.
+    
+        Parameters:
+        rob_dict (dict): Dictionary with robot points for program.
+        paths (dict): Dictionary with annotation and checkpoint paths.
+        files (dict): Dictionary with pipeline and config paths. 
+
+        """
         self.rob_dict = rob_dict
         self.paths = paths
         self.files = files
         self.checkpt = checkpt
 
+    def connect_OPCUA_server(self):
+        """
+        Connects OPC UA Client to Server on PLC.
+
+        """
+        password = "CIIRC"
+        self.client = Client("opc.tcp://user:"+str(password)+"@10.35.91.101:4840/")
+        self.client.connect()
+        print('[INFO]: Client connected.')
+
     def get_nodes(self):
+        """
+        Using the client.get_node method, it gets nodes from OPCUA Server on PLC.
+
+        """
         self.Start_Prog = self.client.get_node(
             'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."start"')
         self.Conti_Prog = self.client.get_node(
@@ -151,6 +174,13 @@ class RobotControl:
             'ns=3;s="InstPickPlace"."instPlacePos"."Done"')
 
     def show_boot_screen(self, message):
+        """
+        Opens main frame window with boot screen message.
+    
+        Parameters:
+        message (str): Message to be displayed.
+
+        """
         cv2.namedWindow('Frame')
         boot_screen = np.zeros((960,1280))
         cv2.putText(boot_screen, message, (1280//2 - 150, 960//2),
@@ -158,13 +188,17 @@ class RobotControl:
         cv2.imshow("Frame", boot_screen)
         cv2.waitKey(1)
 
-    def connect_OPCUA_server(self):
-        password = "CIIRC"
-        self.client = Client("opc.tcp://user:"+str(password)+"@10.35.91.101:4840/")
-        self.client.connect()
-        print('[INFO]: Client connected.')
-
     def change_trajectory(self, x, y, rot, packet_type):
+        """
+        Updates the trajectory points for the robot program.
+    
+        Parameters:
+        x (float): The pick x coordinate of the packet.
+        y (float): The pick y coordinate of the packet.
+        rot (float): The gripper pick rotation.
+        packet_type (int): The detected packet class.
+
+        """
 
         self.Home_X.set_value(ua.DataValue(ua.Variant(
             self.rob_dict['home_pos'][0]['x'], ua.VariantType.Float)))
@@ -237,6 +271,16 @@ class RobotControl:
         time.sleep(0.7)
 
     def compute_gripper_rot(self, angle):
+        """
+        Computes the gripper rotation based on the detected packet angle.
+    
+        Parameters:
+        angle (float): Detected angle of packet.
+    
+        Returns:
+        float: Gripper rotation.
+
+        """
         angle = abs(angle)
         if angle > 45:
             rot = 90 + (90 - angle)
@@ -245,6 +289,13 @@ class RobotControl:
         return rot
 
     def get_actual_pos(self):
+        """
+        Reads the actual position of the robot TCP with respect to the base.
+    
+        Returns:
+        tuple: Actual pos. of robot TCP: x, y, z, a, b, c as float. Status, turn as int.
+
+        """
         x_pos = self.Act_Pos_X.get_value()
         y_pos = self.Act_Pos_Y.get_value()
         z_pos = self.Act_Pos_Z.get_value()
@@ -261,8 +312,16 @@ class RobotControl:
         c_pos = round(c_pos,2)
         return x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos  
 
-    def gripper_gesture_control(self,detector, cap, show = False):
-        
+    def gripper_gesture_control(self, detector, cap, show = False):
+        """
+        Function used to control the gripper with hand gestures.
+    
+        Parameters:
+        detector (object): Detector object from cvzone library.
+        cap (object): A cv2.VideoCapture object to access webcam.
+        show (bool): Boolean to enable or disable the function.
+
+        """
         if show:
             success, img = cap.read()
             hands, img = detector.findHands(img)
@@ -309,6 +368,14 @@ class RobotControl:
             cv2.destroyWindow("Gestures")
 
     def objects_update(self,objects,image):
+        """
+        Draws the IDs of tracked objects.
+    
+        Parameters:
+        objects (OrderedDict): Ordered Dictionary with currently tracked objects.
+        image (np.array): Image where the objects will be drawn.
+
+        """
         # loop over the tracked objects
         for (objectID, centroid) in objects.items():
             # draw both the ID of the object and the centroid of the
@@ -319,7 +386,24 @@ class RobotControl:
             cv2.circle(image, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
 
     def packet_tracking_update(self, objects, img, homog, enable, x_fixed, 
-                                track_frame,frames_lim, track_list = []):
+                                track_frame, frames_lim, track_list = []):
+        """
+        Computes distance to packet and updated x, mean y packet positions of tracked moving packets.
+    
+        Parameters:
+        objects (OrderedDict): Ordered Dictionary with currently tracked objects.
+        img (numpy.ndarray): Image where the objects will be drawn.
+        homog (numpy.ndarray): Homography matrix.
+        enable (bool): Boolean true if objects are detected. It enables appending of centroids.
+        x_fixed (float): Fixed x pick position.
+        track_frame (int): Frame tracking counter.
+        frames_lim (int): Maximum number of frames for tracking.
+        track_list (list):List where centroid positions are stored.
+
+        Returns:
+        tuple(float): Updated x, mean y packet pick positions and distance to packet.
+    
+        """
         # loop over the tracked objects
         for (objectID, data) in objects.items():
             centroid = data[:2]
@@ -366,6 +450,13 @@ class RobotControl:
                         return x_fixed, world_y, dist_to_pack
     
     def main_packet_detect(self):
+        """
+        Basic main packet detection.
+    
+        Returns:
+        tuple(np.ndarray, list): Image  with detections and detections.
+    
+        """
         self.show_boot_screen('STARTING NEURAL NET...')
         warn_count = 0
         a = 0
@@ -458,6 +549,10 @@ class RobotControl:
         return added_image , rects
 
     def main_robot_control_demo(self):
+        """
+        Pick and place with static conveyor and hand gestures.
+    
+        """
         detected_img, rects = self.main_packet_detect()
 
         self.connect_OPCUA_server()
@@ -586,6 +681,13 @@ class RobotControl:
                 time.sleep(0.5)
                 
     def main_pick_place(self,server_in):
+        """
+        Pick and place with static conveyor and multithreading.
+    
+        Parameters:
+        server_in (object): Queue object containing data from the PLC server.
+    
+        """
         apriltag = ProcessingApriltag(None, None, None)
         ct = CentroidTracker()    
         dc = DepthCamera()    

@@ -321,7 +321,7 @@ def main_pick_place_conveyor(server_in):
 
 def program_mode(rc):
     mode = input('Select mode \n'+
-    '1 : Pick and place with static conveyor and async detection\n'+
+    '1 : Pick and place with static conveyor and hand gestures\n'+
     '2 : Pick and place with static conveyor and multithreading\n'+
     '3 : Pick and place with moving conveyor and multithreading\n')
     
