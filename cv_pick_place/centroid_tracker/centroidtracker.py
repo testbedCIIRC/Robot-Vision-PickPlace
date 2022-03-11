@@ -4,6 +4,13 @@ import numpy as np
 
 class CentroidTracker:
 	def __init__(self, maxDisappeared=20):
+		"""
+        CentroidTracker object constructor.
+    
+        Parameters:
+        maxDisappeared (int): Maximum number of frames before deregister.
+
+        """
 		# initialize the next unique object ID along with two ordered
 		# dictionaries used to keep track of mapping a given object
 		# ID to its centroid and number of consecutive frames it has
@@ -17,20 +24,44 @@ class CentroidTracker:
 		# need to deregister the object from tracking
 		self.maxDisappeared = maxDisappeared
 
-	def register(self, centroid):
+	def register(self, item):
+		"""
+        Computes the gripper rotation based on the detected packet angle.
+    
+        Parameters:
+        item (numpy.ndarray): Numpy array with items to be registered.
+
+        """
 		# when registering an object we use the next available object
 		# ID to store the centroid
-		self.objects[self.nextObjectID] = centroid
+		self.objects[self.nextObjectID] = item
 		self.disappeared[self.nextObjectID] = 0
 		self.nextObjectID += 1
 
 	def deregister(self, objectID):
+		"""
+        Computes the gripper rotation based on the detected packet angle.
+    
+        Parameters:
+        objectID (str): Key to deregister items in the objects dict.
+
+        """
 		# to deregister an object ID we delete the object ID from
 		# both of our respective dictionaries
 		del self.objects[objectID]
 		del self.disappeared[objectID]
 
 	def update(self, rects):
+		"""
+        Updates the currently tracked centroids.
+    
+        Parameters:
+        rects (list): List containing boundig box points to be tracked.
+    
+        Returns:
+        OrderedDict: Ordered dictionary with tracked centroids.
+
+        """
 		# is box empty
 		if len(rects) == 0:
 			# loop overobjects and mark them as disappeared
@@ -125,19 +156,29 @@ class CentroidTracker:
 		# return the set of trackable objects
 		return self.objects
 
-	def update_rects(self, rects):
-		if len(rects) == 0:
+	def update_detected(self, detected):
+		"""
+        Updates the currently tracked detections.
+    
+        Parameters:
+        detected (list): List containing detections to be tracked.
+    
+        Returns:
+        OrderedDict: Ordered dictionary with tracked detections.
+
+        """
+		if len(detected) == 0:
 			for objectID in list(self.disappeared.keys()):
 				self.disappeared[objectID] += 1
 				if self.disappeared[objectID] > self.maxDisappeared:
 					self.deregister(objectID)
 			return self.objects
-		inputData = np.zeros((len(rects),4))
+		inputData = np.zeros((len(detected),4))
 
-		for i in range(0,len(rects)):
-			inputData[i,:2] = rects[i][1]
-			inputData[i,2] = rects[i][2]
-			inputData[i,3] = rects[i][3]
+		for i in range(0,len(detected)):
+			inputData[i,:2] = detected[i][1]
+			inputData[i,2] = detected[i][2]
+			inputData[i,3] = detected[i][3]
 		if len(self.objects) == 0:
 			for i in range(0, len(inputData)):
 				self.register(inputData[i])

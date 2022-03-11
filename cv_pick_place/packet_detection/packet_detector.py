@@ -15,7 +15,7 @@ from object_detection.utils import config_util
 from cvzone.HandTrackingModule import HandDetector
 
 class PacketDetector:
-    def __init__(self,paths,files,checkpt):
+    def __init__(self, paths, files, checkpt):
         """
         PacketDetector object constructor.
     
@@ -135,7 +135,7 @@ class PacketDetector:
             cv2.polylines(img, box_array, True, (255, 0, 0), 3)
             return img, box_mask
 
-    def deep_detector(self, color_frame, depth_frame, homography, bnd_box = True):
+    def deep_detector(self, color_frame, depth_frame, homography, bnd_box = True, segment = False):
         """
         Main packet detector function with homography transformation.
     
@@ -150,7 +150,7 @@ class PacketDetector:
         
         """
         box_array = []
-        rects = []
+        detected = []
         box_mask = np.zeros_like(color_frame)
         image_np = np.array(color_frame)
         height, width, depth = image_np.shape[0],image_np.shape[1],image_np.shape[2]
@@ -210,7 +210,7 @@ class PacketDetector:
                                 str(round(self.world_centroid[1],2)), centroid, 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
                     
-                rects.append([box, 
+                detected.append([box, 
                                 centroid, 
                                 self.world_centroid, 
                                 angle, 
@@ -229,11 +229,14 @@ class PacketDetector:
                         min_score_thresh=.8,
                         agnostic_mode=False, 
                         line_thickness=1)
-        detection_result = np.bitwise_and(color_frame,box_mask)
-        # detection_result = box_mask
-        return img_np_detect, detection_result, rects
+        if segment:
+            img_segmented = np.bitwise_and(color_frame,box_mask)
+            # img_segmented = box_mask
+            return img_np_detect, detected, img_segmented
+        else:
+            return img_np_detect, detected
 
-    def deep_detector_v2(self, color_frame, depth_frame, bnd_box = True):
+    def deep_detector_v2(self, color_frame, depth_frame, bnd_box = True, segment = False):
         """
         Main packet detector function.
     
@@ -247,7 +250,7 @@ class PacketDetector:
         
         """
         box_array = []
-        rects = []
+        detected = []
         box_mask = np.zeros_like(color_frame)
         image_np = np.array(color_frame)
         height, width, depth = image_np.shape[0],image_np.shape[1],image_np.shape[2]
@@ -294,7 +297,7 @@ class PacketDetector:
                             (centroid[0], centroid[1] - 20), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
                 
-                rects.append([box, 
+                detected.append([box, 
                                 centroid, 
                                 angle, 
                                 detections['detection_classes'][i]])
@@ -312,5 +315,9 @@ class PacketDetector:
                         min_score_thresh=.7,
                         agnostic_mode=False, 
                         line_thickness=1)
-        detection_result = np.bitwise_and(color_frame,box_mask)
-        return img_np_detect, detection_result, rects
+        if segment:
+            img_segmented = np.bitwise_and(color_frame,box_mask)
+            # img_segmented = box_mask
+            return img_np_detect, detected, img_segmented
+        else:
+            return img_np_detect, detected

@@ -112,12 +112,23 @@ Pick_place_dict = {
 #gear ratio = 24 ?
 
 def pick():
+    """
+    Child thread to execute robot pick action.
+
+    """
     rc.Conti_Prog.set_value(ua.DataValue(True))
     time.sleep(0.5)
     rc.Conti_Prog.set_value(ua.DataValue(False))
     print('continue pick')
 
 def robot_server(server_out):
+    """
+    Thread to get values from PLC server.
+
+    Parameters:
+    server_out (object): Queue object where data from PLC server is placed.
+
+    """
     rc.connect_OPCUA_server()
     rc.get_nodes()
 
@@ -140,7 +151,14 @@ def robot_server(server_out):
             break
 
 def main_pick_place_conveyor(server_in):
-    apriltag = ProcessingApriltag(None, None, None)
+    """
+    Thread for pick and place with moving conveyor.
+    
+    Parameters:
+    server_in (object): Queue object containing data from the PLC server.
+    
+    """
+    apriltag = ProcessingApriltag()
     ct = CentroidTracker(maxDisappeared=10)    
     dc = DepthCamera()    
     rc.show_boot_screen('STARTING NEURAL NET...')
@@ -196,12 +214,13 @@ def main_pick_place_conveyor(server_in):
         heatmap = heatmap[90:400,97:507,:]
         heatmap = cv2.resize(heatmap, (width,height))
         
-        img_detect, result, rects = pack_detect.deep_detector_v2(rgb_frame, 
-                                                                depth_frame, 
-                                                                bnd_box = bbox)
-        objects = ct.update_rects(rects)
+        img_detect, detected = pack_detect.deep_detector_v2(
+                                                            rgb_frame, 
+                                                            depth_frame, 
+                                                            bnd_box = bbox)
+        objects = ct.update_detected(detected)
         print(objects, rob_stopped, stop_active, prog_done)
-        is_detect = len(rects) is not 0
+        is_detect = len(detected) is not 0
         encoder_vel = robot_server_dict['encoder_vel']
         is_conv_mov = encoder_vel < - 100.0
 
@@ -229,9 +248,9 @@ def main_pick_place_conveyor(server_in):
                 if  prog_done and (rob_stopped or not stop_active):
                     packet_x = track_result[0]
                     packet_y = track_result[1]
-                    angle = rects[0][2]
+                    angle = detected[0][2]
                     gripper_rot = rc.compute_gripper_rot(angle)
-                    packet_type = rects[0][3]
+                    packet_type = detected[0][3]
                     print(packet_x,packet_y)
                     rc.change_trajectory(packet_x,
                                         packet_y, 
@@ -320,6 +339,13 @@ def main_pick_place_conveyor(server_in):
             break
 
 def program_mode(rc):
+    """
+    Program selection function.
+
+    Parameters:
+    rc (object): RobotControl object for program execution.
+
+    """
     mode = input('Select mode \n'+
     '1 : Pick and place with static conveyor and hand gestures\n'+
     '2 : Pick and place with static conveyor and multithreading\n'+

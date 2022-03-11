@@ -3,25 +3,35 @@ import cv2
 import numpy as np
 class ProcessingApriltag:
 	
-	def __init__(self,intrinsic,color_image,depth_frame):
-		self.color_image = color_image
-		self.intrinsic = intrinsic
-		self.depth_frame = depth_frame
-		self.radius = 20
-		self.axis = 0
-		self.packet1 = 24
+	def __init__(self):
+		"""
+        ProcessingApriltag object constructor. Initializes data containers.
+		
+        """
+		
 		self.image_points = {}
 		self.world_points = {}
 		self.world_points_detect = []
 		self.image_points_detect = []
-		self.homography= None
+		self.homography = None
 	
 	def load_original_points(self):
+		"""
+        Loads conveyor world points from the json file.
+        
+        """
 		f = open('points.json')
 		# Dict of points in conveyor:
 		self.world_points = json.load(f) 
 
 	def compute_homog(self):
+		"""
+        Computes homography matrix using image and conveyor world points.
+
+        Returns:
+        numpy.ndarray: Homography matrix as numpy array.
+        
+        """
 		for tag_id in self.image_points:
 			if tag_id in self.world_points:
 				self.world_points_detect.append(self.world_points[tag_id])
@@ -35,7 +45,17 @@ class ProcessingApriltag:
 			print("[INFO]: Less than 4 corresponding points found")
 			return self.homography
 
-	def detect_tags(self,color_image):
+	def detect_tags(self, color_image):
+		"""
+        Detects and draws tags on a copy if the input image.
+		
+		Parameters:
+        color_image (numpy.ndarray): Input image where apriltags are to be detected.
+
+        Returns:
+        numpy.ndarray: Image with apriltags.
+        
+        """
 		rect1 = []
 		image = color_image.copy()
 		self.load_original_points()

@@ -467,7 +467,7 @@ class RobotControl:
         f_rate = False
         ct = CentroidTracker()    
         dc = DepthCamera()    
-        apriltag = ProcessingApriltag(None, None, None)
+        apriltag = ProcessingApriltag()
         pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
         homography = None
         while True:
@@ -505,12 +505,12 @@ class RobotControl:
             heatmap = heatmap[90:400,97:507,:]
             heatmap = cv2.resize(heatmap, (width,height))
             
-            img_detect, result, rects = pack_detect.deep_detector(rgb_frame, 
+            img_detect, detected = pack_detect.deep_detector(rgb_frame, 
                                                                     depth_frame, 
                                                                     homography, 
                                                                     bnd_box = bbox)
             
-            objects = ct.update(rects)
+            objects = ct.update(detected)
             self.objects_update(objects, img_detect)
 
             cv2.circle(img_detect, (int(width/2),int(height/2) ), 
@@ -545,24 +545,24 @@ class RobotControl:
             if key== 27:
                 # cv2.destroyAllWindows()
                 break
-        print(rects)
-        return added_image , rects
+        print(detected)
+        return added_image , detected
 
     def main_robot_control_demo(self):
         """
         Pick and place with static conveyor and hand gestures.
     
         """
-        detected_img, rects = self.main_packet_detect()
+        detected_img, detected = self.main_packet_detect()
 
         self.connect_OPCUA_server()
 
-        world_centroid = rects[0][2]
+        world_centroid = detected[0][2]
         packet_x = round(world_centroid[0] * 10.0, 2)
         packet_y = round(world_centroid[1] * 10.0, 2)
-        angle = rects[0][3]
+        angle = detected[0][3]
         gripper_rot = self.compute_gripper_rot(angle)
-        packet_type = rects[0][4]
+        packet_type = detected[0][4]
 
         self.get_nodes()
 
@@ -688,7 +688,7 @@ class RobotControl:
         server_in (object): Queue object containing data from the PLC server.
     
         """
-        apriltag = ProcessingApriltag(None, None, None)
+        apriltag = ProcessingApriltag()
         ct = CentroidTracker()    
         dc = DepthCamera()    
         self.show_boot_screen('STARTING NEURAL NET...')
@@ -735,12 +735,12 @@ class RobotControl:
             heatmap = heatmap[90:400,97:507,:]
             heatmap = cv2.resize(heatmap, (width,height))
             
-            img_detect, result, rects = pack_detect.deep_detector(rgb_frame, 
+            img_detect, detected = pack_detect.deep_detector(rgb_frame, 
                                                                     depth_frame, 
                                                                     homography, 
                                                                     bnd_box = bbox)
             
-            objects = ct.update(rects)
+            objects = ct.update(detected)
             # print(objects)
             self.objects_update(objects, img_detect)
             
@@ -763,13 +763,13 @@ class RobotControl:
                 if key == ord('b'):
                     bpressed += 1
                     if bpressed == 5:
-                        print(rects)
-                        world_centroid = rects[0][2]
+                        print(detected)
+                        world_centroid = detected[0][2]
                         packet_x = round(world_centroid[0] * 10.0, 2)
                         packet_y = round(world_centroid[1] * 10.0, 2)
-                        angle = rects[0][3]
+                        angle = detected[0][3]
                         gripper_rot = self.compute_gripper_rot(angle)
-                        packet_type = rects[0][4]
+                        packet_type = detected[0][4]
                         self.change_trajectory(packet_x, 
                                                 packet_y, 
                                                 gripper_rot, 
