@@ -55,7 +55,7 @@ files = {'PIPELINE_CONFIG':os.path.join('cv_pick_place',
                                     LABEL_MAP_NAME)
         }
 
-Pick_place_dict_conv_mov = {
+Pick_place_dict_conv_mov_slow = {
 "home_pos" : [{'x':1175.0,'y':267.5,'z':25.0,
                 'a':90.0,'b':0.0,'c':-180.0,
                 'status':2,'turn':42}],
@@ -77,6 +77,32 @@ Pick_place_dict_conv_mov = {
                 'status':2,'turn':42},
 
                 {'x':1420.73,'y':276.21,'z':45.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42}]
+          }
+
+Pick_place_dict_conv_mov = {
+"home_pos" : [{'x':1235.0,'y':267.5,'z':165.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42}],
+
+"pick_pos_base" : [{'x':1235.0,'y':267.5,'z':165.0,
+                    'a':90.0,'b':0.0,'c':-180.0,
+                    'status':2,'turn':42}],
+# place on conveyor points
+"place_pos" : [{'x':1620.73,'y':276.21,'z':45.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42},
+
+                {'x':1620.73,'y':276.21,'z':45.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42},
+
+                {'x':1620.73,'y':276.21,'z':45.0,
+                'a':90.0,'b':0.0,'c':-180.0,
+                'status':2,'turn':42},
+
+                {'x':1620.73,'y':276.21,'z':45.0,
                 'a':90.0,'b':0.0,'c':-180.0,
                 'status':2,'turn':42}]
           }
@@ -255,7 +281,8 @@ def main_pick_place_conveyor(server_in):
                     rc.change_trajectory(packet_x,
                                         packet_y, 
                                         gripper_rot, 
-                                        packet_type)
+                                        packet_type,
+                                        x_offset=200.0)
                     rc.Start_Prog.set_value(ua.DataValue(True))
                     print('Program Started: ',robot_server_dict['start'])
                     time.sleep(0.5)

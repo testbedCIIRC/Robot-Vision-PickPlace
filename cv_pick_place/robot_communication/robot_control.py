@@ -188,7 +188,7 @@ class RobotControl:
         cv2.imshow("Frame", boot_screen)
         cv2.waitKey(1)
 
-    def change_trajectory(self, x, y, rot, packet_type):
+    def change_trajectory(self, x, y, rot, packet_type, x_offset = 0.0):
         """
         Updates the trajectory points for the robot program.
     
@@ -235,7 +235,7 @@ class RobotControl:
             self.rob_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
 
         self.Pick_Pos_X.set_value(ua.DataValue(ua.Variant(
-            x, ua.VariantType.Float)))
+            x+x_offset, ua.VariantType.Float)))
         self.Pick_Pos_Y.set_value(ua.DataValue(ua.Variant(
             y, ua.VariantType.Float)))
         self.Pick_Pos_Z.set_value(ua.DataValue(ua.Variant(
