@@ -192,7 +192,7 @@ def main_pick_place_conveyor(server_in):
     x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
     warn_count = 0
     track_frame = 0
-    frames_lim = 15
+    frames_lim = 10
     bbox = True
     f_data = False
     depth_map = True
@@ -317,13 +317,15 @@ def main_pick_place_conveyor(server_in):
 
         if key == ord('m') :
             conv_right = not conv_right
+            rc.Conveyor_Left.set_value(ua.DataValue(False))
             rc.Conveyor_Right.set_value(ua.DataValue(conv_right))
-            time.sleep(0.1)
+            time.sleep(0.4)
         
         if key == ord('n'):
             conv_left = not conv_left
+            rc.Conveyor_Right.set_value(ua.DataValue(False))
             rc.Conveyor_Left.set_value(ua.DataValue(conv_left))
-            time.sleep(0.1)
+            time.sleep(0.4)
 
         if key == ord('l'):
             bbox = not bbox
