@@ -202,7 +202,8 @@ def main_pick_place_conveyor(server_in):
     frame_count = 1
     homography = None
     track_result = None
-
+    pack_depths = [10.0, 3.0, 5.0, 5.0]
+    pack_x_offsets = [100.0,180.0,170.0,170.0]
     while True:
         # print('in size:',server_in.qsize())
         robot_server_dict = server_in.get()
@@ -282,7 +283,8 @@ def main_pick_place_conveyor(server_in):
                                         packet_y, 
                                         gripper_rot, 
                                         packet_type,
-                                        x_offset=200.0)
+                                        x_offset = pack_x_offsets[packet_type],
+                                        pack_z = pack_depths[packet_type])
                     rc.Start_Prog.set_value(ua.DataValue(True))
                     print('Program Started: ',robot_server_dict['start'])
                     time.sleep(0.5)
