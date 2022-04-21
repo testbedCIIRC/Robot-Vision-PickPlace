@@ -202,8 +202,9 @@ def main_pick_place_conveyor(server_in):
     frame_count = 1
     homography = None
     track_result = None
+    #with speed 55% :
     pack_depths = [10.0, 3.0, 5.0, 5.0]
-    pack_x_offsets = [100.0,180.0,170.0,170.0]
+    pack_x_offsets = [50.0,180.0,130.0,130.0]
     while True:
         # print('in size:',server_in.qsize())
         robot_server_dict = server_in.get()
