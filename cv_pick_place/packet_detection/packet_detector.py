@@ -13,6 +13,7 @@ from object_detection.utils import visualization_utils as viz_utils
 from object_detection.builders import model_builder
 from object_detection.utils import config_util
 from cvzone.HandTrackingModule import HandDetector
+from packet_object.packet import Packet
 
 class PacketDetector:
     def __init__(self, paths, files, checkpt):
@@ -301,6 +302,100 @@ class PacketDetector:
                                 centroid, 
                                 angle, 
                                 detections['detection_classes'][i]])
+        img_np_detect, box_mask = self.compute_mask(img_np_detect,box_mask, box_array)
+                     
+        if bnd_box:
+            viz_utils.visualize_boxes_and_labels_on_image_array(
+                        img_np_detect,
+                        detections['detection_boxes'],
+                        detections['detection_classes']+label_id_offset,
+                        detections['detection_scores'],
+                        self.category_index,
+                        use_normalized_coordinates=True,
+                        max_boxes_to_draw=1,
+                        min_score_thresh=.7,
+                        agnostic_mode=False, 
+                        line_thickness=1)
+        if segment:
+            img_segmented = np.bitwise_and(color_frame,box_mask)
+            # img_segmented = box_mask
+            return img_np_detect, detected, img_segmented
+        else:
+            return img_np_detect, detected
+
+    def deep_pack_obj_detector(self, color_frame, depth_frame, bnd_box = True, segment = False):
+        """
+        Main packet detector function.
+    
+        Parameters:
+        color_frame (numpy.ndarray): Input image where packets are to be detected.
+        depth_frame (numpy.ndarray): Depth frame.
+        bnd_box (bool): Bool to enable or disable bounding box visualization.
+
+        Returns:
+        tuple: Image with detected packets, segmented packets, detections.
+        
+        """
+        # Crop guard region
+        # When packet depth is cropped, the resulting crop will 
+        # have 'guard' extra pixels on each side
+        guard = 250
+        box_array = []
+        detected = []
+        box_mask = np.zeros_like(color_frame)
+        image_np = np.array(color_frame)
+        height, width, depth = image_np.shape[0],image_np.shape[1],image_np.shape[2]
+        input_tensor = tf.convert_to_tensor(np.expand_dims(image_np, 0), dtype=tf.float32)
+        detections = self.detect_fn(input_tensor)
+        num_detections = int(detections.pop('num_detections'))
+        detections = {key: value[0, :num_detections].numpy()
+                    for key, value in detections.items()}
+        detections['num_detections'] = num_detections
+        detections['detection_classes'] = detections['detection_classes'].astype(np.int64)
+        label_id_offset = 1
+        img_np_detect = image_np.copy()
+        boxes = detections['detection_boxes']
+        max_boxes_to_draw = 1
+        # get scores to get a threshold
+        scores = detections['detection_scores']
+        # set as a default but free to adjust it to your needs
+        min_score_thresh=.7
+        # iterate over all objects found
+        for i in range(min(max_boxes_to_draw, boxes.shape[0])):
+            
+            if scores is None or scores[i] > min_score_thresh:
+                # boxes[i] is the box which will be drawn
+                # print ("This box is gonna get used", boxes[i], 
+                        # detections['detection_classes'][i])
+                ymin, xmin = boxes[i][0]*height, boxes[i][1]*width
+                ymax, xmax = boxes[i][2]*height, boxes[i][3]*width
+                cx,cy = (xmax+xmin)/2,(ymax+ymin)/2
+                centroid = (int(cx),int(cy))
+                w = float((xmax - xmin)) / width
+                h = float((ymax - ymin)) / height
+                box, angle, centroid = self.find_packet_contours(color_frame, 
+                                                                    ymin, 
+                                                                    ymax, 
+                                                                    xmin, 
+                                                                    xmax, 
+                                                                    centroid)
+                box_array.append(box)
+
+                cv2.circle(img_np_detect, centroid, 4, (255, 0, 0),5)
+                distance = depth_frame[centroid[1], centroid[0]]
+                cv2.putText(img_np_detect, "{} deg".format(round(angle, 1)), 
+                            (centroid[0], centroid[1] + 20),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+                cv2.putText(img_np_detect, "{}mm".format(distance), 
+                            (centroid[0], centroid[1] - 20), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+                packet = Packet(box = box, 
+                            pack_type = detections['detection_classes'][i],
+                            centroid = centroid, 
+                            angle = angle,
+                            width = w, height= h)
+                if centroid[0] - w/2 > guard  and centroid[0] + w/2 < (width - guard ):
+                    detected.append(packet)
         img_np_detect, box_mask = self.compute_mask(img_np_detect,box_mask, box_array)
                      
         if bnd_box:

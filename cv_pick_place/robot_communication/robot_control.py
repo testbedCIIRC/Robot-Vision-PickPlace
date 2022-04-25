@@ -448,6 +448,69 @@ class RobotControl:
                         mean_x = 0
                         mean_y = 0
                         return x_fixed, world_y, dist_to_pack
+    def pack_obj_tracking_update(self, objects, img, homog, enable, x_fixed, 
+                                track_frame, frames_lim, track_list = []):
+        """
+        Computes distance to packet and updated x, mean y packet positions of tracked moving packets.
+    
+        Parameters:
+        objects (OrderedDict): Ordered Dictionary with currently tracked packet objects.
+        img (numpy.ndarray): Image where the objects will be drawn.
+        homog (numpy.ndarray): Homography matrix.
+        enable (bool): Boolean true if objects are detected. It enables appending of centroids.
+        x_fixed (float): Fixed x pick position.
+        track_frame (int): Frame tracking counter.
+        frames_lim (int): Maximum number of frames for tracking.
+        track_list (list):List where centroid positions are stored.
+
+        Returns:
+        tuple(float): Updated x, mean y packet pick positions and distance to packet.
+    
+        """
+        # loop over the tracked objects
+        for (objectID, packet) in objects.items():
+            centroid_tup = packet.centroid
+            centroid = np.array([centroid_tup[0],centroid_tup[1]]).astype('int')
+            # draw both the ID of the object and the centroid of the
+            # object on the output frame
+            text = "ID {}".format(objectID)
+            cv2.putText(img, text, (centroid[0] , centroid[1] - 40), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.circle(img, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
+            if homog is not None:
+                new_centroid = np.append(centroid,1)
+                world_centroid = homog.dot(new_centroid)
+                world_centroid = world_centroid[0], world_centroid[1]
+                cv2.putText(img, 
+                            str(round(world_centroid[0],2)) +','+ 
+                            str(round(world_centroid[1],2)), centroid, 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+                if enable:
+                    track_list.append([objectID,world_centroid[0],world_centroid[1]])
+
+                    if track_frame == frames_lim:
+                        track_array = np.array(track_list)
+                        track_IDs = track_array[:,0]
+                        max_ID = np.max(track_IDs)
+                        track_data = track_array[track_IDs == max_ID]
+                        
+                        mean_x = float(track_data[-1,1])
+                        mean_y = float(np.mean(track_data[:,2]))
+                        print(track_data[:,2],mean_y)    
+                        
+                        world_x = round(mean_x* 10.0,2)
+                        world_y = round(mean_y* 10.0,2)
+                        dist_to_pack = x_fixed - world_x
+                        if world_y < 75.0:
+                            world_y = 75.0
+
+                        elif world_y > 470.0:
+                            world_y = 470.0 
+                        
+                        track_list.clear()
+                        mean_x = 0
+                        mean_y = 0
+                        return x_fixed, world_y, dist_to_pack
     
     def main_packet_detect(self):
         """
