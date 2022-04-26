@@ -501,6 +501,7 @@ class RobotControl:
                         world_x = round(mean_x* 10.0,2)
                         world_y = round(mean_y* 10.0,2)
                         dist_to_pack = x_fixed - world_x
+
                         if world_y < 75.0:
                             world_y = 75.0
 
@@ -510,7 +511,9 @@ class RobotControl:
                         track_list.clear()
                         mean_x = 0
                         mean_y = 0
-                        return x_fixed, world_y, dist_to_pack
+                        
+                        return (x_fixed, world_y, dist_to_pack), packet
+                    else: return None, None
     
     def main_packet_detect(self):
         """

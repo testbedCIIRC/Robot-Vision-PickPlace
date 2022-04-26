@@ -29,6 +29,7 @@ from realsense_config.realsense_depth import DepthCamera
 from centroid_tracker.centroidtracker import CentroidTracker
 from robot_communication.robot_control import RobotControl
 from packet_tracker.packettracker import PacketTracker
+from packet_reconstruction.point_cloud_viz import PointCloudViz
 
 CUSTOM_MODEL_NAME = 'my_ssd_mobnet' 
 check_point ='ckpt-3'
@@ -137,33 +138,31 @@ Pick_place_dict = {
 #encoder circumference = 188.5 mm
 # 4527.164/188.5 =~ 24
 #gear ratio = 24 ?
-def print_all_depth_frames(packet):
-    for i in range(0, int(packet.depth_maps.shape[2])):
-        depth_frames = packet.depth_maps[:, :, i]
-        depth_frames_dim = depth_frames.shape
-        if 0 in depth_frames_dim:
-            continue
-        clahe = cv2.createCLAHE(clipLimit=20.0, tileGridSize=(5, 5))
-        depth_frame_hist = clahe.apply(depth_frames.astype(np.uint8))
-        cv2_colorized_depth = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
 
-        cv2.imshow("Depth Frame", cv2.resize(cv2_colorized_depth,(680,680)))
-        cv2.waitKey(1)
-        time.sleep(0.001)
+def show_pack_avg(packet, dims = (240,240) ):
+    depth_mean = np.mean(packet.depth_maps, axis=2)
+    depth_mean = cv2.resize(depth_mean, dims)
 
-# Function for computing and printing colorized average of depth frames
-def print_depth_frames_average(packet):
-    depth_frames = np.mean(packet.depth_maps, axis=2)
-    depth_frames_dim = depth_frames.shape
+    depth_frames_dim = depth_mean.shape
+    print('depth_frames', depth_frames_dim)
+
     if 0 not in depth_frames_dim:
-
-        print('depth_frames', depth_frames_dim)
         clahe = cv2.createCLAHE(clipLimit=20.0, tileGridSize=(5, 5))
-        depth_frame_hist = clahe.apply(depth_frames.astype(np.uint8))
-        cv2_colorized_depth = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
+        for i in range(0, int(packet.depth_maps.shape[2])):
+            depth_frames = packet.depth_maps[:, :, i]
+            depth_frames = cv2.resize(depth_frames, dims)
 
-        cv2.imshow("Depth Frame Average", cv2.resize(cv2_colorized_depth,(680,680)))
+            depth_frame_hist = clahe.apply(depth_frames.astype(np.uint8))
+            cv2_colorized_depth = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
+            cv2.imshow("Depth Frame Average", cv2_colorized_depth)
+            cv2.waitKey(50)
+        depth_frame_hist = clahe.apply(depth_mean.astype(np.uint8))
+        cv2_colorized_depth = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
+        cv2.imshow("Depth Frame Average", cv2_colorized_depth)
         cv2.waitKey(1)
+
+        cv2.imwrite("cv_pick_place/temp_rgbd/color_image_crop.jpg", cv2_colorized_depth)
+        cv2.imwrite("cv_pick_place/temp_rgbd/depth_image_crop.png", depth_mean.astype(np.uint16))
 
 def pick():
     """
@@ -409,7 +408,7 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
     pt = PacketTracker(maxDisappeared=10)    
     dc = DepthCamera()    
     rc.show_boot_screen('STARTING NEURAL NET...')
-    cv2.namedWindow('Depth Frame')  
+    # cv2.namedWindow('Depth Frame')  
     cv2.namedWindow("Depth Frame Average")  
     pack_detect = PacketDetector(rc.paths, rc.files, rc.checkpt)
     x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
@@ -482,7 +481,7 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
                     track_frame = 0
             else:
                 track_frame = 0
-            track_result = rc.pack_obj_tracking_update(objects, 
+            track_result, packet = rc.pack_obj_tracking_update(objects, 
                                                     img_detect, 
                                                     homography, 
                                                     is_detect, 
@@ -499,9 +498,9 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
                 if  prog_done and (rob_stopped or not stop_active):
                     packet_x = track_result[0]
                     packet_y = track_result[1]
-                    angle = detected[0].angle
+                    angle = packet.angle
                     gripper_rot = rc.compute_gripper_rot(angle)
-                    packet_type = detected[0].pack_type
+                    packet_type = packet.pack_type
                     print(packet_x,packet_y)
                     rc.change_trajectory(packet_x,
                                         packet_y, 
@@ -514,11 +513,15 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
                     time.sleep(0.5)
                     rc.Start_Prog.set_value(ua.DataValue(False))
                     time.sleep(0.5)
+                    # show_pack_avg(packet)
+                    # pclv = PointCloudViz("cv_pick_place/temp_rgbd")
+                    # pclv.show_point_cloud()
+                    # del pclv
         if len(deregistered_packets) > 0:
-            # Print packet depth frames
-            for packet in deregistered_packets:
-                print_depth_frames_average(packet)
-                print_all_depth_frames(packet)
+            show_pack_avg(deregistered_packets[-1])
+            pclv = PointCloudViz("cv_pick_place/temp_rgbd")
+            pclv.show_point_cloud()
+            del pclv
 
         if depth_map:
             img_detect = cv2.addWeighted(img_detect, 0.8, heatmap, 0.3, 0)
