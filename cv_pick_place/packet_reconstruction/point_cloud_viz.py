@@ -26,17 +26,29 @@ class PointCloudViz():
         self.create_point_cloud()
         source = copy.deepcopy(self.pcd)
         # target = self.pcd
-        # Rot_z = [[math.cos(math.radians(-20)),-math.sin(math.radians(-20)), 0.0, 0.0],
-        #         [math.sin(math.radians(-20)), math.cos(math.radians(-20)), 0.0, 0.0],
-        #         [0.0, 0.0, 1.0, 0.0],
-        #         [0.0, 0.0, 0.0, 1.0]]
-        # source.transform(Rot_z)
+        Rot_x_ang = -35
+        Rot_x = [[1.0, 0.0, 0.0, 0.0],
+                [0.0, math.cos(math.radians(Rot_x_ang)),-math.sin(math.radians(Rot_x_ang)),0.0],
+                [0.0, math.sin(math.radians(Rot_x_ang)), math.cos(math.radians(Rot_x_ang)),0.0],
+                [0.0, 0.0, 0.0, 1.0]]
+
+        Rot_y_ang = 0     
+        Rot_y = [[math.cos(math.radians(Rot_y_ang)), 0.0, math.sin(math.radians(Rot_y_ang)), 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [-math.sin(math.radians(Rot_y_ang)), 0.0, math.cos(math.radians(Rot_y_ang)), 0.0],
+                [0.0, 0.0, 0.0, 1.0]]
+
+        Rot_z = [[math.cos(math.radians(-20)),-math.sin(math.radians(-20)), 0.0, 0.0],
+                [math.sin(math.radians(-20)), math.cos(math.radians(-20)), 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0]]
+        source.transform(np.array(Rot_x)@np.array(Rot_y))
 
         vis = o3d.visualization.Visualizer()
         vis.create_window()
         vis.add_geometry(source)
         # vis.add_geometry(target)
-        icp_iteration = 100
+        icp_iteration = 500
 
         for i in range(icp_iteration):
             # source.transform(Rot_z)

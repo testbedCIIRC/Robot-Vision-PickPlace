@@ -154,11 +154,11 @@ def show_pack_avg(packet, dims = (240,240) ):
 
             depth_frame_hist = clahe.apply(depth_frames.astype(np.uint8))
             cv2_colorized_depth = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
-            cv2.imshow("Depth Frame Average", cv2_colorized_depth)
+            cv2.imshow("Depth Frame Average", cv2.resize(cv2_colorized_depth.copy(), (680,680)))
             cv2.waitKey(50)
         depth_frame_hist = clahe.apply(depth_mean.astype(np.uint8))
         cv2_colorized_depth = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
-        cv2.imshow("Depth Frame Average", cv2_colorized_depth)
+        cv2.imshow("Depth Frame Average", cv2.resize(cv2_colorized_depth.copy(), (680,680)))
         cv2.waitKey(1)
 
         cv2.imwrite("cv_pick_place/temp_rgbd/color_image_crop.jpg", cv2_colorized_depth)
@@ -534,6 +534,8 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
                         (10,40),cv2.FONT_HERSHEY_SIMPLEX, 0.57, 
                         (255, 255, 0), 2)
 
+        cv2.setWindowProperty("Frame", cv2.WND_PROP_FULLSCREEN,
+                          cv2.WINDOW_FULLSCREEN)
         cv2.imshow("Frame", cv2.resize(img_detect, (1280,960)))
         frame_count += 1
         if frame_count == 500:
