@@ -141,12 +141,12 @@ Pick_place_dict = {
 
 def show_pack_avg(packet, dims = (240,240) ):
     depth_mean = np.mean(packet.depth_maps, axis=2)
-    depth_mean = cv2.resize(depth_mean, dims)
 
     depth_frames_dim = depth_mean.shape
     print('depth_frames', depth_frames_dim)
 
     if 0 not in depth_frames_dim:
+        depth_mean = cv2.resize(depth_mean, dims)
         clahe = cv2.createCLAHE(clipLimit=20.0, tileGridSize=(5, 5))
         for i in range(0, int(packet.depth_maps.shape[2])):
             depth_frames = packet.depth_maps[:, :, i]

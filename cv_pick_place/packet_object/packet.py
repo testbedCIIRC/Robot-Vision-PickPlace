@@ -16,6 +16,7 @@ class Packet:
 
         # Numpy array of cropped depth maps
         self.depth_maps = np.empty(())
+        self.color_frames = np.empty(())
 
         # Number of frames the packet has disappeared for
         self.disappeared = 0
