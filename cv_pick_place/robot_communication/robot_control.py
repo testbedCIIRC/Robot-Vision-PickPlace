@@ -322,8 +322,8 @@ class RobotControl:
         show (bool): Boolean to enable or disable the function.
 
         """
+        success, img = cap.read()
         if show:
-            success, img = cap.read()
             hands, img = detector.findHands(img)
                 # # without draw
                 # hands = detector.findHands(img, draw=False)
@@ -363,9 +363,11 @@ class RobotControl:
                     if length >=100.0:
                         self.Gripper_State.set_value(ua.DataValue(True))
                         time.sleep(0.1)
-            cv2.imshow("Gestures", img)
         else:
-            cv2.destroyWindow("Gestures")
+            img = np.zeros_like(img)
+
+        cv2.imshow("Gestures", img)
+        
 
     def objects_update(self,objects,image):
         """
@@ -636,9 +638,9 @@ class RobotControl:
         bpressed = 0
         dc = DepthCamera()
         gripper_ON = self.Gripper_State.get_value()
-        cap = cv2.VideoCapture(1)
+        cap = cv2.VideoCapture(0)
         detector = HandDetector(detectionCon=0.8, maxHands=2)
-        show_gestures = False
+        show_gestures = True
         while True:
             start = self.Start_Prog.get_value()
             rob_stopped = self.Rob_Stopped.get_value()
@@ -709,7 +711,8 @@ class RobotControl:
                 self.Abort_Prog.set_value(ua.DataValue(False))
                 cap.release()
                 self.client.disconnect()
-                self.gripper_gesture_control(detector, cap, show = False)
+                # self.gripper_gesture_control(detector, cap, show = False)
+                cv2.destroyWindow("Gestures")
                 cv2.destroyWindow("Object detected")
                 time.sleep(0.5)
                 break
