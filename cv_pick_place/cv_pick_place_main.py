@@ -275,7 +275,7 @@ def main_pick_place_conveyor(server_in):
                                                             bnd_box = bbox)
         objects = ct.update_detected(detected)
         print(objects, rob_stopped, stop_active, prog_done)
-        is_detect = len(detected) is not 0
+        is_detect = len(detected) != 0
         encoder_vel = robot_server_dict['encoder_vel']
         is_conv_mov = encoder_vel < - 100.0
 
@@ -450,10 +450,11 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
             if is_marker_detect:
                 warn_count = 0
                 
-        except:
+        except Exception as e:
         #Triggered when no markers are in the frame:
             warn_count += 1
             if warn_count == 1:
+                print(e)
                 print("[INFO]: Markers out of frame or moving.")
             pass
         
@@ -470,7 +471,7 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
                                                             bnd_box = bbox)
         objects, deregistered_packets = pt.update(detected, depth_frame)
         print(objects, rob_stopped, stop_active, prog_done)
-        is_detect = len(detected) is not 0
+        is_detect = len(detected) != 0
         encoder_vel = robot_server_dict['encoder_vel']
         is_conv_mov = encoder_vel < - 100.0
 

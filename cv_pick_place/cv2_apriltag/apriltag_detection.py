@@ -20,7 +20,7 @@ class ProcessingApriltag:
         Loads conveyor world points from the json file.
         
         """
-		f = open('points.json')
+		f = open('cv_pick_place\points.json')
 		# Dict of points in conveyor:
 		self.world_points = json.load(f) 
 
