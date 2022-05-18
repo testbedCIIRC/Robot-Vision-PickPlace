@@ -21,6 +21,9 @@ class DepthCamera:
         depth_sensor.set_option(rs.option.enable_auto_exposure, False)
         rgb_sensor = profile.get_device().query_sensors()[1]
         rgb_sensor.set_option(rs.option.enable_auto_exposure, False)
+        self.temporal = rs.temporal_filter()
+        self.hole_filling = rs.hole_filling_filter()
+        self.hole_filling.set_option(rs.option.holes_fill, 2)
 
     def get_frame(self):
         frames = self.pipeline.wait_for_frames()
@@ -28,10 +31,9 @@ class DepthCamera:
         depth_frame = frames.get_depth_frame()
         color_frame = frames.get_color_frame()
 
-        hole_filling = rs.hole_filling_filter()
-        hole_filling.set_option(rs.option.holes_fill, 2)
-        depth_frame = hole_filling.process(depth_frame)
-
+        
+        depth_frame = self.hole_filling.process(depth_frame)
+        depth_frame = self.temporal.process(depth_frame)
         colorizer = rs.colorizer()
         colorizer.set_option(rs.option.color_scheme, 0)
 
