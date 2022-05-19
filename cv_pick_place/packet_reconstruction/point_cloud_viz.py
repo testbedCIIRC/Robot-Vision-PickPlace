@@ -48,7 +48,7 @@ class PointCloudViz():
         vis.create_window()
         vis.add_geometry(source)
         # vis.add_geometry(target)
-        icp_iteration = 500
+        icp_iteration = 250
 
         for i in range(icp_iteration):
             # source.transform(Rot_z)

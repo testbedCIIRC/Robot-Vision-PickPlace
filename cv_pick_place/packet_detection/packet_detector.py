@@ -323,7 +323,7 @@ class PacketDetector:
         else:
             return img_np_detect, detected
 
-    def deep_pack_obj_detector(self, color_frame, depth_frame, bnd_box = True, segment = False):
+    def deep_pack_obj_detector(self, color_frame, depth_frame, encoder_pos, bnd_box = True, segment = False):
         """
         Main packet detector function.
     
@@ -393,7 +393,8 @@ class PacketDetector:
                             pack_type = detections['detection_classes'][i],
                             centroid = centroid, 
                             angle = angle,
-                            width = w, height= h)
+                            width = w, height = h, 
+                            encoder_position = encoder_pos)
                 if centroid[0] - w/2 > guard  and centroid[0] + w/2 < (width - guard ):
                     detected.append(packet)
         img_np_detect, box_mask = self.compute_mask(img_np_detect,box_mask, box_array)

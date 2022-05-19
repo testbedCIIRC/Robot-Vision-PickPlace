@@ -451,7 +451,7 @@ class RobotControl:
                         mean_y = 0
                         return x_fixed, world_y, dist_to_pack
     def pack_obj_tracking_update(self, objects, img, homog, enable, x_fixed, 
-                                track_frame, frames_lim, track_list = []):
+                                track_frame, frames_lim, encoder_pos, track_list = []):
         """
         Computes distance to packet and updated x, mean y packet positions of tracked moving packets.
     
@@ -479,6 +479,7 @@ class RobotControl:
             cv2.putText(img, text, (centroid[0] , centroid[1] - 40), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             cv2.circle(img, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
+            cv2.circle(img, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
             if homog is not None:
                 new_centroid = np.append(centroid,1)
                 world_centroid = homog.dot(new_centroid)

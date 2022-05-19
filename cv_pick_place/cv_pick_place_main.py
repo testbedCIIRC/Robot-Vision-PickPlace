@@ -438,8 +438,8 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
         ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
         
         rgb_frame = rgb_frame[:,240:1680]
+        # 1080x1440x3
         height, width, depth = rgb_frame.shape
-        
         try:
             rgb_frame = apriltag.detect_tags(rgb_frame)
             if frame_count == 1:
@@ -464,15 +464,17 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
         heatmap = colorized_depth
         heatmap = heatmap[90:400,97:507,:]
         heatmap = cv2.resize(heatmap, (width,height))
+        encoder_vel = robot_server_dict['encoder_vel']
+        encoder_pos = robot_server_dict['encoder_pos']
         
         img_detect, detected = pack_detect.deep_pack_obj_detector(
                                                             rgb_frame, 
-                                                            depth_frame, 
+                                                            depth_frame,
+                                                            encoder_pos, 
                                                             bnd_box = bbox)
         objects, deregistered_packets = pt.update(detected, depth_frame)
         print(objects, rob_stopped, stop_active, prog_done)
         is_detect = len(detected) != 0
-        encoder_vel = robot_server_dict['encoder_vel']
         is_conv_mov = encoder_vel < - 100.0
 
         if is_detect:
@@ -485,10 +487,11 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
             track_result, packet = rc.pack_obj_tracking_update(objects, 
                                                     img_detect, 
                                                     homography, 
-                                                    is_detect, 
-                                                    x_fixed = x_fixed, 
-                                                    track_frame = track_frame,
-                                                    frames_lim = frames_lim)
+                                                    is_detect,
+                                                    x_fixed, 
+                                                    track_frame,
+                                                    frames_lim,
+                                                    encoder_pos) 
             if track_result is not None:
                 dist_to_pack = track_result[2]
                 delay = dist_to_pack/(abs(encoder_vel)/10)
