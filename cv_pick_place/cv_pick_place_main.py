@@ -134,10 +134,6 @@ Pick_place_dict = {
                 'a':90.0,'b':0.0,'c':-180.0,
                 'status':2,'turn':42}]
                 }
-#1 full conveyor rotation = 4527.164 mm in encoder
-#encoder circumference = 188.5 mm
-# 4527.164/188.5 =~ 24
-#gear ratio = 24 ?
 
 def show_pack_avg(packet, dims = (240,240) ):
     depth_mean = np.mean(packet.depth_maps, axis=2)
@@ -398,7 +394,7 @@ def main_pick_place_conveyor(server_in):
             break
 def main_pick_place_conveyor_w_point_cloud(server_in):
     """
-    Thread for pick and place with moving conveyor.
+    Thread for pick and place with moving conveyor and point cloud operations.
     
     Parameters:
     server_in (object): Queue object containing data from the PLC server.
@@ -496,9 +492,6 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
                 dist_to_pack = track_result[2]
                 delay = dist_to_pack/(abs(encoder_vel)/10)
                 delay = round(delay,2)
-                # print('delay, distance',delay,dist_to_pack)
-                # start_pick = Timer(delay, pick)
-                # start_pick.start()
                 if  prog_done and (rob_stopped or not stop_active):
                     packet_x = track_result[0]
                     packet_y = track_result[1]
@@ -517,10 +510,7 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
                     time.sleep(0.5)
                     rc.Start_Prog.set_value(ua.DataValue(False))
                     time.sleep(0.5)
-                    # show_pack_avg(packet)
-                    # pclv = PointCloudViz("cv_pick_place/temp_rgbd")
-                    # pclv.show_point_cloud()
-                    # del pclv
+
         if len(deregistered_packets) > 0:
             show_pack_avg(deregistered_packets[-1])
             pclv = PointCloudViz("cv_pick_place/temp_rgbd")

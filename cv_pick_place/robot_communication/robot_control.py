@@ -463,6 +463,7 @@ class RobotControl:
         x_fixed (float): Fixed x pick position.
         track_frame (int): Frame tracking counter.
         frames_lim (int): Maximum number of frames for tracking.
+        encoder_pos (float): current encoder position.
         track_list (list):List where centroid positions are stored.
 
         Returns:

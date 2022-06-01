@@ -391,7 +391,8 @@ class PacketDetector:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
                 packet = Packet(box = box, 
                             pack_type = detections['detection_classes'][i],
-                            centroid = centroid, 
+                            centroid = centroid,
+                            centroid_depth = distance, 
                             angle = angle,
                             width = w, height = h, 
                             encoder_position = encoder_pos)
