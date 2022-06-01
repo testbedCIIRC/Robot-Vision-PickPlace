@@ -14,6 +14,13 @@ maxCentroidDistance = 100
 
 class PacketTracker:
     def __init__(self, maxDisappeared):
+        """
+        PacketTracker object constructor.
+    
+        Parameters:
+        maxDisappeared (int): Maximum number of frames before deregister.
+
+        """
         self.nextObjectID = 0
         self.packets = OrderedDict()
 
@@ -21,6 +28,14 @@ class PacketTracker:
         self.maxDisappeared = maxDisappeared
 
     def register(self, packet, frame):
+        """
+        CRegisters input item.
+    
+        Parameters:
+        packet (object): packet object to be registered.
+        frame (numpy.ndarray): image frame.
+
+        """
         # When registering an object we use the next available object
         # ID to store the packet
         self.packets[self.nextObjectID] = packet
@@ -32,6 +47,13 @@ class PacketTracker:
         self.nextObjectID += 1
 
     def deregister(self, objectID):
+        """
+        Deregisters object based on id.
+    
+        Parameters:
+        objectID (str): Key to deregister items in the objects dict.
+
+        """
         # Save and return copy of deregistered packet data
         deregistered_packet = copy.deepcopy(self.packets[objectID])
         # To deregister an object ID we delete the object ID from our dictionary
@@ -46,6 +68,17 @@ class PacketTracker:
         return crop
 
     def update(self, detected_packets, frame):
+        """
+        Updates the currently tracked detections.
+    
+        Parameters:
+        detected_packets (list): List containing detected packet objects to be tracked.
+    
+        Returns:
+        OrderedDict: Ordered dictionary with tracked detections.
+        list: packets that were deregistered.
+
+        """
         deregistered_packets = []
         # check to see if the list of input bounding box rectangles
         # is empty

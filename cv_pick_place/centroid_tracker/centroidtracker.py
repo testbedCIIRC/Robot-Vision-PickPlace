@@ -26,7 +26,7 @@ class CentroidTracker:
 
 	def register(self, item):
 		"""
-        Computes the gripper rotation based on the detected packet angle.
+        Registers input item.
     
         Parameters:
         item (numpy.ndarray): Numpy array with items to be registered.
@@ -40,7 +40,7 @@ class CentroidTracker:
 
 	def deregister(self, objectID):
 		"""
-        Computes the gripper rotation based on the detected packet angle.
+        Deregisters object based on id.
     
         Parameters:
         objectID (str): Key to deregister items in the objects dict.
