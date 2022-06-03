@@ -180,7 +180,9 @@ def robot_server(server_out):
     """
     rc.connect_OPCUA_server()
     rc.get_nodes()
-
+    
+    rc.Laser_Enable.set_value(ua.DataValue(True))
+    time.sleep(0.5)
     while True:
         try:
             robot_server_dict = {
@@ -228,6 +230,7 @@ def main_pick_place_conveyor(server_in):
     #with speed 55% :
     pack_depths = [10.0, 3.0, 5.0, 5.0]
     pack_x_offsets = [50.0,180.0,130.0,130.0]
+
     while True:
         # print('in size:',server_in.qsize())
         robot_server_dict = server_in.get()
@@ -423,6 +426,7 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
     #with speed 55% :
     pack_depths = [10.0, 3.0, 5.0, 5.0]
     pack_x_offsets = [50.0,180.0,130.0,130.0]
+    
     while True:
         # print('in size:',server_in.qsize())
         robot_server_dict = server_in.get()

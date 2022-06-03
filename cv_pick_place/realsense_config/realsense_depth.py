@@ -33,7 +33,7 @@ class DepthCamera:
 
         
         depth_frame = self.hole_filling.process(depth_frame)
-        depth_frame = self.temporal.process(depth_frame)
+        # depth_frame = self.temporal.process(depth_frame)
         colorizer = rs.colorizer()
         colorizer.set_option(rs.option.color_scheme, 0)
 

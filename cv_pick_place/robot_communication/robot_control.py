@@ -82,6 +82,8 @@ class RobotControl:
             'ns=3;s="Encoder_1".ActualVelocity')
         self.Encoder_Pos = self.client.get_node(
             'ns=3;s="Encoder_1".ActualPosition')
+        self.Laser_Enable = self.client.get_node(
+            'ns=3;s="laser_field_enable"')
 
         self.Act_Pos_X = self.client.get_node(
             'ns=3;s="InstKukaControl"."instReadActualPos"."X"')
