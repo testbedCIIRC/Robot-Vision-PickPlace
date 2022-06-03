@@ -23,117 +23,14 @@ from object_detection.utils import config_util
 from object_detection.utils import label_map_util
 from object_detection.builders import model_builder
 from object_detection.utils import visualization_utils as viz_utils
-from packet_detection.packet_detector import PacketDetector
-from cv2_apriltag.apriltag_detection import ProcessingApriltag
-from realsense_config.realsense_depth import DepthCamera
-from centroid_tracker.centroidtracker import CentroidTracker
-from robot_communication.robot_control import RobotControl
-from packet_tracker.packettracker import PacketTracker
-from packet_reconstruction.point_cloud_viz import PointCloudViz
 
-CUSTOM_MODEL_NAME = 'my_ssd_mobnet' 
-check_point ='ckpt-3'
-# CUSTOM_MODEL_NAME = 'my_ssd_mobnet_improved_1' 
-# check_point ='ckpt-6'
-
-LABEL_MAP_NAME = 'label_map.pbtxt'
-paths = {'ANNOTATION_PATH':os.path.join('cv_pick_place',
-                                        'Tensorflow',
-                                        'workspace',
-                                        'annotations'),
-        'CHECKPOINT_PATH': os.path.join('cv_pick_place',
-                                        'Tensorflow', 
-                                        'workspace',
-                                        'models',
-                                        CUSTOM_MODEL_NAME) 
-        }
-files = {'PIPELINE_CONFIG':os.path.join('cv_pick_place',
-                                        'Tensorflow', 
-                                        'workspace',
-                                        'models',
-                                        CUSTOM_MODEL_NAME,
-                                        'pipeline.config'),
-        'LABELMAP': os.path.join(paths['ANNOTATION_PATH'], 
-                                    LABEL_MAP_NAME)
-        }
-
-Pick_place_dict_conv_mov_slow = {
-"home_pos" : [{'x':1175.0,'y':267.5,'z':25.0,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':42}],
-
-"pick_pos_base" : [{'x':1175.0,'y':267.5,'z':25.0,
-                    'a':90.0,'b':0.0,'c':-180.0,
-                    'status':2,'turn':42}],
-# place on conveyor points
-"place_pos" : [{'x':1420.73,'y':276.21,'z':45.0,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':42},
-
-                {'x':1420.73,'y':276.21,'z':45.0,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':42},
-
-                {'x':1420.73,'y':276.21,'z':45.0,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':42},
-
-                {'x':1420.73,'y':276.21,'z':45.0,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':42}]
-          }
-
-Pick_place_dict_conv_mov = {
-"home_pos" : [{'x':1235.0,'y':267.5,'z':165.0,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':42}],
-
-"pick_pos_base" : [{'x':1235.0,'y':267.5,'z':165.0,
-                    'a':90.0,'b':0.0,'c':-180.0,
-                    'status':2,'turn':42}],
-# place on different bins
-"place_pos" : [{'x':1060.30,'y':743.0,'z':0.0,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':43},
-
-                {'x':1604.0,'y':662.5,'z':0.0,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':42},
-
-                {'x':1375.25,'y':680.74,'z':12.03,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':42},
-
-                {'x':1375.25,'y':680.74,'z':12.03,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':42}]
-          }
-
-Pick_place_dict = {
-"home_pos" : [{'x':697.1,'y':0.0,'z':260.0,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':43}],
-
-"pick_pos_base" : [{'x':368.31,'y':226.34,'z':34.0,
-                    'a':90.0,'b':0.0,'c':-180.0,
-                    'status':2,'turn':43}],
-# place on conveyor points
-"place_pos" : [{'x':1060.30,'y':743.0,'z':0.0,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':43},
-
-                {'x':1604.0,'y':662.5,'z':0.0,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':42},
-
-                {'x':1375.25,'y':680.74,'z':12.03,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':42},
-
-                {'x':1375.25,'y':680.74,'z':12.03,
-                'a':90.0,'b':0.0,'c':-180.0,
-                'status':2,'turn':42}]
-                }
+from robot_cell.detection.packet_detector import PacketDetector
+from robot_cell.detection.apriltag_detection import ProcessingApriltag
+from robot_cell.detection.realsense_depth import DepthCamera
+from robot_cell.control.robot_control import RobotControl
+from robot_cell.packet.centroidtracker import CentroidTracker
+from robot_cell.packet.packettracker import PacketTracker
+from robot_cell.packet.point_cloud_viz import PointCloudViz
 
 def show_pack_avg(packet, dims = (240,240) ):
     depth_mean = np.mean(packet.depth_maps, axis=2)
@@ -648,5 +545,38 @@ def program_mode(rc):
         program_mode(rc)
 
 if __name__ == '__main__':
+    CUSTOM_MODEL_NAME = 'my_ssd_mobnet' 
+    check_point ='ckpt-3'
+    # CUSTOM_MODEL_NAME = 'my_ssd_mobnet_improved_1' 
+    # check_point ='ckpt-6'
+
+    LABEL_MAP_NAME = 'label_map.pbtxt'
+    paths = {'ANNOTATION_PATH':os.path.join('cv_pick_place',
+                                            'Tensorflow',
+                                            'workspace',
+                                            'annotations'),
+            'CHECKPOINT_PATH': os.path.join('cv_pick_place',
+                                            'Tensorflow', 
+                                            'workspace',
+                                            'models',
+                                            CUSTOM_MODEL_NAME) 
+            }
+    files = {'PIPELINE_CONFIG':os.path.join('cv_pick_place',
+                                            'Tensorflow', 
+                                            'workspace',
+                                            'models',
+                                            CUSTOM_MODEL_NAME,
+                                            'pipeline.config'),
+            'LABELMAP': os.path.join(paths['ANNOTATION_PATH'], 
+                                        LABEL_MAP_NAME)
+            }
+
+    file = open('cv_pick_place/robot_positions.json')
+    robot_poses = json.load(file)
+
+    Pick_place_dict_conv_mov_slow =robot_poses['Pick_place_dict_conv_mov_slow']
+    Pick_place_dict_conv_mov = robot_poses['Pick_place_dict_conv_mov']
+    Pick_place_dict = robot_poses['Pick_place_dict']
+    
     rc = RobotControl(None, paths, files, check_point)
     program_mode(rc)
