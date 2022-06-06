@@ -331,6 +331,7 @@ class PacketDetector:
         Parameters:
         color_frame (numpy.ndarray): Input image where packets are to be detected.
         depth_frame (numpy.ndarray): Depth frame.
+        encoder_pos (float): current encoder position.
         bnd_box (bool): Bool to enable or disable bounding box visualization.
 
         Returns:
