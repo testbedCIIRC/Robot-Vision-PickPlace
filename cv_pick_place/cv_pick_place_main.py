@@ -32,31 +32,6 @@ from robot_cell.packet.centroidtracker import CentroidTracker
 from robot_cell.packet.packettracker import PacketTracker
 from robot_cell.packet.point_cloud_viz import PointCloudViz
 
-def show_pack_avg(packet, dims = (240,240) ):
-    depth_mean = np.mean(packet.depth_maps, axis=2)
-
-    depth_frames_dim = depth_mean.shape
-    print('depth_frames', depth_frames_dim)
-
-    if 0 not in depth_frames_dim:
-        depth_mean = cv2.resize(depth_mean, dims)
-        clahe = cv2.createCLAHE(clipLimit=20.0, tileGridSize=(5, 5))
-        for i in range(0, int(packet.depth_maps.shape[2])):
-            depth_frames = packet.depth_maps[:, :, i]
-            depth_frames = cv2.resize(depth_frames, dims)
-
-            depth_frame_hist = clahe.apply(depth_frames.astype(np.uint8))
-            cv2_colorized_depth = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
-            cv2.imshow("Depth Frame Average", cv2.resize(cv2_colorized_depth.copy(), (680,680)))
-            cv2.waitKey(50)
-        depth_frame_hist = clahe.apply(depth_mean.astype(np.uint8))
-        cv2_colorized_depth = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
-        cv2.imshow("Depth Frame Average", cv2.resize(cv2_colorized_depth.copy(), (680,680)))
-        cv2.waitKey(1)
-
-        cv2.imwrite("cv_pick_place/temp_rgbd/color_image_crop.jpg", cv2_colorized_depth)
-        cv2.imwrite("cv_pick_place/temp_rgbd/depth_image_crop.png", depth_mean.astype(np.uint16))
-
 def pick():
     """
     Child thread to execute robot pick action.
@@ -292,6 +267,7 @@ def main_pick_place_conveyor(server_in):
             print('[INFO]: Client disconnected.')
             time.sleep(0.5)
             break
+
 def main_pick_place_conveyor_w_point_cloud(server_in):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
@@ -304,8 +280,6 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
     pt = PacketTracker(maxDisappeared=10)    
     dc = DepthCamera()    
     rc.show_boot_screen('STARTING NEURAL NET...')
-    # cv2.namedWindow('Depth Frame')  
-    cv2.namedWindow("Depth Frame Average")  
     pack_detect = PacketDetector(rc.paths, rc.files, rc.checkpt)
     x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
     warn_count = 0
@@ -413,8 +387,7 @@ def main_pick_place_conveyor_w_point_cloud(server_in):
                     time.sleep(0.5)
 
         if len(deregistered_packets) > 0:
-            show_pack_avg(deregistered_packets[-1])
-            pclv = PointCloudViz("cv_pick_place/temp_rgbd")
+            pclv = PointCloudViz("cv_pick_place/temp_rgbd", deregistered_packets[-1])
             pclv.show_point_cloud()
             del pclv
 
