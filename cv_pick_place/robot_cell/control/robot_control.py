@@ -544,7 +544,7 @@ class RobotControl:
     def pack_obj_tracking_program_start(self, track_result, packet, encoder_pos, encoder_vel, is_rob_ready, 
                         pack_x_offsets, pack_depths ):
         """
-        Computes distance to packet and updated x, mean y packet positions of tracked moving packets.
+        Triggers start of the program based on track result and robot status.
     
         Parameters:
         track_result (tuple): Updated x, mean y packet pick positions and distance to packet.
