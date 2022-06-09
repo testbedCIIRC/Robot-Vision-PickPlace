@@ -189,6 +189,7 @@ def main(server_in):
         cv2.setWindowProperty("Frame", cv2.WND_PROP_FULLSCREEN,
                           cv2.WINDOW_FULLSCREEN)
         cv2.imshow("Frame", cv2.resize(img_detect, (1280,960)))
+        
         frame_count += 1
         if frame_count == 500:
             frame_count = 1

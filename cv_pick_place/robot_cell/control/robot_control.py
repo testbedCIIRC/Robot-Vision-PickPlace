@@ -245,6 +245,10 @@ class RobotControl:
         time.sleep(0.1)
     
     def change_conveyor_right(self, conv_right):
+        """
+        Switch conveyor right direction on/off.
+
+        """
         conv_right = not conv_right
         self.Conveyor_Left.set_value(ua.DataValue(False))
         self.Conveyor_Right.set_value(ua.DataValue(conv_right))
@@ -252,6 +256,10 @@ class RobotControl:
         return conv_right
     
     def change_conveyor_left(self, conv_left):
+        """
+        Switch conveyor left direction on/off.
+
+        """
         conv_left = not conv_left
         self.Conveyor_Right.set_value(ua.DataValue(False))
         self.Conveyor_Left.set_value(ua.DataValue(conv_left))
@@ -463,6 +471,7 @@ class RobotControl:
                         mean_x = 0
                         mean_y = 0
                         return x_fixed, world_y, dist_to_pack
+
     def pack_obj_tracking_update(self, objects, img, homog, enable, x_fixed, 
                                 track_frame, frames_lim, encoder_pos, track_list = []):
         """
@@ -531,28 +540,42 @@ class RobotControl:
                         
                         return (x_fixed, world_y, dist_to_pack), packet
                     else: return None, None
+
     def pack_obj_tracking_program_start(self, track_result, packet, encoder_pos, encoder_vel, is_rob_ready, 
                         pack_x_offsets, pack_depths ):
+        """
+        Computes distance to packet and updated x, mean y packet positions of tracked moving packets.
+    
+        Parameters:
+        track_result (tuple): Updated x, mean y packet pick positions and distance to packet.
+        packet (object): Final tracked packet object used for program start.
+        encoder_pos (float): Current encoder position.
+        encoder_vel (float): Current encoder velocity.
+        is_rob_ready (bool): Boolean true if robot is ready to start program.
+        pack_x_offsets (list):List of offsets for pick position.
+        pack_depths (list): List of packet depths.
 
-            if track_result is not None:
-                dist_to_pack = track_result[2]
-                delay = dist_to_pack/(abs(encoder_vel)/10)
-                delay = round(delay,2)
-                if  is_rob_ready:
-                    packet_x = track_result[0]
-                    packet_y = track_result[1]
-                    angle = packet.angle
-                    gripper_rot = self.compute_gripper_rot(angle)
-                    packet_type = packet.pack_type
-                    print(packet_x, packet_y)
-                    self.change_trajectory(packet_x,
-                                        packet_y, 
-                                        gripper_rot, 
-                                        packet_type,
-                                        x_offset = pack_x_offsets[packet_type],
-                                        pack_z = pack_depths[packet_type])
-                    self.Start_Prog.set_value(ua.DataValue(True))
-                    print('Program Started')
-                    time.sleep(0.5)
-                    self.Start_Prog.set_value(ua.DataValue(False))
-                    time.sleep(0.5)
+        """
+
+        if track_result is not None:
+            dist_to_pack = track_result[2]
+            delay = dist_to_pack/(abs(encoder_vel)/10)
+            delay = round(delay,2)
+            if  is_rob_ready:
+                packet_x = track_result[0]
+                packet_y = track_result[1]
+                angle = packet.angle
+                gripper_rot = self.compute_gripper_rot(angle)
+                packet_type = packet.pack_type
+                print(packet_x, packet_y)
+                self.change_trajectory(packet_x,
+                                    packet_y, 
+                                    gripper_rot, 
+                                    packet_type,
+                                    x_offset = pack_x_offsets[packet_type],
+                                    pack_z = pack_depths[packet_type])
+                self.Start_Prog.set_value(ua.DataValue(True))
+                print('Program Started')
+                time.sleep(0.5)
+                self.Start_Prog.set_value(ua.DataValue(False))
+                time.sleep(0.5)
