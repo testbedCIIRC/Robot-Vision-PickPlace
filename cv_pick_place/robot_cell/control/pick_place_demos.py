@@ -360,6 +360,8 @@ class RobotDemos(RobotControl):
             robot_server_dict = server_in.get()
             start_time = time.time()
             rob_stopped = robot_server_dict['rob_stopped']
+            stop_active = robot_server_dict['stop_active']
+            prog_done = robot_server_dict['prog_done']
 
             ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
             
@@ -412,7 +414,7 @@ class RobotDemos(RobotControl):
 
             key = cv2.waitKey(1)
 
-            if rob_stopped:
+            if prog_done and (rob_stopped or not stop_active):
                 if key == ord('b'):
                     bpressed += 1
                     if bpressed == 5:

@@ -285,53 +285,37 @@ def program_mode(rc):
     rc (object): RobotControl object for program execution.
 
     """
-    mode = input('Select mode \n'+
-    '1 : Pick and place with static conveyor and hand gestures\n'+
-    '2 : Pick and place with static conveyor and multithreading\n'+
-    '3 : Pick and place with moving conveyor and multithreading\n'+
-    '4 : Pick and place with moving conveyor, point cloud and multithreading\n'+
-    '5 : Main Pick and place\n')
-    
+    mode = input()
+    thread_modes = ['2','3','4','5']
     if mode == '1':
         while True:
             rc.rob_dict = Pick_place_dict
             rc.main_robot_control_demo()
 
-    if mode == '2':
-        rc.rob_dict = Pick_place_dict
+    if mode in thread_modes:
         q = Queue(maxsize = 1)
-        t1 = Thread(target = rc.main_pick_place, args =(q, ))
+
+        if mode == '2':
+            rc.rob_dict = Pick_place_dict
+            t1 = Thread(target = rc.main_pick_place, args = (q, ))
+
+        if mode == '3':
+            rc.rob_dict = Pick_place_dict_conv_mov
+            t1 = Thread(target = rc.main_pick_place_conveyor, args = (q, ))
+
+        if mode == '4':
+            rc.rob_dict = Pick_place_dict_conv_mov
+            t1 = Thread(target = rc.main_pick_place_conveyor_w_point_cloud, args = (q, ))
+        
+        if mode == '5':
+            rc.rob_dict = Pick_place_dict_conv_mov
+            t1 = Thread(target = main, args =(q, ))
+            
         t2 = Thread(target = robot_server, args =(q, ))
         t1.start()
         t2.start()
 
-    if mode == '3':
-        rc.rob_dict = Pick_place_dict_conv_mov
-        q = Queue(maxsize = 1)
-        t1 = Thread(target = rc.main_pick_place_conveyor, args =(q, ))
-        t2 = Thread(target = robot_server, args =(q, ))
-        t1.start()
-        t2.start()
-
-    if mode == '4':
-        rc.rob_dict = Pick_place_dict_conv_mov
-        q = Queue(maxsize = 1)
-        t1 = Thread(target = rc.main_pick_place_conveyor_w_point_cloud, args =(q, ))
-        t2 = Thread(target = robot_server, args =(q, ))
-        t1.start()
-        t2.start()
-    
-    if mode == '5':
-        rc.rob_dict = Pick_place_dict_conv_mov
-        q = Queue(maxsize = 1)
-        t1 = Thread(target = main, args =(q, ))
-        t2 = Thread(target = robot_server, args =(q, ))
-        t1.start()
-        t2.start()
-
-    else:
-        print('Enter valid number')
-        program_mode(rc)
+    return program_mode(rc)
 
 if __name__ == '__main__':
     CUSTOM_MODEL_NAME = 'my_ssd_mobnet' 
@@ -368,4 +352,10 @@ if __name__ == '__main__':
     Pick_place_dict = robot_poses['Pick_place_dict']
     
     rc = RobotDemos(None, paths, files, check_point)
+    print('Select mode \n'+
+    '1 : Pick and place with static conveyor and hand gestures\n'+
+    '2 : Pick and place with static conveyor and multithreading\n'+
+    '3 : Pick and place with moving conveyor and multithreading\n'+
+    '4 : Pick and place with moving conveyor, point cloud and multithreading\n'+
+    '5 : Main Pick and place\n')
     program_mode(rc)
