@@ -33,16 +33,6 @@ from robot_cell.packet.centroidtracker import CentroidTracker
 from robot_cell.packet.packettracker import PacketTracker
 from robot_cell.packet.point_cloud_viz import PointCloudViz
 
-def pick():
-    """
-    Child thread to execute robot pick action.
-
-    """
-    rc.Conti_Prog.set_value(ua.DataValue(True))
-    time.sleep(0.5)
-    rc.Conti_Prog.set_value(ua.DataValue(False))
-    print('continue pick')
-
 def robot_server(server_out):
     """
     Thread to get values from PLC server.
@@ -153,6 +143,7 @@ def main(server_in):
         print(objects, rob_stopped, stop_active, prog_done)
         is_detect = len(detected) != 0
         is_conv_mov = encoder_vel < - 100.0
+        is_rob_ready = prog_done and (rob_stopped or not stop_active)
 
         if is_detect:
             if is_conv_mov:
@@ -161,6 +152,7 @@ def main(server_in):
                     track_frame = 0
             else:
                 track_frame = 0
+
             track_result, packet = rc.pack_obj_tracking_update(objects, 
                                                     img_detect, 
                                                     homography, 
@@ -168,29 +160,15 @@ def main(server_in):
                                                     x_fixed, 
                                                     track_frame,
                                                     frames_lim,
-                                                    encoder_pos) 
-            if track_result is not None:
-                dist_to_pack = track_result[2]
-                delay = dist_to_pack/(abs(encoder_vel)/10)
-                delay = round(delay,2)
-                if  prog_done and (rob_stopped or not stop_active):
-                    packet_x = track_result[0]
-                    packet_y = track_result[1]
-                    angle = packet.angle
-                    gripper_rot = rc.compute_gripper_rot(angle)
-                    packet_type = packet.pack_type
-                    print(packet_x,packet_y)
-                    rc.change_trajectory(packet_x,
-                                        packet_y, 
-                                        gripper_rot, 
-                                        packet_type,
-                                        x_offset = pack_x_offsets[packet_type],
-                                        pack_z = pack_depths[packet_type])
-                    rc.Start_Prog.set_value(ua.DataValue(True))
-                    print('Program Started: ',robot_server_dict['start'])
-                    time.sleep(0.5)
-                    rc.Start_Prog.set_value(ua.DataValue(False))
-                    time.sleep(0.5)
+                                                    encoder_pos)
+
+            rc.pack_obj_tracking_program_start(track_result, 
+                                                packet, 
+                                                encoder_pos, 
+                                                encoder_vel, 
+                                                is_rob_ready, 
+                                                pack_x_offsets, 
+                                                pack_depths)
 
         if len(deregistered_packets) > 0:
             pclv = PointCloudViz("temp_rgbd", deregistered_packets[-1])
@@ -218,24 +196,16 @@ def main(server_in):
         key = cv2.waitKey(1)
 
         if key == ord('o'):
-            rc.Gripper_State.set_value(ua.DataValue(False))
-            time.sleep(0.1)
+            rc.change_gripper_state(False)
 
         if key == ord('i'):
-            rc.Gripper_State.set_value(ua.DataValue(True))
-            time.sleep(0.1)
+            rc.change_gripper_state(True)
 
         if key == ord('m') :
-            conv_right = not conv_right
-            rc.Conveyor_Left.set_value(ua.DataValue(False))
-            rc.Conveyor_Right.set_value(ua.DataValue(conv_right))
-            time.sleep(0.4)
+            conv_right = rc.change_conveyor_right(conv_right)
         
         if key == ord('n'):
-            conv_left = not conv_left
-            rc.Conveyor_Right.set_value(ua.DataValue(False))
-            rc.Conveyor_Left.set_value(ua.DataValue(conv_left))
-            time.sleep(0.4)
+            conv_left = rc.change_conveyor_left(conv_left)
 
         if key == ord('l'):
             bbox = not bbox
@@ -250,31 +220,16 @@ def main(server_in):
             is_detect = not is_detect
 
         if key == ord('a'):
-            rc.Abort_Prog.set_value(ua.DataValue(True))
-            print('Program Aborted: ',robot_server_dict['abort'])
-            time.sleep(0.5)
+            rc.abort_program()
         
         if key == ord('c'):
-            rc.Conti_Prog.set_value(ua.DataValue(True))
-            print('Continue Program')
-            time.sleep(0.5)
-            rc.Conti_Prog.set_value(ua.DataValue(False))
+            rc.continue_program()
         
         if key == ord('s'):
-            rc.Stop_Prog.set_value(ua.DataValue(True))
-            print('Program Interrupted')
-            time.sleep(0.5)
-            rc.Stop_Prog.set_value(ua.DataValue(False))
+            rc.stop_program()
         
         if key == 27:
-            rc.Abort_Prog.set_value(ua.DataValue(True))
-            print('Program Aborted: ',robot_server_dict['abort'])
-            rc.Abort_Prog.set_value(ua.DataValue(False))
-            rc.Conti_Prog.set_value(ua.DataValue(False))
-            rc.client.disconnect()
-            cv2.destroyAllWindows()
-            print('[INFO]: Client disconnected.')
-            time.sleep(0.5)
+            rc.close_program()
             break
 
 def program_mode(rc):
@@ -314,6 +269,9 @@ def program_mode(rc):
         t2 = Thread(target = robot_server, args =(q, ))
         t1.start()
         t2.start()
+
+    if mode == 'exit':
+        exit()
 
     return program_mode(rc)
 

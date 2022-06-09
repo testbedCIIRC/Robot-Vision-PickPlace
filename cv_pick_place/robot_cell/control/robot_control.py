@@ -193,6 +193,71 @@ class RobotControl:
         cv2.imshow("Frame", boot_screen)
         cv2.waitKey(1)
 
+    def continue_program(self):
+        """
+        Continue robot action.
+
+        """
+        self.Conti_Prog.set_value(ua.DataValue(True))
+        time.sleep(0.5)
+        self.Conti_Prog.set_value(ua.DataValue(False))
+        print('[INFO]: Program continued.')
+
+    def stop_program(self):
+        """
+        Stop robot action.
+
+        """
+        self.Stop_Prog.set_value(ua.DataValue(True))
+        print('[INFO]: Program interrupted.')
+        time.sleep(0.5)
+        self.Stop_Prog.set_value(ua.DataValue(False))
+    def abort_program(self):
+        """
+        Abort robot action.
+
+        """
+        self.Abort_Prog.set_value(ua.DataValue(True))
+        print('[INFO]: Program aborted.')
+        time.sleep(0.5)
+
+    def close_program(self):
+        """
+        Close robot program.
+
+        """
+        self.Abort_Prog.set_value(ua.DataValue(True))
+        print('[INFO]: Program aborted.')
+        self.Abort_Prog.set_value(ua.DataValue(False))
+        self.Conti_Prog.set_value(ua.DataValue(False))
+        self.client.disconnect()
+        cv2.destroyAllWindows()
+        print('[INFO]: Client disconnected.')
+        time.sleep(0.5)
+
+    def change_gripper_state(self, state):
+        """
+        Switch gripper on/off.
+
+        """
+        self.Gripper_State.set_value(ua.DataValue(state))
+        print('[INFO]: Gripper state is {}.'.format(state))
+        time.sleep(0.1)
+    
+    def change_conveyor_right(self, conv_right):
+        conv_right = not conv_right
+        self.Conveyor_Left.set_value(ua.DataValue(False))
+        self.Conveyor_Right.set_value(ua.DataValue(conv_right))
+        time.sleep(0.4)
+        return conv_right
+    
+    def change_conveyor_left(self, conv_left):
+        conv_left = not conv_left
+        self.Conveyor_Right.set_value(ua.DataValue(False))
+        self.Conveyor_Left.set_value(ua.DataValue(conv_left))
+        time.sleep(0.4)
+        return conv_left
+
     def change_trajectory(self, x, y, rot, packet_type, x_offset = 0.0, pack_z = 5.0):
         """
         Updates the trajectory points for the robot program.
@@ -306,7 +371,7 @@ class RobotControl:
         z_pos = self.Act_Pos_Z.get_value()
         a_pos = self.Act_Pos_A.get_value()
         b_pos = self.Act_Pos_B.get_value()
-        c_pos =self.Act_Pos_C.get_value()
+        c_pos = self.Act_Pos_C.get_value()
         status_pos = self.Act_Pos_Status.get_value()
         turn_pos = self.Act_Pos_Turn.get_value()
         x_pos = round(x_pos,2)
@@ -466,3 +531,28 @@ class RobotControl:
                         
                         return (x_fixed, world_y, dist_to_pack), packet
                     else: return None, None
+    def pack_obj_tracking_program_start(self, track_result, packet, encoder_pos, encoder_vel, is_rob_ready, 
+                        pack_x_offsets, pack_depths ):
+
+            if track_result is not None:
+                dist_to_pack = track_result[2]
+                delay = dist_to_pack/(abs(encoder_vel)/10)
+                delay = round(delay,2)
+                if  is_rob_ready:
+                    packet_x = track_result[0]
+                    packet_y = track_result[1]
+                    angle = packet.angle
+                    gripper_rot = self.compute_gripper_rot(angle)
+                    packet_type = packet.pack_type
+                    print(packet_x, packet_y)
+                    self.change_trajectory(packet_x,
+                                        packet_y, 
+                                        gripper_rot, 
+                                        packet_type,
+                                        x_offset = pack_x_offsets[packet_type],
+                                        pack_z = pack_depths[packet_type])
+                    self.Start_Prog.set_value(ua.DataValue(True))
+                    print('Program Started')
+                    time.sleep(0.5)
+                    self.Start_Prog.set_value(ua.DataValue(False))
+                    time.sleep(0.5)
