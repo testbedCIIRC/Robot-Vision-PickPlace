@@ -242,34 +242,25 @@ def program_mode(rc):
 
     """
     mode = input()
-    thread_modes = ['2','3','4','5']
-    if mode == '1':
-        while True:
-            rc.rob_dict = Pick_place_dict
-            rc.main_robot_control_demo()
+    modes_dict = {
+        '1':{'dict':Pick_place_dict, 'func':rc.main_robot_control_demo},
+        '2':{'dict':Pick_place_dict, 'func':rc.main_pick_place},
+        '3':{'dict':Pick_place_dict_conv_mov, 'func':rc.main_pick_place_conveyor},
+        '4':{'dict':Pick_place_dict_conv_mov, 'func':rc.main_pick_place_conveyor_w_point_cloud},
+        '5':{'dict':Pick_place_dict_conv_mov, 'func':main}}
 
-    if mode in thread_modes:
-        q = Queue(maxsize = 1)
-
-        if mode == '2':
-            rc.rob_dict = Pick_place_dict
-            t1 = Thread(target = rc.main_pick_place, args = (q, ))
-
-        if mode == '3':
-            rc.rob_dict = Pick_place_dict_conv_mov
-            t1 = Thread(target = rc.main_pick_place_conveyor, args = (q, ))
-
-        if mode == '4':
-            rc.rob_dict = Pick_place_dict_conv_mov
-            t1 = Thread(target = rc.main_pick_place_conveyor_w_point_cloud, args = (q, ))
-        
-        if mode == '5':
-            rc.rob_dict = Pick_place_dict_conv_mov
-            t1 = Thread(target = main, args =(q, ))
-            
-        t2 = Thread(target = robot_server, args =(q, ))
-        t1.start()
-        t2.start()
+    if mode in modes_dict:
+        rc.rob_dict = modes_dict[mode]['dict']
+        robot_prog = modes_dict[mode]['func']
+        if mode == '1':
+            while True:
+                robot_prog()
+        else:
+            q = Queue(maxsize = 1)
+            t1 = Thread(target = robot_prog, args =(q, ))
+            t2 = Thread(target = robot_server, args =(q, ))
+            t1.start()
+            t2.start()
 
     if mode == 'exit':
         exit()
