@@ -220,6 +220,16 @@ class RobotControl:
         self.Abort_Prog.set_value(ua.DataValue(True))
         print('[INFO]: Program aborted.')
         time.sleep(0.5)
+    def start_program(self):
+        """
+        Start robot program.
+
+        """
+        self.Start_Prog.set_value(ua.DataValue(True))
+        print('[INFO]: Program started.')
+        time.sleep(0.5)
+        self.Start_Prog.set_value(ua.DataValue(False))
+        time.sleep(0.5)
 
     def close_program(self):
         """
@@ -556,7 +566,6 @@ class RobotControl:
         pack_depths (list): List of packet depths.
 
         """
-
         if track_result is not None:
             dist_to_pack = track_result[2]
             delay = dist_to_pack/(abs(encoder_vel)/10)
@@ -574,8 +583,4 @@ class RobotControl:
                                     packet_type,
                                     x_offset = pack_x_offsets[packet_type],
                                     pack_z = pack_depths[packet_type])
-                self.Start_Prog.set_value(ua.DataValue(True))
-                print('Program Started')
-                time.sleep(0.5)
-                self.Start_Prog.set_value(ua.DataValue(False))
-                time.sleep(0.5)
+                self.start_program()
