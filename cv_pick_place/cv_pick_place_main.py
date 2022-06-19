@@ -43,7 +43,7 @@ def robot_server(server_out):
     """
     rc.connect_OPCUA_server()
     rc.get_nodes()
-    
+    #Enabling laser sensor to synchornize robot with moving packets.
     rc.Laser_Enable.set_value(ua.DataValue(True))
     time.sleep(0.5)
     while True:
