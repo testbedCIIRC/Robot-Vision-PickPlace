@@ -298,15 +298,18 @@ def program_mode(rc):
         '3':{'dict':Pick_place_dict_conv_mov, 'func':rc.main_pick_place_conveyor},
         '4':{'dict':Pick_place_dict_conv_mov, 'func':rc.main_pick_place_conveyor_w_point_cloud},
         '5':{'dict':Pick_place_dict_conv_mov, 'func':main}}
+
     # If mode is a program key.
     if mode in modes_dict:
         # Set robot positions and robot program.
         rc.rob_dict = modes_dict[mode]['dict']
         robot_prog = modes_dict[mode]['func']
+
         # If first mode (not threaded) start program in loop.
         if mode == '1':
             while True:
                 robot_prog()
+
         # Otherwise start selected threaded program.
         else:
             q = Queue(maxsize = 1)
@@ -314,19 +317,21 @@ def program_mode(rc):
             t2 = Thread(target = robot_server, args =(q, ))
             t1.start()
             t2.start()
+
     # If input is exit, exit python.
     if mode == 'exit':
         exit()
 
+    # Return function recursively.
     return program_mode(rc)
 
 if __name__ == '__main__':
+    # Define model parameters.
     CUSTOM_MODEL_NAME = 'my_ssd_mobnet' 
     check_point ='ckpt-3'
-    # CUSTOM_MODEL_NAME = 'my_ssd_mobnet_improved_1' 
-    # check_point ='ckpt-6'
-
     LABEL_MAP_NAME = 'label_map.pbtxt'
+
+    # Define model paths.
     paths = {'ANNOTATION_PATH':os.path.join(
                                             'Tensorflow',
                                             'workspace',
@@ -346,19 +351,24 @@ if __name__ == '__main__':
             'LABELMAP': os.path.join(paths['ANNOTATION_PATH'], 
                                         LABEL_MAP_NAME)
             }
-
+            
+    # Define robot positions dictionaries from json file.
     file = open('robot_positions.json')
     robot_poses = json.load(file)
-
     Pick_place_dict_conv_mov_slow = robot_poses['Pick_place_dict_conv_mov_slow']
     Pick_place_dict_conv_mov = robot_poses['Pick_place_dict_conv_mov']
     Pick_place_dict = robot_poses['Pick_place_dict']
     
+    # Initialize robot demos object.
     rc = RobotDemos(None, paths, files, check_point)
+
+    # Show message about robot programs.
     print('Select pick and place mode: \n'+
     '1 : Pick and place with static conveyor and hand gestures\n'+
     '2 : Pick and place with static conveyor and multithreading\n'+
     '3 : Pick and place with moving conveyor and multithreading\n'+
     '4 : Pick and place with moving conveyor, point cloud and multithreading\n'+
     '5 : Main Pick and place\n')
+
+    # Start program mode selection.
     program_mode(rc)
