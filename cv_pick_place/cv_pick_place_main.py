@@ -41,6 +41,7 @@ def robot_server(server_out):
     server_out (object): Queue object where data from PLC server is placed.
 
     """
+    # Connect server and get nodes.
     rc.connect_OPCUA_server()
     rc.get_nodes()
     #Enabling laser sensor to synchornize robot with moving packets.
@@ -351,7 +352,7 @@ if __name__ == '__main__':
             'LABELMAP': os.path.join(paths['ANNOTATION_PATH'], 
                                         LABEL_MAP_NAME)
             }
-            
+
     # Define robot positions dictionaries from json file.
     file = open('robot_positions.json')
     robot_poses = json.load(file)

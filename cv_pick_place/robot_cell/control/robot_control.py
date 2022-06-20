@@ -212,6 +212,7 @@ class RobotControl:
         print('[INFO]: Program interrupted.')
         time.sleep(0.5)
         self.Stop_Prog.set_value(ua.DataValue(False))
+
     def abort_program(self):
         """
         Abort robot action.
@@ -220,6 +221,7 @@ class RobotControl:
         self.Abort_Prog.set_value(ua.DataValue(True))
         print('[INFO]: Program aborted.')
         time.sleep(0.5)
+        
     def start_program(self):
         """
         Start robot program.
@@ -409,10 +411,9 @@ class RobotControl:
         image (np.array): Image where the objects will be drawn.
 
         """
-        # loop over the tracked objects
+        # Loop over the tracked objects.
         for (objectID, centroid) in objects.items():
-            # draw both the ID of the object and the centroid of the
-            # object on the output frame
+            # Draw both the ID and centroid of objects.
             text = "ID {}".format(objectID)
             cv2.putText(image, text, (centroid[0] , centroid[1] - 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
@@ -437,16 +438,17 @@ class RobotControl:
         tuple(float): Updated x, mean y packet pick positions and distance to packet.
     
         """
-        # loop over the tracked objects
+        # Loop over the tracked objects.
         for (objectID, data) in objects.items():
             centroid = data[:2]
             centroid = centroid.astype('int')
-            # draw both the ID of the object and the centroid of the
-            # object on the output frame
+            # Draw both the ID and centroid of objects.
             text = "ID {}".format(objectID)
             cv2.putText(img, text, (centroid[0] , centroid[1] - 40), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             cv2.circle(img, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
+
+            # Compute homography if it isn't None.
             if homog is not None:
                 new_centroid = np.append(centroid,1)
                 world_centroid = homog.dot(new_centroid)
@@ -455,28 +457,38 @@ class RobotControl:
                             str(round(world_centroid[0],2)) +','+ 
                             str(round(world_centroid[1],2)), centroid, 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+
+                # If objects are being detected.
                 if enable:
+                    # Append object id, and centroid id world coordinates to list.
                     track_list.append([objectID,world_centroid[0],world_centroid[1]])
 
+                    # If max number of traking frames has been reached.
                     if track_frame == frames_lim:
+                        # Find the last registered object with respect to id (max id).
                         track_array = np.array(track_list)
                         track_IDs = track_array[:,0]
                         max_ID = np.max(track_IDs)
                         track_data = track_array[track_IDs == max_ID]
                         
+                        # Find last recorded x pos and compute mean y.
                         mean_x = float(track_data[-1,1])
                         mean_y = float(np.mean(track_data[:,2]))
-                        print(track_data[:,2],mean_y)    
-                        
+                        print(track_data[:,2],mean_y)
+
+                        # Convert to milimeters and round.
                         world_x = round(mean_x* 10.0,2)
                         world_y = round(mean_y* 10.0,2)
                         dist_to_pack = x_fixed - world_x
+
+                        # Check if y is range of conveyor width and adjust accordingly.
                         if world_y < 75.0:
                             world_y = 75.0
 
                         elif world_y > 470.0:
                             world_y = 470.0 
                         
+                        # Empty list for tracking and reset mean variables.
                         track_list.clear()
                         mean_x = 0
                         mean_y = 0
@@ -502,17 +514,18 @@ class RobotControl:
         tuple(float): Updated x, mean y packet pick positions and distance to packet.
     
         """
-        # loop over the tracked objects
+        # Loop over the tracked objects.
         for (objectID, packet) in objects.items():
+            # Draw both the ID and centroid of packet objects.
             centroid_tup = packet.centroid
             centroid = np.array([centroid_tup[0],centroid_tup[1]]).astype('int')
-            # draw both the ID of the object and the centroid of the
-            # object on the output frame
             text = "ID {}".format(objectID)
             cv2.putText(img, text, (centroid[0] , centroid[1] - 40), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             cv2.circle(img, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
             cv2.circle(img, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
+
+            # Compute homography if it isn't None.
             if homog is not None:
                 new_centroid = np.append(centroid,1)
                 world_centroid = homog.dot(new_centroid)
@@ -521,34 +534,46 @@ class RobotControl:
                             str(round(world_centroid[0],2)) +','+ 
                             str(round(world_centroid[1],2)), centroid, 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                if enable:
-                    track_list.append([objectID,world_centroid[0],world_centroid[1]])
 
+            # If objects are being detected.
+                if enable:
+                    # Append object id, and centroid id world coordinates to list.
+                    track_list.append([objectID,world_centroid[0],world_centroid[1]])
+                    
+                    # If max number of traking frames has been reached.
                     if track_frame == frames_lim:
+
+                        # Find the last registered object with respect to id (max id).
                         track_array = np.array(track_list)
                         track_IDs = track_array[:,0]
                         max_ID = np.max(track_IDs)
                         track_data = track_array[track_IDs == max_ID]
                         
+                        # Find last recorded x pos and compute mean y.
                         mean_x = float(track_data[-1,1])
                         mean_y = float(np.mean(track_data[:,2]))
                         print(track_data[:,2],mean_y)    
                         
+                        # Convert to milimeters and round.
                         world_x = round(mean_x* 10.0,2)
                         world_y = round(mean_y* 10.0,2)
                         dist_to_pack = x_fixed - world_x
 
+                        # Check if y is range of conveyor width and adjust accordingly.
                         if world_y < 75.0:
                             world_y = 75.0
 
                         elif world_y > 470.0:
-                            world_y = 470.0 
-                        
+                            world_y = 470.0
+                         
+                        # Empty list for tracking and reset mean variables.
                         track_list.clear()
                         mean_x = 0
                         mean_y = 0
-                        
+                        # Return tuple with packet to be picked data and packet object.
                         return (x_fixed, world_y, dist_to_pack), packet
+
+                    # If max number of traking frames hasn't been reached return None.
                     else: return None, None
 
     def pack_obj_tracking_program_start(self, track_result, packet, encoder_pos, encoder_vel, is_rob_ready, 
@@ -566,21 +591,33 @@ class RobotControl:
         pack_depths (list): List of packet depths.
 
         """
+        # If track result is available.
         if track_result is not None:
+            # Compute distance to packet and delay required to continue program.
             dist_to_pack = track_result[2]
             delay = dist_to_pack/(abs(encoder_vel)/10)
             delay = round(delay,2)
+
+            # If the robot is ready.
             if  is_rob_ready:
+                # Define packet pos based on track result data.
                 packet_x = track_result[0]
                 packet_y = track_result[1]
+
+                # Get gripper rotation and packet type based on last detected packet.
                 angle = packet.angle
                 gripper_rot = self.compute_gripper_rot(angle)
                 packet_type = packet.pack_type
                 print(packet_x, packet_y)
-                self.change_trajectory(packet_x,
-                                    packet_y, 
-                                    gripper_rot, 
-                                    packet_type,
-                                    x_offset = pack_x_offsets[packet_type],
-                                    pack_z = pack_depths[packet_type])
+
+                # Change end points of robot.
+                self.change_trajectory(
+                                packet_x,
+                                packet_y, 
+                                gripper_rot, 
+                                packet_type,
+                                x_offset = pack_x_offsets[packet_type],
+                                pack_z = pack_depths[packet_type])
+
+                # Start robot program.
                 self.start_program()
