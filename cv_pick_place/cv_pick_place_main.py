@@ -9,7 +9,6 @@ import numpy as np
 import pyrealsense2
 import scipy.signal
 from opcua import ua
-import tensorflow as tf
 from opcua import Client
 import matplotlib as mpl
 from scipy import ndimage
@@ -18,11 +17,6 @@ from threading import Thread
 from threading import Timer
 from collections import OrderedDict
 from scipy.spatial import distance as dist
-from cvzone.HandTrackingModule import HandDetector
-from object_detection.utils import config_util
-from object_detection.utils import label_map_util
-from object_detection.builders import model_builder
-from object_detection.utils import visualization_utils as viz_utils
 
 from robot_cell.detection.packet_detector import PacketDetector
 from robot_cell.detection.apriltag_detection import ProcessingApriltag

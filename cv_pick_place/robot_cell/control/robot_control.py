@@ -9,26 +9,12 @@ import numpy as np
 import pyrealsense2
 import scipy.signal
 from opcua import ua
-import tensorflow as tf
 from opcua import Client
 import matplotlib as mpl
 from scipy import ndimage
 from queue import Queue
 from threading import Thread
 from collections import OrderedDict
-from scipy.spatial import distance as dist
-from cvzone.HandTrackingModule import HandDetector
-from object_detection.utils import config_util
-from object_detection.utils import label_map_util
-from object_detection.builders import model_builder
-from object_detection.utils import visualization_utils as viz_utils
-
-from robot_cell.detection.packet_detector import PacketDetector
-from robot_cell.detection.apriltag_detection import ProcessingApriltag
-from robot_cell.detection.realsense_depth import DepthCamera
-from robot_cell.packet.centroidtracker import CentroidTracker
-from robot_cell.packet.packettracker import PacketTracker
-
 
 class RobotControl:
     def __init__(self, rob_dict, paths, files, checkpt):
@@ -606,6 +592,16 @@ class RobotControl:
 
                 # Get gripper rotation and packet type based on last detected packet.
                 angle = packet.angle
+
+                depth_mean = np.mean(packet.depth_maps, axis=2)
+
+                cx, cy = packet.centroid
+                xminbbx = packet.xminbbx
+                yminbbx = packet.yminbbx
+                # 1080x1440x3.
+                x_depth, y_depth = int(cx-xminbbx), int(cy-yminbbx)
+
+                print(depth_mean[y_depth, x_depth])
                 gripper_rot = self.compute_gripper_rot(angle)
                 packet_type = packet.pack_type
                 print(packet_x, packet_y)

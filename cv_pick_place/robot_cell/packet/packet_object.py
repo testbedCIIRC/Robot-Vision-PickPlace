@@ -3,7 +3,8 @@ import numpy as np
 # Class containing relevant packet data for convenience
 class Packet:
     def __init__(self, box = np.empty(()), pack_type = None, centroid = (0, 0), 
-                    centroid_depth = 0, angle = 0, width = 0, height = 0, encoder_position = 0):
+                    centroid_depth = 0, angle = 0, width = 0, height = 0,
+                     ymin= 0, ymax= 0, xmin= 0, xmax= 0, encoder_position = 0):
         """
         Constructs packet objects.
     
@@ -28,6 +29,11 @@ class Packet:
         # Width and height of packet bounding box
         self.width = width
         self.height = height
+
+        self.yminbbx = ymin
+        self.ymaxbbx = ymax
+        self.xminbbx = xmin
+        self.xmaxbbx = xmax
 
         # Numpy array of cropped depth maps
         self.depth_maps = np.empty(())

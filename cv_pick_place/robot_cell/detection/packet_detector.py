@@ -170,7 +170,7 @@ class PacketDetector:
         boxes = detections['detection_boxes']
         # get all boxes from an array
         # max_boxes_to_draw = boxes.shape[0]
-        max_boxes_to_draw = 1
+        max_boxes_to_draw = 4
         # get scores to get a threshold
         scores = detections['detection_scores']
         # set as a default but free to adjust it to your needs
@@ -227,7 +227,7 @@ class PacketDetector:
                         detections['detection_scores'],
                         self.category_index,
                         use_normalized_coordinates=True,
-                        max_boxes_to_draw=1,
+                        max_boxes_to_draw = max_boxes_to_draw,
                         min_score_thresh=.8,
                         agnostic_mode=False, 
                         line_thickness=1)
@@ -396,6 +396,8 @@ class PacketDetector:
                             centroid = centroid,
                             centroid_depth = distance, 
                             angle = angle,
+                            ymin= ymin, ymax= ymax, 
+                            xmin= xmin, xmax= xmax, 
                             width = w, height = h, 
                             encoder_position = encoder_pos)
                 if centroid[0] - w/2 > guard  and centroid[0] + w/2 < (width - guard ):
