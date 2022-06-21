@@ -159,6 +159,39 @@ class RobotControl:
         self.Place_Done =  self.client.get_node(
             'ns=3;s="InstPickPlace"."instPlacePos"."Done"')
 
+    def robot_server(self, server_out):
+        """
+        Thread to get values from PLC server.
+
+        Parameters:
+        server_out (object): Queue object where data from PLC server is placed.
+
+        """
+        # Connect server and get nodes.
+        self.connect_OPCUA_server()
+        self.get_nodes()
+        #Enabling laser sensor to synchornize robot with moving packets.
+        self.Laser_Enable.set_value(ua.DataValue(True))
+        time.sleep(0.5)
+        while True:
+            try:
+                robot_server_dict = {
+                'pos':self.get_actual_pos(),
+                'encoder_vel':round(self.Encoder_Vel.get_value(),2),
+                'encoder_pos':round(self.Encoder_Pos.get_value(),2),
+                'start':self.Start_Prog.get_value(),
+                'abort':self.Abort_Prog.get_value(),
+                'rob_stopped':self.Rob_Stopped.get_value(),
+                'stop_active':self.Stop_Active.get_value(),
+                'prog_done':self.Prog_Done.get_value()
+                }
+                server_out.put(robot_server_dict)
+
+            except:
+                # Triggered when OPCUA server was disconnected.
+                print('[INFO]: Queue empty.')
+                break
+
     def show_boot_screen(self, message):
         """
         Opens main frame window with boot screen message.

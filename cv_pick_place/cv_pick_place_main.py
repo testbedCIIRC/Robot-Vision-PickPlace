@@ -27,39 +27,6 @@ from robot_cell.packet.centroidtracker import CentroidTracker
 from robot_cell.packet.packettracker import PacketTracker
 from robot_cell.packet.point_cloud_viz import PointCloudViz
 
-def robot_server(server_out):
-    """
-    Thread to get values from PLC server.
-
-    Parameters:
-    server_out (object): Queue object where data from PLC server is placed.
-
-    """
-    # Connect server and get nodes.
-    rc.connect_OPCUA_server()
-    rc.get_nodes()
-    #Enabling laser sensor to synchornize robot with moving packets.
-    rc.Laser_Enable.set_value(ua.DataValue(True))
-    time.sleep(0.5)
-    while True:
-        try:
-            robot_server_dict = {
-            'pos':rc.get_actual_pos(),
-            'encoder_vel':round(rc.Encoder_Vel.get_value(),2),
-            'encoder_pos':round(rc.Encoder_Pos.get_value(),2),
-            'start':rc.Start_Prog.get_value(),
-            'abort':rc.Abort_Prog.get_value(),
-            'rob_stopped':rc.Rob_Stopped.get_value(),
-            'stop_active':rc.Stop_Active.get_value(),
-            'prog_done':rc.Prog_Done.get_value()
-            }
-            server_out.put(robot_server_dict)
-            # print('out size:',server_out.qsize())
-        except:
-            # Triggered when OPCUA server was disconnected.
-            print('[INFO]: Queue empty.')
-            break
-
 def main(server_in):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
@@ -309,7 +276,7 @@ def program_mode(rc):
         else:
             q = Queue(maxsize = 1)
             t1 = Thread(target = robot_prog, args =(q, ))
-            t2 = Thread(target = robot_server, args =(q, ))
+            t2 = Thread(target = rc.robot_server, args =(q, ))
             t1.start()
             t2.start()
 
