@@ -26,7 +26,8 @@ class RobotControl(RobotCommunication):
         rob_dict (dict): Dictionary with robot points for program. 
 
         """
-        super().__init__(rob_dict)
+        self.rob_dict = rob_dict
+        super().__init__()
 
 
     def show_boot_screen(self, message):

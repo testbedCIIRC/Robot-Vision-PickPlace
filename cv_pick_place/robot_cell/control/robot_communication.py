@@ -17,16 +17,12 @@ from threading import Thread
 from collections import OrderedDict
 
 class RobotCommunication:
-    def __init__(self, rob_dict):
+    def __init__(self):
         """
         RobotControl object constructor.
-    
-        Parameters:
-        rob_dict (dict): Dictionary with robot points for program. 
 
         """
-        self.rob_dict = rob_dict
-
+        
     def connect_OPCUA_server(self):
         """
         Connects OPC UA Client to Server on PLC.

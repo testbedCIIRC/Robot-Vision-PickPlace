@@ -40,7 +40,7 @@ def main(server_in):
     pt = PacketTracker(maxDisappeared=10)    
     dc = DepthCamera()
     rc.show_boot_screen('STARTING NEURAL NET...')
-    pack_detect = PacketDetector(rc.paths, rc.files, rc.checkpt)
+    pack_detect = PacketDetector(paths, files, check_point)
 
     # Define fixed x position where robot waits for packet.
     x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
