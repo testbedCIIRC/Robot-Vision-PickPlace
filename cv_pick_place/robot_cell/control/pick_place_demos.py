@@ -43,7 +43,10 @@ class RobotDemos(RobotControl):
         files (dict): Dictionary with pipeline and config paths. 
 
         """
-        super().__init__(rob_dict, paths, files, checkpt)
+        self.paths = paths
+        self.files = files
+        self.checkpt = checkpt
+        super().__init__(rob_dict)
 
     def gripper_gesture_control(self, detector, cap, show = False):
         """

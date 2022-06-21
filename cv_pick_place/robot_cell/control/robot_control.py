@@ -17,20 +17,15 @@ from threading import Thread
 from collections import OrderedDict
 
 class RobotControl:
-    def __init__(self, rob_dict, paths, files, checkpt):
+    def __init__(self, rob_dict):
         """
         RobotControl object constructor.
     
         Parameters:
-        rob_dict (dict): Dictionary with robot points for program.
-        paths (dict): Dictionary with annotation and checkpoint paths.
-        files (dict): Dictionary with pipeline and config paths. 
+        rob_dict (dict): Dictionary with robot points for program. 
 
         """
         self.rob_dict = rob_dict
-        self.paths = paths
-        self.files = files
-        self.checkpt = checkpt
 
     def connect_OPCUA_server(self):
         """
@@ -521,10 +516,11 @@ class RobotControl:
                             str(round(world_centroid[1],2)), centroid, 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
-            # If objects are being detected.
+                # If objects are being detected.
                 if enable:
                     # Append object id, and centroid id world coordinates to list.
                     track_list.append([objectID,world_centroid[0],world_centroid[1]])
+                    print(track_list)
                     
                     # If max number of traking frames has been reached.
                     if track_frame == frames_lim:
@@ -551,7 +547,7 @@ class RobotControl:
 
                         elif world_y > 470.0:
                             world_y = 470.0
-                         
+                            
                         # Empty list for tracking and reset mean variables.
                         track_list.clear()
                         mean_x = 0
@@ -559,7 +555,7 @@ class RobotControl:
                         # Return tuple with packet to be picked data and packet object.
                         return (x_fixed, world_y, dist_to_pack), packet
 
-                    # If max number of traking frames hasn't been reached return None.
+                    #If max number of traking frames hasn't been reached return None.
                     else: return None, None
 
     def pack_obj_tracking_program_start(self, track_result, packet, encoder_pos, encoder_vel, is_rob_ready, 
