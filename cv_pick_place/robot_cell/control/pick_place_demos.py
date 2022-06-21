@@ -32,7 +32,7 @@ from robot_cell.packet.centroidtracker import CentroidTracker
 from robot_cell.packet.packettracker import PacketTracker
 from robot_cell.packet.point_cloud_viz import PointCloudViz
 
-class RobotDemos(RobotControl):
+class RobotDemos:
     def __init__(self, rob_dict, paths, files, checkpt):
         """
         RobotDemos object constructor.
@@ -46,9 +46,9 @@ class RobotDemos(RobotControl):
         self.paths = paths
         self.files = files
         self.checkpt = checkpt
-        super().__init__(rob_dict)
 
-    def gripper_gesture_control(self, detector, cap, show = False):
+
+    def gripper_gesture_control(self, rc, detector, cap, show = False):
         """
         Function used to control the gripper with hand gestures.
 
@@ -94,17 +94,17 @@ class RobotDemos(RobotControl):
                     # with draw
                     length, info = detector.findDistance(lmList1[8], lmList2[8])
                     if length <=30.0:
-                        self.Gripper_State.set_value(ua.DataValue(False))
+                        rc.Gripper_State.set_value(ua.DataValue(False))
                         time.sleep(0.1)
                     if length >=100.0:
-                        self.Gripper_State.set_value(ua.DataValue(True))
+                        rc.Gripper_State.set_value(ua.DataValue(True))
                         time.sleep(0.1)
         else:
             img = np.zeros_like(img)
 
         cv2.imshow("Gestures", img)
 
-    def main_packet_detect(self):
+    def main_packet_detect(self, rc):
             """
             Basic main packet detection.
         
@@ -112,7 +112,7 @@ class RobotDemos(RobotControl):
             tuple(np.ndarray, list): Image  with detections and detections.
         
             """
-            self.show_boot_screen('STARTING NEURAL NET...')
+            rc.show_boot_screen('STARTING NEURAL NET...')
             warn_count = 0
             a = 0
             b = 0
@@ -166,7 +166,7 @@ class RobotDemos(RobotControl):
                                                                         bnd_box = bbox)
                 
                 objects = ct.update(detected)
-                self.objects_update(objects, img_detect)
+                rc.objects_update(objects, img_detect)
 
                 cv2.circle(img_detect, (int(width/2),int(height/2) ), 
                             4, (0, 0, 255), -1)
@@ -203,49 +203,49 @@ class RobotDemos(RobotControl):
             print(detected)
             return added_image , detected
 
-    def main_robot_control_demo(self):
+    def main_robot_control_demo(self, rc):
         """
         Pick and place with static conveyor and hand gestures.
 
         """
-        detected_img, detected = self.main_packet_detect()
+        detected_img, detected = self.main_packet_detect(rc)
 
-        self.connect_OPCUA_server()
+        rc.connect_OPCUA_server()
 
         world_centroid = detected[0][2]
         packet_x = round(world_centroid[0] * 10.0, 2)
         packet_y = round(world_centroid[1] * 10.0, 2)
         angle = detected[0][3]
-        gripper_rot = self.compute_gripper_rot(angle)
+        gripper_rot = rc.compute_gripper_rot(angle)
         packet_type = detected[0][4]
 
-        self.get_nodes()
+        rc.get_nodes()
 
         frame_num = -1
         bpressed = 0
         dc = DepthCamera()
-        gripper_ON = self.Gripper_State.get_value()
+        gripper_ON = rc.Gripper_State.get_value()
         cap = cv2.VideoCapture(2)
         detector = HandDetector(detectionCon=0.8, maxHands=2)
         show_gestures = True
         while True:
-            start = self.Start_Prog.get_value()
-            rob_stopped = self.Rob_Stopped.get_value()
-            abort = self.Abort_Prog.get_value()
-            encoder_vel = self.Encoder_Vel.get_value()
-            encoder_pos = self.Encoder_Pos.get_value()
+            start = rc.Start_Prog.get_value()
+            rob_stopped = rc.Rob_Stopped.get_value()
+            abort = rc.Abort_Prog.get_value()
+            encoder_vel = rc.Encoder_Vel.get_value()
+            encoder_pos = rc.Encoder_Pos.get_value()
 
-            x_pos = self.Act_Pos_X.get_value()
-            y_pos = self.Act_Pos_Y.get_value()
-            z_pos = self.Act_Pos_Z.get_value()
-            a_pos = self.Act_Pos_A.get_value()
-            b_pos = self.Act_Pos_B.get_value()
-            c_pos =self.Act_Pos_C.get_value()
-            status_pos = self.Act_Pos_Status.get_value()
-            turn_pos = self.Act_Pos_Turn.get_value()
+            x_pos = rc.Act_Pos_X.get_value()
+            y_pos = rc.Act_Pos_Y.get_value()
+            z_pos = rc.Act_Pos_Z.get_value()
+            a_pos = rc.Act_Pos_A.get_value()
+            b_pos = rc.Act_Pos_B.get_value()
+            c_pos =rc.Act_Pos_C.get_value()
+            status_pos = rc.Act_Pos_Status.get_value()
+            turn_pos = rc.Act_Pos_Turn.get_value()
 
-            prePick_done = self.PrePick_Done.get_value()
-            place_done = self.Place_Done.get_value()
+            prePick_done = rc.PrePick_Done.get_value()
+            place_done = rc.Place_Done.get_value()
 
             ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
             rgb_frame = rgb_frame[:,240:1680]
@@ -253,7 +253,7 @@ class RobotDemos(RobotControl):
             height, width, depth = rgb_frame.shape
             # rgb_frame = cv2.convertScaleAbs(rgb_frame, alpha=1.2, beta=10)
             
-            self.gripper_gesture_control(detector, cap, show = show_gestures)
+            self.gripper_gesture_control(rc, detector, cap, show = show_gestures)
             
             x_pos = round(x_pos,2)
             y_pos = round(y_pos,2)
@@ -293,14 +293,13 @@ class RobotDemos(RobotControl):
 
             key = cv2.waitKey(1)
             if key == 27:
-                self.Abort_Prog.set_value(ua.DataValue(True))
+                rc.Abort_Prog.set_value(ua.DataValue(True))
                 print('Program Aborted: ',abort)
-                self.Abort_Prog.set_value(ua.DataValue(False))
+                rc.Abort_Prog.set_value(ua.DataValue(False))
                 cap.release()
-                self.client.disconnect()
+                rc.client.disconnect()
                 # self.gripper_gesture_control(detector, cap, show = False)
-                cv2.destroyWindow("Gestures")
-                cv2.destroyWindow("Object detected")
+                cv2.destroyAllWindows()
                 time.sleep(0.5)
                 break
 
@@ -308,35 +307,35 @@ class RobotDemos(RobotControl):
                 if key == ord('b'):
                     bpressed += 1
                     if bpressed == 5:
-                        self.change_trajectory(packet_x, 
+                        rc.change_trajectory(packet_x, 
                                                 packet_y, 
                                                 gripper_rot, 
                                                 packet_type)
-                        self.Start_Prog.set_value(ua.DataValue(True))
+                        rc.Start_Prog.set_value(ua.DataValue(True))
                         print('Program Started: ',start)
-                        self.Start_Prog.set_value(ua.DataValue(False))
+                        rc.Start_Prog.set_value(ua.DataValue(False))
                         time.sleep(0.5)
                         bpressed = 0
                 elif key != ord('b'):
                     bpressed = 0
 
             if key == ord('o'):
-                self.Gripper_State.set_value(ua.DataValue(False))
+                rc.Gripper_State.set_value(ua.DataValue(False))
                 time.sleep(0.1)
 
             if key == ord('i'):
-                self.Gripper_State.set_value(ua.DataValue(True))
+                rc.Gripper_State.set_value(ua.DataValue(True))
                 time.sleep(0.1)
             
             if key == ord('g'):
                 show_gestures = not show_gestures
                 
             if key == ord('a'):
-                self.Abort_Prog.set_value(ua.DataValue(True))
+                rc.Abort_Prog.set_value(ua.DataValue(True))
                 print('Program Aborted: ',abort)
                 time.sleep(0.5)
                 
-    def main_pick_place(self, server_in):
+    def main_pick_place(self,server_in, rc):
         """
         Pick and place with static conveyor and multithreading.
 
@@ -347,7 +346,7 @@ class RobotDemos(RobotControl):
         apriltag = ProcessingApriltag()
         ct = CentroidTracker()    
         dc = DepthCamera()    
-        self.show_boot_screen('STARTING NEURAL NET...')
+        rc.show_boot_screen('STARTING NEURAL NET...')
         pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
         warn_count = 0
         track_frame = 0
@@ -400,7 +399,7 @@ class RobotDemos(RobotControl):
             
             objects = ct.update(detected)
             # print(objects)
-            self.objects_update(objects, img_detect)
+            rc.objects_update(objects, img_detect)
             
             if depth_map:
                 img_detect = cv2.addWeighted(img_detect, 0.8, heatmap, 0.3, 0)
@@ -426,36 +425,36 @@ class RobotDemos(RobotControl):
                         packet_x = round(world_centroid[0] * 10.0, 2)
                         packet_y = round(world_centroid[1] * 10.0, 2)
                         angle = detected[0][3]
-                        gripper_rot = self.compute_gripper_rot(angle)
+                        gripper_rot = rc.compute_gripper_rot(angle)
                         packet_type = detected[0][4]
-                        self.change_trajectory(packet_x, 
+                        rc.change_trajectory(packet_x, 
                                                 packet_y, 
                                                 gripper_rot, 
                                                 packet_type)
-                        self.Start_Prog.set_value(ua.DataValue(True))
+                        rc.Start_Prog.set_value(ua.DataValue(True))
                         print('Program Started: ',robot_server_dict['start'])
-                        self.Start_Prog.set_value(ua.DataValue(False))
+                        rc.Start_Prog.set_value(ua.DataValue(False))
                         time.sleep(0.5)
                         bpressed = 0
                 elif key != ord('b'):
                     bpressed = 0
 
             if key == ord('o'):
-                self.Gripper_State.set_value(ua.DataValue(False))
+                rc.Gripper_State.set_value(ua.DataValue(False))
                 time.sleep(0.1)
 
             if key == ord('i'):
-                self.Gripper_State.set_value(ua.DataValue(True))
+                rc.Gripper_State.set_value(ua.DataValue(True))
                 time.sleep(0.1)
 
             if key == ord('m') :
                 conv_right = not conv_right
-                self.Conveyor_Right.set_value(ua.DataValue(conv_right))
+                rc.Conveyor_Right.set_value(ua.DataValue(conv_right))
                 time.sleep(0.1)
             
             if key == ord('n'):
                 conv_left = not conv_left
-                self.Conveyor_Left.set_value(ua.DataValue(conv_left))
+                rc.Conveyor_Left.set_value(ua.DataValue(conv_left))
                 time.sleep(0.1)
 
             if key == ord('l'):
@@ -471,226 +470,33 @@ class RobotDemos(RobotControl):
                 is_detect = not is_detect
 
             if key == ord('a'):
-                self.Abort_Prog.set_value(ua.DataValue(True))
+                rc.Abort_Prog.set_value(ua.DataValue(True))
                 print('Program Aborted: ',robot_server_dict['abort'])
                 time.sleep(0.5)
             
             if key == ord('c'):
-                self.Conti_Prog.set_value(ua.DataValue(True))
+                rc.Conti_Prog.set_value(ua.DataValue(True))
                 print('Continue Program')
                 time.sleep(0.5)
-                self.Conti_Prog.set_value(ua.DataValue(False))
+                rc.Conti_Prog.set_value(ua.DataValue(False))
             
             if key == ord('s'):
-                self.Stop_Prog.set_value(ua.DataValue(True))
+                rc.Stop_Prog.set_value(ua.DataValue(True))
                 print('Program Interrupted')
                 time.sleep(0.5)
-                self.Stop_Prog.set_value(ua.DataValue(False))
+                rc.Stop_Prog.set_value(ua.DataValue(False))
             
             if key == 27:
-                self.Abort_Prog.set_value(ua.DataValue(True))
+                rc.Abort_Prog.set_value(ua.DataValue(True))
                 print('Program Aborted: ',robot_server_dict['abort'])
-                self.Abort_Prog.set_value(ua.DataValue(False))
-                self.client.disconnect()
+                rc.Abort_Prog.set_value(ua.DataValue(False))
+                rc.client.disconnect()
                 cv2.destroyAllWindows()
                 print('[INFO]: Client disconnected.')
                 time.sleep(0.5)
                 break
-    def main_pick_place_conveyor(self, server_in):
-        """
-        Thread for pick and place with moving conveyor.
-        
-        Parameters:
-        server_in (object): Queue object containing data from the PLC server.
-        
-        """
-        apriltag = ProcessingApriltag()
-        ct = CentroidTracker(maxDisappeared=10)    
-        dc = DepthCamera()    
-        self.show_boot_screen('STARTING NEURAL NET...')
-        pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
-        x_fixed = self.rob_dict['pick_pos_base'][0]['x']
-        warn_count = 0
-        track_frame = 0
-        frames_lim = 10
-        bbox = True
-        f_data = False
-        depth_map = True
-        is_detect = False
-        conv_left = False
-        conv_right = False
-        frame_count = 1
-        homography = None
-        track_result = None
-        #with speed 55% :
-        pack_depths = [10.0, 3.0, 5.0, 5.0]
-        pack_x_offsets = [50.0,180.0,130.0,130.0]
 
-        while True:
-            # print('in size:',server_in.qsize())
-            robot_server_dict = server_in.get()
-            start_time = time.time()
-            rob_stopped = robot_server_dict['rob_stopped']
-            stop_active = robot_server_dict['stop_active']
-            prog_done = robot_server_dict['prog_done']
-
-            ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
-            
-            rgb_frame = rgb_frame[:,240:1680]
-            height, width, depth = rgb_frame.shape
-            
-            try:
-                rgb_frame = apriltag.detect_tags(rgb_frame)
-                if frame_count == 1:
-                    homography = apriltag.compute_homog()
-                    print('[INFO]: Homography matrix updated.')
-                is_type_np = type(homography).__module__ == np.__name__
-                is_marker_detect = is_type_np or homography == None
-                if is_marker_detect:
-                    warn_count = 0
-                    
-            except:
-            #Triggered when no markers are in the frame:
-                warn_count += 1
-                if warn_count == 1:
-                    print("[INFO]: Markers out of frame or moving.")
-                pass
-            
-            depth_frame = depth_frame[90:400,97:507]
-            depth_frame = cv2.resize(depth_frame, (width,height))
-
-            heatmap = colorized_depth
-            heatmap = heatmap[90:400,97:507,:]
-            heatmap = cv2.resize(heatmap, (width,height))
-            
-            img_detect, detected = pack_detect.deep_detector_v2(
-                                                                rgb_frame, 
-                                                                depth_frame, 
-                                                                bnd_box = bbox)
-            objects = ct.update_detected(detected)
-            print(objects, rob_stopped, stop_active, prog_done)
-            is_detect = len(detected) != 0
-            encoder_vel = robot_server_dict['encoder_vel']
-            is_conv_mov = encoder_vel < - 100.0
-
-            if is_detect:
-                if is_conv_mov:
-                    track_frame += 1
-                    if track_frame > frames_lim:
-                        track_frame = 0
-                else:
-                    track_frame = 0
-                track_result = self.packet_tracking_update(objects, 
-                                                        img_detect, 
-                                                        homography, 
-                                                        is_detect, 
-                                                        x_fixed = x_fixed, 
-                                                        track_frame = track_frame,
-                                                        frames_lim = frames_lim)
-                if track_result is not None:
-                    dist_to_pack = track_result[2]
-                    delay = dist_to_pack/(abs(encoder_vel)/10)
-                    delay = round(delay,2)
-                    # print('delay, distance',delay,dist_to_pack)
-                    # start_pick = Timer(delay, pick)
-                    # start_pick.start()
-                    if  prog_done and (rob_stopped or not stop_active):
-                        packet_x = track_result[0]
-                        packet_y = track_result[1]
-                        angle = detected[0][2]
-                        gripper_rot = self.compute_gripper_rot(angle)
-                        packet_type = detected[0][3]
-                        print(packet_x,packet_y)
-                        self.change_trajectory(packet_x,
-                                            packet_y, 
-                                            gripper_rot, 
-                                            packet_type,
-                                            x_offset = pack_x_offsets[packet_type],
-                                            pack_z = pack_depths[packet_type])
-                        self.Start_Prog.set_value(ua.DataValue(True))
-                        print('Program Started: ',robot_server_dict['start'])
-                        time.sleep(0.5)
-                        self.Start_Prog.set_value(ua.DataValue(False))
-                        time.sleep(0.5)
-
-            if depth_map:
-                img_detect = cv2.addWeighted(img_detect, 0.8, heatmap, 0.3, 0)
-
-            if f_data:
-                cv2.putText(img_detect,str(robot_server_dict),(10,25),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
-                cv2.putText(img_detect,
-                            "FPS:"+str(1.0/(time.time() - start_time)),
-                            (10,40),cv2.FONT_HERSHEY_SIMPLEX, 0.57, 
-                            (255, 255, 0), 2)
-
-            cv2.imshow("Frame", cv2.resize(img_detect, (1280,960)))
-            frame_count += 1
-            if frame_count == 500:
-                frame_count = 1
-
-            key = cv2.waitKey(1)
-
-            if key == ord('o'):
-                self.Gripper_State.set_value(ua.DataValue(False))
-                time.sleep(0.1)
-
-            if key == ord('i'):
-                self.Gripper_State.set_value(ua.DataValue(True))
-                time.sleep(0.1)
-
-            if key == ord('m') :
-                conv_right = not conv_right
-                self.Conveyor_Left.set_value(ua.DataValue(False))
-                self.Conveyor_Right.set_value(ua.DataValue(conv_right))
-                time.sleep(0.4)
-            
-            if key == ord('n'):
-                conv_left = not conv_left
-                self.Conveyor_Right.set_value(ua.DataValue(False))
-                self.Conveyor_Left.set_value(ua.DataValue(conv_left))
-                time.sleep(0.4)
-
-            if key == ord('l'):
-                bbox = not bbox
-            
-            if key == ord('h'):
-                depth_map = not depth_map
-                    
-            if key == ord('f'):
-                f_data = not f_data
-            
-            if key == ord('e'):
-                is_detect = not is_detect
-
-            if key == ord('a'):
-                self.Abort_Prog.set_value(ua.DataValue(True))
-                print('Program Aborted: ',robot_server_dict['abort'])
-                time.sleep(0.5)
-            
-            if key == ord('c'):
-                self.Conti_Prog.set_value(ua.DataValue(True))
-                print('Continue Program')
-                time.sleep(0.5)
-                self.Conti_Prog.set_value(ua.DataValue(False))
-            
-            if key == ord('s'):
-                self.Stop_Prog.set_value(ua.DataValue(True))
-                print('Program Interrupted')
-                time.sleep(0.5)
-                self.Stop_Prog.set_value(ua.DataValue(False))
-            
-            if key == 27:
-                self.Abort_Prog.set_value(ua.DataValue(True))
-                print('Program Aborted: ',robot_server_dict['abort'])
-                self.Abort_Prog.set_value(ua.DataValue(False))
-                self.Conti_Prog.set_value(ua.DataValue(False))
-                self.client.disconnect()
-                cv2.destroyAllWindows()
-                print('[INFO]: Client disconnected.')
-                time.sleep(0.5)
-                break
-    def main_pick_place_conveyor_w_point_cloud(self, server_in):
+    def main_pick_place_conveyor_w_point_cloud(self, server_in, rc):
         """
         Thread for pick and place with moving conveyor and point cloud operations.
         
@@ -698,124 +504,156 @@ class RobotDemos(RobotControl):
         server_in (object): Queue object containing data from the PLC server.
         
         """
+        # Inititalize objects.
         apriltag = ProcessingApriltag()
         pt = PacketTracker(maxDisappeared=10)    
-        dc = DepthCamera()    
-        self.show_boot_screen('STARTING NEURAL NET...')
+        dc = DepthCamera()
+        rc.show_boot_screen('STARTING NEURAL NET...')
         pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
-        x_fixed = self.rob_dict['pick_pos_base'][0]['x']
-        warn_count = 0
-        track_frame = 0
-        frames_lim = 10
-        bbox = True
-        f_data = False
-        depth_map = True
-        is_detect = False
-        conv_left = False
-        conv_right = False
-        frame_count = 1
-        homography = None
-        track_result = None
-        #with speed 55% :
-        pack_depths = [10.0, 3.0, 5.0, 5.0]
-        pack_x_offsets = [50.0,180.0,130.0,130.0]
+
+        # Define fixed x position where robot waits for packet.
+        x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
+
+        # Declare variables.
+        warn_count = 0 # Counter for markers out of frame or moving.
+        track_frame = 0 # Counter for num of frames when object is tracked.
+        frames_lim = 10 # Max frames object must be tracked to start pick&place.
+        frame_count = 1 # Counter of frames for homography update.
+        bbox = True # Bounding box visualization enable.
+        f_data = False # Show frame data (robot pos, encoder vel, FPS ...).
+        depth_map = True # Overlay colorized depth enable.
+        is_detect = False # Detecting objects enable.
+        conv_left = False # Conveyor heading left enable.
+        conv_right = False # Conveyor heading right enable.
+        homography = None # Homography matrix.
+        track_result = None # Result of pack_obj_tracking_update.
+
+        # Predefine packet z and x offsets with robot speed of 55%.
+        # Index corresponds to type of packet.
+        pack_depths = [10.0, 3.0, 5.0, 5.0] # List of z positions at pick.
+        pack_x_offsets = [50.0, 180.0, 130.0, 130.0] # List of x positions at pick.
         
         while True:
-            # print('in size:',server_in.qsize())
-            robot_server_dict = server_in.get()
+            # Start timer for FPS estimation.
             start_time = time.time()
+
+            # Read data dict from PLC server stored in queue object.
+            robot_server_dict = server_in.get()
             rob_stopped = robot_server_dict['rob_stopped']
             stop_active = robot_server_dict['stop_active']
             prog_done = robot_server_dict['prog_done']
+            encoder_vel = robot_server_dict['encoder_vel']
+            encoder_pos = robot_server_dict['encoder_pos']
 
+            # Get frames from realsense.
             ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
             
+            # Crop frame to rgb frame to 1080x1440x3.
             rgb_frame = rgb_frame[:,240:1680]
-            # 1080x1440x3
+
+            # Crop and resize depth frame to match rgb frame.
             height, width, depth = rgb_frame.shape
+            depth_frame = depth_frame[90:400,97:507]
+            depth_frame = cv2.resize(depth_frame, (width,height))
+
+            # Crop and resize colorized depth frame to match rgb frame.
+            heatmap = colorized_depth
+            heatmap = heatmap[90:400,97:507,:]
+            heatmap = cv2.resize(heatmap, (width,height))
+
             try:
+                # Try to detect tags in rgb frame.
                 rgb_frame = apriltag.detect_tags(rgb_frame)
+
+                # Update homography on first frame of 500 frames.
                 if frame_count == 1:
                     homography = apriltag.compute_homog()
                     print('[INFO]: Homography matrix updated.')
+
+                # If recieving homography matrix as np array.
                 is_type_np = type(homography).__module__ == np.__name__
                 is_marker_detect = is_type_np or homography == None
+
+                # Reset not detected tags warning.
                 if is_marker_detect:
                     warn_count = 0
                     
+            #Triggered when no markers are in the frame.
             except Exception as e:
-            #Triggered when no markers are in the frame:
                 warn_count += 1
+                # Print warning only once.
                 if warn_count == 1:
                     print(e)
                     print("[INFO]: Markers out of frame or moving.")
                 pass
             
-            depth_frame = depth_frame[90:400,97:507]
-            depth_frame = cv2.resize(depth_frame, (width,height))
-
-            heatmap = colorized_depth
-            heatmap = heatmap[90:400,97:507,:]
-            heatmap = cv2.resize(heatmap, (width,height))
-            encoder_vel = robot_server_dict['encoder_vel']
-            encoder_pos = robot_server_dict['encoder_pos']
-            
+            # Detect packets using neural network.
             img_detect, detected = pack_detect.deep_pack_obj_detector(
                                                                 rgb_frame, 
                                                                 depth_frame,
                                                                 encoder_pos, 
                                                                 bnd_box = bbox)
-            objects, deregistered_packets = pt.update(detected, depth_frame)
-            print(objects, rob_stopped, stop_active, prog_done)
-            is_detect = len(detected) != 0
+            # Update tracked packets for current frame.
+            registered_packets, deregistered_packets = pt.update(detected, depth_frame)
+            print({
+                'regis_packs': registered_packets,
+                'rob_stopped': rob_stopped, 
+                'stop_active': stop_active, 
+                'prog_done': prog_done})
+
+            # When detected not empty, objects are being detected.
+            is_detect = len(detected) != 0 
+            # When speed of conveyor more than -100 it is moving to the left.
             is_conv_mov = encoder_vel < - 100.0
+            #Robot ready when programs are fully finished and it isn't moving.
+            is_rob_ready = prog_done and (rob_stopped or not stop_active)
 
+            # If packets are being tracked.
             if is_detect:
+                # If the conveyor is moving to the left direction.
                 if is_conv_mov:
+                    # Increase counter of frames with detections. 
                     track_frame += 1
+                    # If counter larger than limit.
                     if track_frame > frames_lim:
+                        # Reset tracked frames count.
                         track_frame = 0
+                # If conveyor stops moving to the left direction.
                 else:
+                    # Set tracked frames count to 0.
                     track_frame = 0
-                track_result, packet = self.pack_obj_tracking_update(objects, 
-                                                        img_detect, 
-                                                        homography, 
-                                                        is_detect,
-                                                        x_fixed, 
-                                                        track_frame,
-                                                        frames_lim,
-                                                        encoder_pos) 
-                if track_result is not None:
-                    dist_to_pack = track_result[2]
-                    delay = dist_to_pack/(abs(encoder_vel)/10)
-                    delay = round(delay,2)
-                    if  prog_done and (rob_stopped or not stop_active):
-                        packet_x = track_result[0]
-                        packet_y = track_result[1]
-                        angle = packet.angle
-                        gripper_rot = self.compute_gripper_rot(angle)
-                        packet_type = packet.pack_type
-                        print(packet_x,packet_y)
-                        self.change_trajectory(packet_x,
-                                            packet_y, 
-                                            gripper_rot, 
-                                            packet_type,
-                                            x_offset = pack_x_offsets[packet_type],
-                                            pack_z = pack_depths[packet_type])
-                        self.Start_Prog.set_value(ua.DataValue(True))
-                        print('Program Started: ',robot_server_dict['start'])
-                        time.sleep(0.5)
-                        self.Start_Prog.set_value(ua.DataValue(False))
-                        time.sleep(0.5)
+                
+                # Compute updated (x,y) pick positions of tracked moving packets and distance to packet.
+                track_result, packet = rc.pack_obj_tracking_update(
+                                                            registered_packets, 
+                                                            img_detect, 
+                                                            homography, 
+                                                            is_detect,
+                                                            x_fixed, 
+                                                            track_frame,
+                                                            frames_lim,
+                                                            encoder_pos)
+                #Trigger start of the pick and place program.
+                rc.pack_obj_tracking_program_start(
+                                            track_result, 
+                                            packet, 
+                                            encoder_pos, 
+                                            encoder_vel, 
+                                            is_rob_ready, 
+                                            pack_x_offsets, 
+                                            pack_depths)
 
+            # Show point cloud visualization when packets are deregistered.
             if len(deregistered_packets) > 0:
                 pclv = PointCloudViz("temp_rgbd", deregistered_packets[-1])
                 pclv.show_point_cloud()
                 del pclv
 
+            # Show depth frame overlay.
             if depth_map:
                 img_detect = cv2.addWeighted(img_detect, 0.8, heatmap, 0.3, 0)
 
+            # Show robot position data and FPS.
             if f_data:
                 cv2.putText(img_detect,str(robot_server_dict),(10,25),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
@@ -824,34 +662,30 @@ class RobotDemos(RobotControl):
                             (10,40),cv2.FONT_HERSHEY_SIMPLEX, 0.57, 
                             (255, 255, 0), 2)
 
+            # Show frames on cv2 window.
             cv2.setWindowProperty("Frame", cv2.WND_PROP_FULLSCREEN,
                             cv2.WINDOW_FULLSCREEN)
             cv2.imshow("Frame", cv2.resize(img_detect, (1280,960)))
+
+            # Increase counter for homography update.
             frame_count += 1
             if frame_count == 500:
                 frame_count = 1
-
+            
+            # Keyboard inputs.
             key = cv2.waitKey(1)
 
             if key == ord('o'):
-                self.Gripper_State.set_value(ua.DataValue(False))
-                time.sleep(0.1)
+                rc.change_gripper_state(False)
 
             if key == ord('i'):
-                self.Gripper_State.set_value(ua.DataValue(True))
-                time.sleep(0.1)
+                rc.change_gripper_state(True)
 
             if key == ord('m') :
-                conv_right = not conv_right
-                self.Conveyor_Left.set_value(ua.DataValue(False))
-                self.Conveyor_Right.set_value(ua.DataValue(conv_right))
-                time.sleep(0.4)
+                conv_right = rc.change_conveyor_right(conv_right)
             
             if key == ord('n'):
-                conv_left = not conv_left
-                self.Conveyor_Right.set_value(ua.DataValue(False))
-                self.Conveyor_Left.set_value(ua.DataValue(conv_left))
-                time.sleep(0.4)
+                conv_left = rc.change_conveyor_left(conv_left)
 
             if key == ord('l'):
                 bbox = not bbox
@@ -866,29 +700,14 @@ class RobotDemos(RobotControl):
                 is_detect = not is_detect
 
             if key == ord('a'):
-                self.Abort_Prog.set_value(ua.DataValue(True))
-                print('Program Aborted: ',robot_server_dict['abort'])
-                time.sleep(0.5)
+                rc.abort_program()
             
             if key == ord('c'):
-                self.Conti_Prog.set_value(ua.DataValue(True))
-                print('Continue Program')
-                time.sleep(0.5)
-                self.Conti_Prog.set_value(ua.DataValue(False))
+                rc.continue_program()
             
             if key == ord('s'):
-                self.Stop_Prog.set_value(ua.DataValue(True))
-                print('Program Interrupted')
-                time.sleep(0.5)
-                self.Stop_Prog.set_value(ua.DataValue(False))
+                rc.stop_program()
             
             if key == 27:
-                self.Abort_Prog.set_value(ua.DataValue(True))
-                print('Program Aborted: ',robot_server_dict['abort'])
-                self.Abort_Prog.set_value(ua.DataValue(False))
-                self.Conti_Prog.set_value(ua.DataValue(False))
-                self.client.disconnect()
-                cv2.destroyAllWindows()
-                print('[INFO]: Client disconnected.')
-                time.sleep(0.5)
+                rc.close_program()
                 break
