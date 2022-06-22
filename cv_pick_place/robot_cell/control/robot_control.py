@@ -27,8 +27,9 @@ class RobotControl(RobotCommunication):
 
         """
         self.rob_dict = rob_dict
-        super().__init__()
 
+        # Inherit RobotCommunication.
+        super().__init__()
 
     def show_boot_screen(self, message):
         """
@@ -141,7 +142,6 @@ class RobotControl(RobotCommunication):
         packet_type (int): The detected packet class.
 
         """
-
         self.Home_X.set_value(ua.DataValue(ua.Variant(
             self.rob_dict['home_pos'][0]['x'], ua.VariantType.Float)))
         self.Home_Y.set_value(ua.DataValue(ua.Variant(
@@ -228,31 +228,7 @@ class RobotControl(RobotCommunication):
             rot = 90 + (90 - angle)
         if angle <= 45:
             rot = 90 - angle
-        return rot
-
-    def get_actual_pos(self):
-        """
-        Reads the actual position of the robot TCP with respect to the base.
-    
-        Returns:
-        tuple: Actual pos. of robot TCP: x, y, z, a, b, c as float. Status, turn as int.
-
-        """
-        x_pos = self.Act_Pos_X.get_value()
-        y_pos = self.Act_Pos_Y.get_value()
-        z_pos = self.Act_Pos_Z.get_value()
-        a_pos = self.Act_Pos_A.get_value()
-        b_pos = self.Act_Pos_B.get_value()
-        c_pos = self.Act_Pos_C.get_value()
-        status_pos = self.Act_Pos_Status.get_value()
-        turn_pos = self.Act_Pos_Turn.get_value()
-        x_pos = round(x_pos,2)
-        y_pos = round(y_pos,2)
-        z_pos = round(z_pos,2)
-        a_pos = round(a_pos,2)
-        b_pos = round(b_pos,2)
-        c_pos = round(c_pos,2)
-        return x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos  
+        return rot  
 
     def objects_update(self,objects,image):
         """

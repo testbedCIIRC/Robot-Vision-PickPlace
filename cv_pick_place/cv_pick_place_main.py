@@ -27,11 +27,12 @@ from robot_cell.packet.centroidtracker import CentroidTracker
 from robot_cell.packet.packettracker import PacketTracker
 from robot_cell.packet.point_cloud_viz import PointCloudViz
 
-def main(server_in, rc):
+def main(rc, server_in):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
     
     Parameters:
+    rc (object): RobotControl object for program execution.
     server_in (object): Queue object containing data from the PLC server.
     
     """
@@ -249,32 +250,37 @@ def program_mode(rc, rd):
 
     Parameters:
     rc (object): RobotControl object for program execution.
+    rd (object): RobotDemos object containing pick and place demos.
 
     """
     # Read mode input.
     mode = input()
     # Dictionary with robot positions and robot programs.
     modes_dict = {
-        '1':{'dict':Pick_place_dict, 'func':rd.main_robot_control_demo},
-        '2':{'dict':Pick_place_dict, 'func':rd.main_pick_place},
-        '3':{'dict':Pick_place_dict_conv_mov, 'func':rd.main_pick_place_conveyor_w_point_cloud},
-        '4':{'dict':Pick_place_dict_conv_mov, 'func':main}}
+        '1':{'dict':Pick_place_dict, 
+            'func':rd.main_robot_control_demo},
+        '2':{'dict':Pick_place_dict, 
+            'func':rd.main_pick_place},
+        '3':{'dict':Pick_place_dict_conv_mov, 
+            'func':rd.main_pick_place_conveyor_w_point_cloud},
+        '4':{'dict':Pick_place_dict_conv_mov, 
+            'func':main}
+                }
 
     # If mode is a program key.
     if mode in modes_dict:
         # Set robot positions and robot program.
         rc.rob_dict = modes_dict[mode]['dict']
-        rd.rob_dict = modes_dict[mode]['dict']
         robot_prog = modes_dict[mode]['func']
 
-        # If first mode (not threaded) start program in loop.
+        # If first mode (not threaded) start program.
         if mode == '1':
             robot_prog(rc)
 
         # Otherwise start selected threaded program.
         else:
             q = Queue(maxsize = 1)
-            t1 = Thread(target = robot_prog, args =(q, rc))
+            t1 = Thread(target = robot_prog, args =(rc, q))
             t2 = Thread(target = rc.robot_server, args =(q, ))
             t1.start()
             t2.start()
@@ -320,9 +326,9 @@ if __name__ == '__main__':
     Pick_place_dict_conv_mov = robot_poses['Pick_place_dict_conv_mov']
     Pick_place_dict = robot_poses['Pick_place_dict']
     
-    # Initialize robot demos object.
-    rd = RobotDemos(None, paths, files, check_point)
+    # Initialize robot demos and robot control objects.
     rc = RobotControl(None)
+    rd = RobotDemos(paths, files, check_point)
 
     # Show message about robot programs.
     print('Select pick and place mode: \n'+

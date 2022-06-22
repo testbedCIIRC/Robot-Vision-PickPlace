@@ -33,14 +33,14 @@ from robot_cell.packet.packettracker import PacketTracker
 from robot_cell.packet.point_cloud_viz import PointCloudViz
 
 class RobotDemos:
-    def __init__(self, rob_dict, paths, files, checkpt):
+    def __init__(self, paths, files, checkpt):
         """
         RobotDemos object constructor.
     
         Parameters:
-        rob_dict (dict): Dictionary with robot points for program.
         paths (dict): Dictionary with annotation and checkpoint paths.
         files (dict): Dictionary with pipeline and config paths. 
+        checkpt (str): string with chepoint to load for CNN.
 
         """
         self.paths = paths
@@ -53,6 +53,7 @@ class RobotDemos:
         Function used to control the gripper with hand gestures.
 
         Parameters:
+        rc (object): RobotControl object for program execution.
         detector (object): Detector object from cvzone library.
         cap (object): A cv2.VideoCapture object to access webcam.
         show (bool): Boolean to enable or disable the function.
@@ -107,6 +108,9 @@ class RobotDemos:
     def main_packet_detect(self, rc):
             """
             Basic main packet detection.
+
+            Parameters:
+            rc (object): RobotControl object for program execution.
         
             Returns:
             tuple(np.ndarray, list): Image  with detections and detections.
@@ -197,7 +201,7 @@ class RobotDemos:
                     bbox = not bbox
                 if key == ord('f'):
                     f_rate = not f_rate
-                if key== 27:
+                if (key == 27) and len(detected)> 0:
                     # cv2.destroyAllWindows()
                     break
             print(detected)
@@ -206,6 +210,9 @@ class RobotDemos:
     def main_robot_control_demo(self, rc):
         """
         Pick and place with static conveyor and hand gestures.
+
+        Parameters:
+        rc (object): RobotControl object for program execution.
 
         """
         detected_img, detected = self.main_packet_detect(rc)
@@ -335,11 +342,12 @@ class RobotDemos:
                 print('Program Aborted: ',abort)
                 time.sleep(0.5)
                 
-    def main_pick_place(self,server_in, rc):
+    def main_pick_place(self, rc, server_in):
         """
         Pick and place with static conveyor and multithreading.
 
         Parameters:
+        rc (object): RobotControl object for program execution.
         server_in (object): Queue object containing data from the PLC server.
 
         """
@@ -496,11 +504,12 @@ class RobotDemos:
                 time.sleep(0.5)
                 break
 
-    def main_pick_place_conveyor_w_point_cloud(self, server_in, rc):
+    def main_pick_place_conveyor_w_point_cloud(self, rc, server_in):
         """
         Thread for pick and place with moving conveyor and point cloud operations.
         
         Parameters:
+        rc (object): RobotControl object for program execution.
         server_in (object): Queue object containing data from the PLC server.
         
         """
