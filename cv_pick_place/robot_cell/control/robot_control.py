@@ -229,7 +229,7 @@ class RobotControl(RobotCommunication):
         if angle <= 45:
             rot = 90 - angle
         return rot
-        
+
     def compute_mean_packet_z(self, packet, pack_z_fixed):
         """
         Computes depth of packet based on average of stored depth frames.
@@ -242,32 +242,39 @@ class RobotControl(RobotCommunication):
         conv2cam_dist = 777.0 # mm
         # range 25 - 13
         depth_mean = np.mean(packet.depth_maps, axis = 2)
+        d_rows, d_cols = depth_mean.shape
+
+        print(d_rows, d_cols)
         
         # If depth frames are present.
-        if depth_mean.shape[0] > 0:
-            # Compute centroid in depth crop coordinates.
-            cx, cy = packet.centroid
-            xminbbx = packet.xminbbx
-            yminbbx = packet.yminbbx
-            x_depth, y_depth = int(cx - xminbbx), int(cy - yminbbx)
-            
-            # Get centroid from depth mean crop.
-            centroid_depth = depth_mean[y_depth, x_depth]
-            print('Centroid_depth:',centroid_depth)
+        try:
+            if d_rows > 0:
+                # Compute centroid in depth crop coordinates.
+                cx, cy = packet.centroid
+                xminbbx = packet.xminbbx
+                yminbbx = packet.yminbbx
+                x_depth, y_depth = int(cx - xminbbx), int(cy - yminbbx)
 
-            # Compute packet z position with respect to conveyor base.
-            pack_z = abs(conv2cam_dist - centroid_depth)
+                # Get centroid from depth mean crop.
+                centroid_depth = depth_mean[y_depth, x_depth]
+                print('Centroid_depth:',centroid_depth)
 
-            # Return pack_z if in acceptable range, set to default if not.
-            pack_z_in_range = (pack_z > pack_z_fixed) and (pack_z < pack_z_fixed + 17.0)
+                # Compute packet z position with respect to conveyor base.
+                pack_z = abs(conv2cam_dist - centroid_depth)
 
-            if pack_z_in_range:
-                print('Pack_z_in_range')
-                return pack_z
+                # Return pack_z if in acceptable range, set to default if not.
+                pack_z_in_range = (pack_z > pack_z_fixed) and (pack_z < pack_z_fixed + 17.0)
+
+                if pack_z_in_range:
+                    print('[Info]: Pack z in range')
+                    return pack_z
+                else: return pack_z_fixed
+
+            # When depth frames unavailable.
             else: return pack_z_fixed
-
-        # When depth frames unavailable.
-        else: return pack_z_fixed  
+        
+        except:
+            return pack_z_fixed
 
     def objects_update(self, objects, image):
         """
@@ -335,37 +342,41 @@ class RobotControl(RobotCommunication):
                     # If max number of traking frames has been reached.
                     if track_frame == frames_lim:
 
-                        # Find the last registered object with respect to id (max id).
+                        # Find the last registered object with respect to id (min id).
                         track_array = np.array(track_list)
                         track_IDs = track_array[:,0]
-                        max_ID = np.max(track_IDs)
-                        track_data = track_array[track_IDs == max_ID]
+                        min_ID = np.min(track_IDs)
+                        track_data = track_array[track_IDs == min_ID]
                         
-                        # Find last recorded x pos and compute mean y.
-                        mean_x = float(track_data[-1,1])
-                        mean_y = float(np.mean(track_data[:,2]))
-                        
-                        # Convert to milimeters and round.
-                        world_x = round(mean_x* 10.0,2)
-                        world_y = round(mean_y* 10.0,2)
-                        dist_to_pack = x_fixed - world_x
-
-                        # Check if y is range of conveyor width and adjust accordingly.
-                        if world_y < 75.0:
-                            world_y = 75.0
-
-                        elif world_y > 470.0:
-                            world_y = 470.0
+                        if min_ID == objectID:
+                            # Find last recorded x pos and compute mean y.
+                            last_x = float(track_data[-1,1])
+                            mean_y = float(np.mean(track_data[:,2]))
                             
-                        # Empty list for tracking and reset mean variables.
-                        track_list.clear()
-                        mean_x = 0
-                        mean_y = 0
-                        # Return tuple with packet to be picked data and packet object.
-                        return (x_fixed, world_y, dist_to_pack), packet
+                            # Set world x to fixed value, convert to milimeters and round.
+                            world_x = x_fixed
+                            world_y = round(mean_y * 10.0,2)
+                            world_last_x = round(last_x * 10.0,2)
 
-                    #If max number of traking frames hasn't been reached return None.
-                    else: return None, None
+                            # Compute distance to packet.
+                            dist_to_pack = world_x - world_last_x
+
+                            # Check if y is range of conveyor width and adjust accordingly.
+                            if world_y < 75.0:
+                                world_y = 75.0
+
+                            elif world_y > 470.0:
+                                world_y = 470.0
+                                
+                            # Empty list for tracking and reset mean variables.
+                            track_list.clear()
+                            last_x = 0
+                            mean_y = 0
+                            # Return tuple with packet to be picked data and packet object.
+                            return world_x, world_y, dist_to_pack, packet
+
+        #If max number of traking frames hasn't been reached return None.
+        return None, None, None, None
 
     def pack_obj_tracking_program_start(self, track_result, packet, encoder_pos, encoder_vel, is_rob_ready, 
                         pack_x_offsets, pack_depths ):
@@ -383,7 +394,7 @@ class RobotControl(RobotCommunication):
 
         """
         # If track result is available.
-        if track_result is not None:
+        if None not in track_result:
             # Compute distance to packet and delay required to continue program.
             dist_to_pack = track_result[2]
             delay = dist_to_pack/(abs(encoder_vel)/10)
@@ -400,8 +411,8 @@ class RobotControl(RobotCommunication):
                 gripper_rot = self.compute_gripper_rot(angle)
                 packet_type = packet.pack_type
 
+                # Compute packet z based on depth frame.
                 pack_z_fixed = pack_depths[packet_type]
-
                 packet_z = self.compute_mean_packet_z(packet, pack_z_fixed)
                 
                 print(packet_z, pack_z_fixed)

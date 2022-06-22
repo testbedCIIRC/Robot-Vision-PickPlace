@@ -411,11 +411,11 @@ class PacketDetector:
                         detections['detection_classes']+label_id_offset,
                         detections['detection_scores'],
                         self.category_index,
-                        use_normalized_coordinates=True,
-                        max_boxes_to_draw=1,
-                        min_score_thresh=.7,
-                        agnostic_mode=False, 
-                        line_thickness=1)
+                        use_normalized_coordinates = True,
+                        max_boxes_to_draw = max_boxes_to_draw,
+                        min_score_thresh = min_score_thresh,
+                        agnostic_mode = False, 
+                        line_thickness = 1)
         if segment:
             img_segmented = np.bitwise_and(color_frame,box_mask)
             # img_segmented = box_mask
