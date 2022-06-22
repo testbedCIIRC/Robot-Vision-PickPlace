@@ -605,9 +605,9 @@ class RobotDemos:
             # Update tracked packets for current frame.
             registered_packets, deregistered_packets = pt.update(detected, depth_frame)
             print({
-                'regis_packs': registered_packets,
-                'rob_stopped': rob_stopped, 
-                'stop_active': stop_active, 
+                'packs': registered_packets,
+                'rob_stop': rob_stopped, 
+                'stop_acti': stop_active, 
                 'prog_done': prog_done})
 
             # When detected not empty, objects are being detected.
@@ -633,7 +633,7 @@ class RobotDemos:
                     track_frame = 0
                 
                 # Compute updated (x,y) pick positions of tracked moving packets and distance to packet.
-                track_result, packet = rc.pack_obj_tracking_update(
+                world_x, world_y, dist_to_pack, packet = rc.pack_obj_tracking_update(
                                                             registered_packets, 
                                                             img_detect, 
                                                             homography, 
@@ -642,6 +642,7 @@ class RobotDemos:
                                                             track_frame,
                                                             frames_lim,
                                                             encoder_pos)
+                track_result = (world_x, world_y, dist_to_pack)                                            
                 #Trigger start of the pick and place program.
                 rc.pack_obj_tracking_program_start(
                                             track_result, 
