@@ -228,9 +228,48 @@ class RobotControl(RobotCommunication):
             rot = 90 + (90 - angle)
         if angle <= 45:
             rot = 90 - angle
-        return rot  
+        return rot
+        
+    def compute_mean_packet_z(self, packet, pack_z_fixed):
+        """
+        Computes depth of packet based on average of stored depth frames.
+    
+        Parameters:
 
-    def objects_update(self,objects,image):
+        packet (object): Final tracked packet object used for program start.
+
+        """
+        conv2cam_dist = 777.0 # mm
+        # range 25 - 13
+        depth_mean = np.mean(packet.depth_maps, axis = 2)
+        
+        # If depth frames are present.
+        if depth_mean.shape[0] > 0:
+            # Compute centroid in depth crop coordinates.
+            cx, cy = packet.centroid
+            xminbbx = packet.xminbbx
+            yminbbx = packet.yminbbx
+            x_depth, y_depth = int(cx - xminbbx), int(cy - yminbbx)
+            
+            # Get centroid from depth mean crop.
+            centroid_depth = depth_mean[y_depth, x_depth]
+            print('Centroid_depth:',centroid_depth)
+
+            # Compute packet z position with respect to conveyor base.
+            pack_z = abs(conv2cam_dist - centroid_depth)
+
+            # Return pack_z if in acceptable range, set to default if not.
+            pack_z_in_range = (pack_z > pack_z_fixed) and (pack_z < pack_z_fixed + 17.0)
+
+            if pack_z_in_range:
+                print('Pack_z_in_range')
+                return pack_z
+            else: return pack_z_fixed
+
+        # When depth frames unavailable.
+        else: return pack_z_fixed  
+
+    def objects_update(self, objects, image):
         """
         Draws the IDs of tracked objects.
     
@@ -292,7 +331,6 @@ class RobotControl(RobotCommunication):
                 if enable:
                     # Append object id, and centroid id world coordinates to list.
                     track_list.append([objectID,world_centroid[0],world_centroid[1]])
-                    print(track_list)
                     
                     # If max number of traking frames has been reached.
                     if track_frame == frames_lim:
@@ -306,7 +344,6 @@ class RobotControl(RobotCommunication):
                         # Find last recorded x pos and compute mean y.
                         mean_x = float(track_data[-1,1])
                         mean_y = float(np.mean(track_data[:,2]))
-                        print(track_data[:,2],mean_y)    
                         
                         # Convert to milimeters and round.
                         world_x = round(mean_x* 10.0,2)
@@ -360,20 +397,14 @@ class RobotControl(RobotCommunication):
 
                 # Get gripper rotation and packet type based on last detected packet.
                 angle = packet.angle
-
-                depth_mean = np.mean(packet.depth_maps, axis=2)
-
-                cx, cy = packet.centroid
-                xminbbx = packet.xminbbx
-                yminbbx = packet.yminbbx
-                # 1080x1440x3.
-                x_depth, y_depth = int(cx-xminbbx), int(cy-yminbbx)
-
-                print(depth_mean[y_depth, x_depth])
                 gripper_rot = self.compute_gripper_rot(angle)
                 packet_type = packet.pack_type
-                print(packet_x, packet_y)
 
+                pack_z_fixed = pack_depths[packet_type]
+
+                packet_z = self.compute_mean_packet_z(packet, pack_z_fixed)
+                
+                print(packet_z, pack_z_fixed)
                 # Change end points of robot.
                 self.change_trajectory(
                                 packet_x,
@@ -381,7 +412,7 @@ class RobotControl(RobotCommunication):
                                 gripper_rot, 
                                 packet_type,
                                 x_offset = pack_x_offsets[packet_type],
-                                pack_z = pack_depths[packet_type])
+                                pack_z = packet_z)
 
                 # Start robot program.
                 self.start_program()

@@ -28,7 +28,6 @@ class PointCloudViz():
         depth_mean = np.mean(packet.depth_maps, axis=2)
 
         depth_frames_dim = depth_mean.shape
-        print('depth_frames', depth_frames_dim)
 
         if 0 not in depth_frames_dim:
             depth_mean = cv2.resize(depth_mean, self.dims)
