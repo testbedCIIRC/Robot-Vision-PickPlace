@@ -28,6 +28,8 @@ from robot_cell.packet.packettracker import PacketTracker
 from robot_cell.packet.point_cloud_viz import PointCloudViz
 from robot_cell.packet.packet_object import Packet
 
+from robot_cell.detection.threshold_detector import ThresholdDetector
+
 def main(rc, server_in):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
@@ -42,7 +44,7 @@ def main(rc, server_in):
     pt = PacketTracker(maxDisappeared=10)    
     dc = DepthCamera()
     rc.show_boot_screen('STARTING NEURAL NET...')
-    pack_detect = PacketDetector(paths, files, check_point)
+    pack_detect = ThresholdDetector()
 
     # Define fixed x position where robot waits for packet.
     x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
@@ -107,6 +109,8 @@ def main(rc, server_in):
             is_type_np = type(homography).__module__ == np.__name__
             is_marker_detect = is_type_np or homography == None
 
+            pack_detect.set_homography(homography)
+
             # Reset not detected tags warning.
             if is_marker_detect:
                 warn_count = 0
@@ -121,11 +125,9 @@ def main(rc, server_in):
             pass
         
         # Detect packets using neural network.
-        img_detect, detected = pack_detect.deep_pack_obj_detector(
-                                                            rgb_frame, 
-                                                            depth_frame,
-                                                            encoder_pos, 
-                                                            bnd_box = bbox)
+        img_detect, detected = pack_detect.detect_packet_hsv(rgb_frame, 
+                                                             depth_frame,
+                                                             encoder_pos)
         # Update tracked packets for current frame.
         registered_packets, deregistered_packets = pt.update(detected, depth_frame)
         print({
