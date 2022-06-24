@@ -26,7 +26,7 @@ class ThresholdDetector:
         packet = Packet(box = box, 
                         pack_type = type,
                         centroid = centroid,
-                        centroid_depth = depth_frame[centroid[0]][centroid[1]], 
+                        centroid_depth = depth_frame[centroid[1]][centroid[0]], 
                         angle = angle,
                         ymin = y, ymax = y + w, 
                         xmin = x, xmax = x + h, 
@@ -75,11 +75,11 @@ class ThresholdDetector:
             object_type = 0
             
             if 110 > area_cm2 > 90:
-                object_type = 0
-            elif 180 > area_cm2 > 160:
                 object_type = 1
-            elif 380 > area_cm2 > 350:
+            elif 180 > area_cm2 > 160:
                 object_type = 2
+            elif 380 > area_cm2 > 350:
+                object_type = 0
             else:
                 continue
             
@@ -94,6 +94,20 @@ class ThresholdDetector:
             # Check if packet is far enough from edge
             if packet.centroid[0] - packet.width / 2 < ignore_region_horizontal or packet.centroid[0] + packet.width/2 > (frame_width - ignore_region_horizontal):
                 continue
+
+            cv2.rectangle(image_frame, 
+                      (packet.centroid[0] - int(packet.width / 2), packet.centroid[1] - int(packet.height / 2)), 
+                      (packet.centroid[0] + int(packet.width / 2), packet.centroid[1] + int(packet.height / 2)), 
+                      (255, 0, 0), 2, lineType=cv2.LINE_AA)
+
+            cv2.drawContours(image_frame, 
+                            [packet.box], 
+                            -1, 
+                            (0, 255, 0), 2, lineType=cv2.LINE_AA)
+
+            cv2.drawMarker(image_frame, 
+                        packet.centroid, 
+                        (0, 0, 255), cv2.MARKER_CROSS, 10, cv2.LINE_4)
             
             self.detected_objects.append(packet)
 
