@@ -157,7 +157,7 @@ def main(rc, server_in):
                 track_frame = 0
             
             # Compute updated (x,y) pick positions of tracked moving packets and distance to packet.
-            world_x, world_y, dist_to_pack, packet = rc.pack_obj_tracking_update(
+            world_x, world_y, dist_to_pack, packet = rc.single_pack_tracking_update(
                                                         registered_packets, 
                                                         img_detect, 
                                                         homography, 
@@ -168,7 +168,7 @@ def main(rc, server_in):
                                                         encoder_pos)
             track_result = (world_x, world_y, dist_to_pack)                                            
             #Trigger start of the pick and place program.
-            rc.pack_obj_tracking_program_start(
+            rc.single_pack_tracking_program_start(
                                         track_result, 
                                         packet, 
                                         encoder_pos, 

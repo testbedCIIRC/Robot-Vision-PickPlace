@@ -293,7 +293,7 @@ class RobotControl(RobotCommunication):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             cv2.circle(image, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
 
-    def pack_obj_tracking_update(self, objects, img, homog, enable, x_fixed, 
+    def single_pack_tracking_update(self, objects, img, homog, enable, x_fixed, 
                                 track_frame, frames_lim, encoder_pos, track_list = []):
         """
         Computes distance to packet and updated x, mean y packet positions of tracked moving packets.
@@ -342,43 +342,43 @@ class RobotControl(RobotCommunication):
                     # If max number of traking frames has been reached.
                     if track_frame == frames_lim:
 
-                        # Find the last registered object with respect to id (min id).
+                        # Find the most repeated packet according to id.
                         track_array = np.array(track_list)
                         track_IDs = track_array[:,0]
-                        min_ID = np.min(track_IDs)
-                        track_data = track_array[track_IDs == min_ID]
+                        max_ID = np.max(track_IDs)
+                        track_data = track_array[track_IDs == max_ID]
                         
-                        if min_ID == objectID:
-                            # Find last recorded x pos and compute mean y.
-                            last_x = float(track_data[-1,1])
-                            mean_y = float(np.mean(track_data[:,2]))
+                        
+                        # Find last recorded x pos and compute mean y.
+                        last_x = float(track_data[-1,1])
+                        mean_y = float(np.mean(track_data[:,2]))
+                        
+                        # Set world x to fixed value, convert to milimeters and round.
+                        world_x = x_fixed
+                        world_y = round(mean_y * 10.0,2)
+                        world_last_x = round(last_x * 10.0,2)
+
+                        # Compute distance to packet.
+                        dist_to_pack = world_x - world_last_x
+
+                        # Check if y is range of conveyor width and adjust accordingly.
+                        if world_y < 75.0:
+                            world_y = 75.0
+
+                        elif world_y > 470.0:
+                            world_y = 470.0
                             
-                            # Set world x to fixed value, convert to milimeters and round.
-                            world_x = x_fixed
-                            world_y = round(mean_y * 10.0,2)
-                            world_last_x = round(last_x * 10.0,2)
-
-                            # Compute distance to packet.
-                            dist_to_pack = world_x - world_last_x
-
-                            # Check if y is range of conveyor width and adjust accordingly.
-                            if world_y < 75.0:
-                                world_y = 75.0
-
-                            elif world_y > 470.0:
-                                world_y = 470.0
-                                
-                            # Empty list for tracking and reset mean variables.
-                            track_list.clear()
-                            last_x = 0
-                            mean_y = 0
-                            # Return tuple with packet to be picked data and packet object.
-                            return world_x, world_y, dist_to_pack, packet
+                        # Empty list for tracking and reset mean variables.
+                        track_list.clear()
+                        last_x = 0
+                        mean_y = 0
+                        # Return tuple with packet to be picked data and packet object.
+                        return world_x, world_y, dist_to_pack, packet
 
         #If max number of traking frames hasn't been reached return None.
         return None, None, None, None
 
-    def pack_obj_tracking_program_start(self, track_result, packet, encoder_pos, encoder_vel, is_rob_ready, 
+    def single_pack_tracking_program_start(self, track_result, packet, encoder_pos, encoder_vel, is_rob_ready, 
                         pack_x_offsets, pack_depths ):
         """
         Triggers start of the program based on track result and robot status.
