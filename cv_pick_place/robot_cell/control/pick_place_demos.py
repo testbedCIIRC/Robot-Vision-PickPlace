@@ -9,7 +9,6 @@ import numpy as np
 import pyrealsense2
 import scipy.signal
 from opcua import ua
-import tensorflow as tf
 from opcua import Client
 import matplotlib as mpl
 from scipy import ndimage
@@ -18,19 +17,14 @@ from threading import Thread
 from threading import Timer
 from collections import OrderedDict
 from scipy.spatial import distance as dist
-from cvzone.HandTrackingModule import HandDetector
-from object_detection.utils import config_util
-from object_detection.utils import label_map_util
-from object_detection.builders import model_builder
-from object_detection.utils import visualization_utils as viz_utils
 
-from robot_cell.detection.packet_detector import PacketDetector
-from robot_cell.detection.apriltag_detection import ProcessingApriltag
-from robot_cell.detection.realsense_depth import DepthCamera
 from robot_cell.control.robot_control import RobotControl
-from robot_cell.packet.centroidtracker import CentroidTracker
 from robot_cell.packet.packettracker import PacketTracker
 from robot_cell.packet.point_cloud_viz import PointCloudViz
+from robot_cell.packet.centroidtracker import CentroidTracker
+from robot_cell.detection.realsense_depth import DepthCamera
+from robot_cell.detection.packet_detector import PacketDetector
+from robot_cell.detection.apriltag_detection import ProcessingApriltag
 
 class RobotDemos:
     def __init__(self, paths, files, checkpt):
@@ -47,6 +41,13 @@ class RobotDemos:
         self.files = files
         self.checkpt = checkpt
 
+    def import_gestures_lib(self):
+        """
+        Imports the hand detection dependencies.
+
+        """
+        from cvzone.HandTrackingModule import HandDetector
+        self.HandDetector = HandDetector
 
     def gripper_gesture_control(self, rc, detector, cap, show = False):
         """
@@ -215,6 +216,7 @@ class RobotDemos:
         rc (object): RobotControl object for program execution.
 
         """
+        self.import_gestures_lib()
         detected_img, detected = self.main_packet_detect(rc)
 
         rc.connect_OPCUA_server()
@@ -233,7 +235,7 @@ class RobotDemos:
         dc = DepthCamera()
         gripper_ON = rc.Gripper_State.get_value()
         cap = cv2.VideoCapture(2)
-        detector = HandDetector(detectionCon=0.8, maxHands=2)
+        detector = self.HandDetector(detectionCon=0.8, maxHands=2)
         show_gestures = True
         while True:
             start = rc.Start_Prog.get_value()

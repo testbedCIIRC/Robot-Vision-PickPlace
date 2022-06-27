@@ -18,15 +18,15 @@ from threading import Timer
 from collections import OrderedDict
 from scipy.spatial import distance as dist
 
-from robot_cell.detection.packet_detector import PacketDetector
-from robot_cell.detection.apriltag_detection import ProcessingApriltag
-from robot_cell.detection.realsense_depth import DepthCamera
-from robot_cell.control.robot_control import RobotControl
-from robot_cell.control.pick_place_demos import RobotDemos
-from robot_cell.packet.centroidtracker import CentroidTracker
+from robot_cell.packet.packet_object import Packet
 from robot_cell.packet.packettracker import PacketTracker
 from robot_cell.packet.point_cloud_viz import PointCloudViz
-from robot_cell.packet.packet_object import Packet
+from robot_cell.packet.centroidtracker import CentroidTracker
+from robot_cell.control.robot_control import RobotControl
+from robot_cell.control.pick_place_demos import RobotDemos
+from robot_cell.detection.realsense_depth import DepthCamera
+from robot_cell.detection.packet_detector import PacketDetector
+from robot_cell.detection.apriltag_detection import ProcessingApriltag
 
 def main(rc, server_in):
     """

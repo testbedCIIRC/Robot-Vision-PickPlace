@@ -7,13 +7,6 @@ import scipy.signal
 from scipy import ndimage
 from scipy.spatial import distance as dist
 from collections import OrderedDict
-import tensorflow as tf
-from object_detection.utils import label_map_util
-from object_detection.utils import visualization_utils as viz_utils
-from object_detection.builders import model_builder
-from object_detection.utils import config_util
-from cvzone.HandTrackingModule import HandDetector
-
 from robot_cell.packet.packet_object import Packet
 
 class PacketDetector:
@@ -27,21 +20,41 @@ class PacketDetector:
         checkpt (str): Name of training checkpoint to be restored. 
 
         """
+        # Import the tf detection dependencies.
+        self.import_detection_libs()
+        # Decorate the detection function with the tf.function decorator.
+        tf_func_decorator = self.tf.function()
+        self.detect_fn = tf_func_decorator(self.detect_fn)
         self.paths = paths
         self.files = files
         self.checkpt = checkpt
         self.world_centroid = None
-        self.category_index = label_map_util.create_category_index_from_labelmap(
+        self.category_index = self.label_map_util.create_category_index_from_labelmap(
             self.files['LABELMAP'])
-        configs = config_util.get_configs_from_pipeline_file(self.files['PIPELINE_CONFIG'])
-        self.detection_model = model_builder.build(model_config=configs['model'], 
+        configs = self.config_util.get_configs_from_pipeline_file(self.files['PIPELINE_CONFIG'])
+        self.detection_model = self.model_builder.build(model_config=configs['model'], 
                                                     is_training=False)
         # Restore checkpoint
-        ckpt = tf.compat.v2.train.Checkpoint(model= self.detection_model)
+        ckpt = self.tf.compat.v2.train.Checkpoint(model= self.detection_model)
         ckpt.restore(os.path.join(self.paths['CHECKPOINT_PATH'], 
                                     self.checkpt)).expect_partial()
+        
+    def import_detection_libs(self):
+        """
+        Imports the tensorflow detection dependencies.
 
-    @tf.function
+        """
+        import tensorflow as tf
+        from object_detection.utils import config_util
+        from object_detection.utils import label_map_util
+        from object_detection.builders import model_builder
+        from object_detection.utils import visualization_utils as viz_utils
+        self.tf = tf
+        self.config_util = config_util
+        self.label_map_util = label_map_util
+        self.model_builder = model_builder
+        self.viz_utils = viz_utils
+
     def detect_fn(self, image):
         """
         Neural net detection function.
@@ -156,7 +169,7 @@ class PacketDetector:
         box_mask = np.zeros_like(color_frame)
         image_np = np.array(color_frame)
         height, width, depth = image_np.shape[0],image_np.shape[1],image_np.shape[2]
-        input_tensor = tf.convert_to_tensor(np.expand_dims(image_np, 0), dtype=tf.float32)
+        input_tensor = self.tf.convert_to_tensor(np.expand_dims(image_np, 0), dtype=self.tf.float32)
         detections = self.detect_fn(input_tensor)
         num_detections = int(detections.pop('num_detections'))
         detections = {key: value[0, :num_detections].numpy()
@@ -220,7 +233,7 @@ class PacketDetector:
         img_np_detect, box_mask = self.compute_mask(img_np_detect,box_mask, box_array)
                      
         if bnd_box:
-            viz_utils.visualize_boxes_and_labels_on_image_array(
+            self.viz_utils.visualize_boxes_and_labels_on_image_array(
                         img_np_detect,
                         detections['detection_boxes'],
                         detections['detection_classes']+label_id_offset,
@@ -256,7 +269,7 @@ class PacketDetector:
         box_mask = np.zeros_like(color_frame)
         image_np = np.array(color_frame)
         height, width, depth = image_np.shape[0],image_np.shape[1],image_np.shape[2]
-        input_tensor = tf.convert_to_tensor(np.expand_dims(image_np, 0), dtype=tf.float32)
+        input_tensor = self.tf.convert_to_tensor(np.expand_dims(image_np, 0), dtype=self.tf.float32)
         detections = self.detect_fn(input_tensor)
         num_detections = int(detections.pop('num_detections'))
         detections = {key: value[0, :num_detections].numpy()
@@ -306,7 +319,7 @@ class PacketDetector:
         img_np_detect, box_mask = self.compute_mask(img_np_detect,box_mask, box_array)
                      
         if bnd_box:
-            viz_utils.visualize_boxes_and_labels_on_image_array(
+            self.viz_utils.visualize_boxes_and_labels_on_image_array(
                         img_np_detect,
                         detections['detection_boxes'],
                         detections['detection_classes']+label_id_offset,
@@ -347,7 +360,7 @@ class PacketDetector:
         box_mask = np.zeros_like(color_frame)
         image_np = np.array(color_frame)
         height, width, depth = image_np.shape[0],image_np.shape[1],image_np.shape[2]
-        input_tensor = tf.convert_to_tensor(np.expand_dims(image_np, 0), dtype=tf.float32)
+        input_tensor = self.tf.convert_to_tensor(np.expand_dims(image_np, 0), dtype=self.tf.float32)
         detections = self.detect_fn(input_tensor)
         num_detections = int(detections.pop('num_detections'))
         detections = {key: value[0, :num_detections].numpy()
@@ -405,7 +418,7 @@ class PacketDetector:
         img_np_detect, box_mask = self.compute_mask(img_np_detect,box_mask, box_array)
                      
         if bnd_box:
-            viz_utils.visualize_boxes_and_labels_on_image_array(
+            self.viz_utils.visualize_boxes_and_labels_on_image_array(
                         img_np_detect,
                         detections['detection_boxes'],
                         detections['detection_classes']+label_id_offset,
