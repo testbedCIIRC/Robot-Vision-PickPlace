@@ -5,15 +5,15 @@ import numpy as np
 
 # Crop guard region
 # When packet depth is cropped, the resulting crop will have 'guard' extra pixels on each side
-guard = 250
+#guard = 250
 
 # Maximal distance which packet can travel when it disappears in frame pixels
 # When a distance is greater than this, new packet is created instead
-maxCentroidDistance = 100
+#maxCentroidDistance = 100
 
 
 class PacketTracker:
-    def __init__(self, maxDisappeared):
+    def __init__(self, maxDisappeared, guard = 250, maxCentroidDistance = 100):
         """
         PacketTracker object constructor.
     
@@ -23,6 +23,9 @@ class PacketTracker:
         """
         self.nextObjectID = 0
         self.packets = OrderedDict()
+
+        self.guard = guard
+        self.maxCentroidDistance = maxCentroidDistance
 
         # Maximum consecutive frames a given object is allowed to be marked as "disappeared"
         self.maxDisappeared = maxDisappeared
@@ -62,8 +65,8 @@ class PacketTracker:
 
     def get_crop_from_frame(self, packet, frame):
         # Get packet specific crop from frame
-        crop = frame[(packet.centroid[1] - int(packet.height / 2) - guard):(packet.centroid[1] + int(packet.height / 2) + guard),
-               (packet.centroid[0] - int(packet.width / 2) - guard):(packet.centroid[0] + int(packet.width / 2) + guard)]
+        crop = frame[(packet.centroid[1] - int(packet.height / 2) - self.guard):(packet.centroid[1] + int(packet.height / 2) + self.guard),
+               (packet.centroid[0] - int(packet.width / 2) - self.guard):(packet.centroid[0] + int(packet.width / 2) + self.guard)]
         crop = np.expand_dims(crop, axis=2)
         return crop
 
@@ -139,7 +142,7 @@ class PacketTracker:
                 # column value before, ignore it
                 if row in usedRows or col in usedCols:
                     continue
-                # if D[row, col] > maxCentroidDistance:
+                # if D[row, col] > self.maxCentroidDistance:
                 #     self.register(detected_packets[col], frame)
                 #     continue
 

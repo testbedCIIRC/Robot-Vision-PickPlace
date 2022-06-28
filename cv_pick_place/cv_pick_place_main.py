@@ -29,6 +29,7 @@ from robot_cell.detection.packet_detector import PacketDetector
 from robot_cell.detection.apriltag_detection import ProcessingApriltag
 
 from robot_cell.detection.threshold_detector import ThresholdDetector
+from robot_cell.control.fake_robot_control import FakeRobotControl
 
 def main(rc, server_in):
     """
@@ -41,7 +42,7 @@ def main(rc, server_in):
     """
     # Inititalize objects.
     apriltag = ProcessingApriltag()
-    pt = PacketTracker(maxDisappeared=10)    
+    pt = PacketTracker(maxDisappeared=10, guard=25)    
     dc = DepthCamera()
     rc.show_boot_screen('STARTING NEURAL NET...')
     pack_detect = ThresholdDetector()
@@ -81,20 +82,12 @@ def main(rc, server_in):
         encoder_pos = robot_server_dict['encoder_pos']
 
         # Get frames from realsense.
-        ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
-        
-        # Crop frame to rgb frame to 1080x1440x3.
-        rgb_frame = rgb_frame[:,240:1680]
+        success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
+        if not success:
+            pass
 
         # Crop and resize depth frame to match rgb frame.
         height, width, depth = rgb_frame.shape
-        depth_frame = depth_frame[90:400,97:507]
-        depth_frame = cv2.resize(depth_frame, (width,height))
-
-        # Crop and resize colorized depth frame to match rgb frame.
-        heatmap = colorized_depth
-        heatmap = heatmap[90:400,97:507,:]
-        heatmap = cv2.resize(heatmap, (width,height))
 
         try:
             # Try to detect tags in rgb frame.
@@ -115,7 +108,7 @@ def main(rc, server_in):
             if is_marker_detect:
                 warn_count = 0
                 
-        #Triggered when no markers are in the frame.
+        # Triggered when no markers are in the frame.
         except Exception as e:
             warn_count += 1
             # Print warning only once.
@@ -187,7 +180,7 @@ def main(rc, server_in):
 
         # Show depth frame overlay.
         if depth_map:
-            img_detect = cv2.addWeighted(img_detect, 0.8, heatmap, 0.3, 0)
+            img_detect = cv2.addWeighted(img_detect, 0.8, colorized_depth, 0.3, 0)
 
         # Show robot position data and FPS.
         if f_data:
@@ -199,9 +192,9 @@ def main(rc, server_in):
                         (255, 255, 0), 2)
 
         # Show frames on cv2 window.
-        cv2.setWindowProperty("Frame", cv2.WND_PROP_FULLSCREEN,
-                          cv2.WINDOW_FULLSCREEN)
-        cv2.imshow("Frame", cv2.resize(img_detect, (1280,960)))
+        # cv2.setWindowProperty("Frame", cv2.WND_PROP_FULLSCREEN,
+        #                   cv2.WINDOW_FULLSCREEN)
+        cv2.imshow("Frame", img_detect)
 
         # Increase counter for homography update.
         frame_count += 1
@@ -331,7 +324,7 @@ if __name__ == '__main__':
     Pick_place_dict = robot_poses['Pick_place_dict']
     
     # Initialize robot demos and robot control objects.
-    rc = RobotControl(None)
+    rc = FakeRobotControl(None)
     rd = RobotDemos(paths, files, check_point)
 
     # Show message about robot programs.
