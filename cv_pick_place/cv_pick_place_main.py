@@ -42,7 +42,7 @@ def main(rc, server_in):
     """
     # Inititalize objects.
     apriltag = ProcessingApriltag()
-    pt = PacketTracker(maxDisappeared=10)    
+    pt = PacketTracker(maxDisappeared=10, guard=25)    
     dc = DepthCamera()
     rc.show_boot_screen('STARTING NEURAL NET...')
     pack_detect = ThresholdDetector()
