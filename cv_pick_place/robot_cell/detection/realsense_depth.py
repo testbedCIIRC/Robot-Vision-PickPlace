@@ -29,8 +29,8 @@ class DepthCamera:
             self.align = rs.align(rs.stream.color)
 
             # Create hole filling filter
-            self.hole_filling_filter = rs.hole_filling_filter()
-            self.hole_filling_filter.set_option(rs.option.holes_fill, 2)
+            self.hole_filling = rs.hole_filling_filter()
+            self.hole_filling.set_option(rs.option.holes_fill, 2)
 
             # Create temporal filter
             self.temporal_filter = rs.temporal_filter()
@@ -96,7 +96,7 @@ class DepthCamera:
         if not depth_frame or not color_frame:
             return False, None, None, None
 
-        depth_frame = self.hole_filling_filter.process(depth_frame)
+        depth_frame = self.hole_filling.process(depth_frame)
         #depth_frame = self.temporal.process(depth_frame)
 
         depth_frame = np.asanyarray(depth_frame.get_data())
