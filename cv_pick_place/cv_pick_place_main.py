@@ -194,7 +194,7 @@ def main(rc, server_in):
         # Show frames on cv2 window.
         # cv2.setWindowProperty("Frame", cv2.WND_PROP_FULLSCREEN,
         #                   cv2.WINDOW_FULLSCREEN)
-        cv2.imshow("Frame", cv2.resize(img_detect, (1280,960)))
+        cv2.imshow("Frame", img_detect)
 
         # Increase counter for homography update.
         frame_count += 1
