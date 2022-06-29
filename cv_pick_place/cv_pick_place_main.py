@@ -192,8 +192,7 @@ def main(rc, server_in):
                         (255, 255, 0), 2)
 
         # Show frames on cv2 window.
-        # cv2.setWindowProperty("Frame", cv2.WND_PROP_FULLSCREEN,
-        #                   cv2.WINDOW_FULLSCREEN)
+        img_detect = cv2.resize(img_detect, (width//2,height//2))
         cv2.imshow("Frame", img_detect)
 
         # Increase counter for homography update.
@@ -324,7 +323,7 @@ if __name__ == '__main__':
     Pick_place_dict = robot_poses['Pick_place_dict']
     
     # Initialize robot demos and robot control objects.
-    rc = FakeRobotControl(None)
+    rc = RobotControl(None)
     rd = RobotDemos(paths, files, check_point)
 
     # Show message about robot programs.
