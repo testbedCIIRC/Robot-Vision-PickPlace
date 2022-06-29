@@ -657,7 +657,7 @@ class RobotDemos:
 
             # Show point cloud visualization when packets are deregistered.
             if len(deregistered_packets) > 0:
-                pclv = PointCloudViz("temp_rgbd", deregistered_packets[-1])
+                pclv = PointCloudViz(".", deregistered_packets[-1])
                 pclv.show_point_cloud()
                 del pclv
 

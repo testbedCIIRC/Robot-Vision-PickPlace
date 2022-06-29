@@ -3,3 +3,6 @@ recording_*.npy
 
 .vscode/
 cv_pick_place/robot_cell/packet/data/
+
+color_image_crop.jpg
+depth_image_crop.png
