@@ -10,7 +10,7 @@ from collections import OrderedDict
 from robot_cell.packet.packet_object import Packet
 
 class PacketDetector:
-    def __init__(self, paths, files, checkpt):
+    def __init__(self, paths, files, checkpt, max_detect = 1, detect_thres = 0.7):
         """
         PacketDetector object constructor.
     
@@ -28,6 +28,8 @@ class PacketDetector:
         self.paths = paths
         self.files = files
         self.checkpt = checkpt
+        self.max_detect = max_detect
+        self.detect_thres = detect_thres
         self.world_centroid = None
         self.category_index = self.label_map_util.create_category_index_from_labelmap(
             self.files['LABELMAP'])
@@ -183,11 +185,11 @@ class PacketDetector:
         boxes = detections['detection_boxes']
         # get all boxes from an array
         # max_boxes_to_draw = boxes.shape[0]
-        max_boxes_to_draw = 4
+        max_boxes_to_draw = self.max_detect
         # get scores to get a threshold
         scores = detections['detection_scores']
         # set as a default but free to adjust it to your needs
-        min_score_thresh=.8
+        min_score_thresh = self.detect_thres
         # iterate over all objects found
         for i in range(min(max_boxes_to_draw, boxes.shape[0])):
             
@@ -241,7 +243,7 @@ class PacketDetector:
                         self.category_index,
                         use_normalized_coordinates=True,
                         max_boxes_to_draw = max_boxes_to_draw,
-                        min_score_thresh=.8,
+                        min_score_thresh=min_score_thresh,
                         agnostic_mode=False, 
                         line_thickness=1)
         if segment:
@@ -279,11 +281,11 @@ class PacketDetector:
         label_id_offset = 1
         img_np_detect = image_np.copy()
         boxes = detections['detection_boxes']
-        max_boxes_to_draw = 1
+        max_boxes_to_draw = self.max_detect
         # get scores to get a threshold
         scores = detections['detection_scores']
         # set as a default but free to adjust it to your needs
-        min_score_thresh=.7
+        min_score_thresh = self.detect_thres
         # iterate over all objects found
         for i in range(min(max_boxes_to_draw, boxes.shape[0])):
             
@@ -326,8 +328,8 @@ class PacketDetector:
                         detections['detection_scores'],
                         self.category_index,
                         use_normalized_coordinates=True,
-                        max_boxes_to_draw=1,
-                        min_score_thresh=.7,
+                        max_boxes_to_draw=max_boxes_to_draw,
+                        min_score_thresh=min_score_thresh,
                         agnostic_mode=False, 
                         line_thickness=1)
         if segment:
@@ -370,11 +372,11 @@ class PacketDetector:
         label_id_offset = 1
         img_np_detect = image_np.copy()
         boxes = detections['detection_boxes']
-        max_boxes_to_draw = 1
+        max_boxes_to_draw = self.max_detect
         # get scores to get a threshold
         scores = detections['detection_scores']
         # set as a default but free to adjust it to your needs
-        min_score_thresh=.7
+        min_score_thresh = self.detect_thres
         # iterate over all objects found
         for i in range(min(max_boxes_to_draw, boxes.shape[0])):
             
