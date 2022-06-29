@@ -2,7 +2,7 @@ import numpy as np
 
 # Class containing relevant item data
 class Item:
-    def __init__(self, box = np.empty(()), item_type = None, centroid = (0, 0), 
+    def __init__(self, id = None, box = np.empty(()), item_type = None, centroid = (0, 0), 
                      angle = 0, width = 0, height = 0,
                      ymin= 0, ymax= 0, xmin= 0, xmax= 0, encoder_position = 0):
         """
@@ -25,6 +25,7 @@ class Item:
         self.centroid = centroid
 
         # Rotation angle
+        self.angles = [angle]
         self.angle = angle
 
         # Width and height of item bounding box

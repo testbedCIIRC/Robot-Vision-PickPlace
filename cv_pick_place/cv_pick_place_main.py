@@ -19,6 +19,7 @@ from collections import OrderedDict
 from scipy.spatial import distance as dist
 
 from robot_cell.packet.packet_object import Packet
+from robot_cell.packet.item_object import Item
 from robot_cell.packet.packettracker import PacketTracker
 from robot_cell.packet.point_cloud_viz import PointCloudViz
 from robot_cell.packet.centroidtracker import CentroidTracker
@@ -71,6 +72,9 @@ def main(rc, server_in):
     # Index corresponds to type of packet.
     pack_depths = [10.0, 3.0, 5.0, 5.0] # List of z positions at pick.
     pack_x_offsets = [50.0, 180.0, 130.0, 130.0] # List of x positions at pick.
+    # TODO remove after testing
+    is_rob_ready = False
+    robot_ready_counter = 0
     
     while True:
         # Start timer for FPS estimation.
@@ -126,18 +130,43 @@ def main(rc, server_in):
                                                              encoder_pos)
         # Update tracked packets for current frame.
         registered_packets, deregistered_packets = pt.update(detected, depth_frame)
-        print({
-            'packs': registered_packets,
-            'rob_stop': rob_stopped, 
-            'stop_acti': stop_active, 
-            'prog_done': prog_done})
+        # print({
+        #     'packs': registered_packets,
+        #     'rob_stop': rob_stopped, 
+        #     'stop_acti': stop_active, 
+        #     'prog_done': prog_done})
 
         # When detected not empty, objects are being detected.
         is_detect = len(detected) != 0 
         # When speed of conveyor more than -100 it is moving to the left.
         is_conv_mov = encoder_vel < - 100.0
         #Robot ready when programs are fully finished and it isn't moving.
-        is_rob_ready = prog_done and (rob_stopped or not stop_active)
+        # is_rob_ready = prog_done and (rob_stopped or not stop_active)     # ! only for pick selection testing TODO restore after
+        # TODO remove
+        # Simulating robot for packet selection testing
+        if not is_rob_ready:
+            robot_ready_counter += 1
+            if robot_ready_counter > 30:
+                robot_ready_counter = 0
+                print("DEBUG: Robot is ready")
+                is_rob_ready = True
+
+
+        # TODO remove VIS TEST 
+        encoder_pos += 20 
+        for (objectID, packet) in registered_packets.items():
+            # Draw both the ID and centroid of packet objects.
+            centroid_tup = packet.centroid
+            centroid = np.array([centroid_tup[0],centroid_tup[1]]).astype('int')
+            text = "ID {}".format(objectID)
+            cv2.putText(img_detect, text, (centroid[0] , centroid[1] - 40), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.circle(img_detect, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
+            cv2.circle(img_detect, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
+        #     print("packet ID: {}, tracked: {}, ".format(str(packet.id), str(packet.track_frame)))
+        # print("PICK LIST")
+        # print(pick_list)
+
 
         # If packets are being tracked.
         if is_detect:
@@ -147,19 +176,23 @@ def main(rc, server_in):
                 for (objectID, packet) in registered_packets.items():
                     packet.track_frame += 1
                     # If counter larger than limit, and packet not already in pick list.
-                    if packet.track_frame > frames_lim and not packet.in_pick_list:     # TODO make item class and update main
+                    if packet.track_frame > frames_lim and not packet.in_pick_list:
+                        print("DEBUG: Add packet ID: {} to pick list".format(str(packet.id)))
                         # Add to pick list.
                         packet.in_pick_list = True
-                        pick_list.append = packet # ? copy
+                        pick_list.append(packet) # ? copy
 
-        if is_rob_ready and homography is not None:
+        if is_rob_ready and pick_list and homography is not None:
             # Update pick list to current positions
             for packet in pick_list:
                 packet.centroid = packet.getCentroidFromEncoder(encoder_pos)
             # Get list of current world x coordinates
             pick_list_positions = [packet.getCentroidInWorldFrame(homography)[0] for packet in pick_list]
+            print("DEBUG: Pick distances")
+            print(pick_list_positions)
             # If item is too far remove it from list
-            while pick_list_positions[0] < MAX_PICK_X + robot_speed_offset:  # TODO find value for MPX and robot speed offset
+            while pick_list and pick_list_positions[0] > 400: #MAX_PICK_X + robot_speed_offset:  # TODO find value for MPX and robot speed offset
+                print("DEBUG: Removed first packet from pick list")
                 pick_list.pop(0)
                 pick_list_positions.pop(0)
             # Choose a item for picking
@@ -167,7 +200,10 @@ def main(rc, server_in):
                 # Chose farthest item on belt
                 pick_ID = np.array(pick_list_positions).argmax()
                 packet_to_pick = pick_list.pop(pick_ID)
-            
+                print("DEBUG: Chose packet ID: {} to pick".format(str(packet.id)))
+                is_rob_ready = False        # TODO remove after testing
+
+            """
             # Compute updated (x,y) pick positions of tracked moving packets and distance to packet.
             world_x, world_y, dist_to_pack, packet = rc.single_pack_tracking_update(
                                                         registered_packets, 
@@ -188,12 +224,12 @@ def main(rc, server_in):
                                         is_rob_ready, 
                                         pack_x_offsets, 
                                         pack_depths)
-
+            """
         # Show point cloud visualization when packets are deregistered.
-        if len(deregistered_packets) > 0:
-            pclv = PointCloudViz("temp_rgbd", deregistered_packets[-1])
-            pclv.show_point_cloud()
-            del pclv
+        # if len(deregistered_packets) > 0:
+        #     pclv = PointCloudViz("temp_rgbd", deregistered_packets[-1])
+        #     pclv.show_point_cloud()
+        #     del pclv
 
         # Show depth frame overlay.
         if depth_map:

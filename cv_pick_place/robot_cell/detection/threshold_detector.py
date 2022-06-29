@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-from robot_cell.packet.packet_object import Packet
+from robot_cell.packet.item_object import Item
 
 ignore_region_vertical = 60
 ignore_region_horizontal = 10
@@ -23,10 +23,9 @@ class ThresholdDetector:
         angle = int(rect[2])
         x, y, w, h = cv2.boundingRect(contour)
 
-        packet = Packet(box = box, 
-                        pack_type = type,
+        packet = Item(box = box, 
+                        item_type = type,
                         centroid = centroid,
-                        centroid_depth = depth_frame[centroid[1]][centroid[0]], 
                         angle = angle,
                         ymin = y, ymax = y + w, 
                         xmin = x, xmax = x + h, 
@@ -122,7 +121,7 @@ class ThresholdDetector:
                 continue
             
             # Get detected packet parameters
-            packet = self.get_packet_from_contour(contour, object_type)
+            packet = self.get_packet_from_contour(contour, object_type, depth_frame, encoder_pos)
 
             # Check for squareness
             side_ratio = packet.width / packet.height

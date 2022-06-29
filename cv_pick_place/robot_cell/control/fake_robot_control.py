@@ -218,12 +218,14 @@ class FakeRobotCommunication:
         #Enabling laser sensor to synchornize robot with moving packets.
         self.Laser_Enable.set_value(ua.DataValue(True))
         time.sleep(0.5)
+        fake_enc_pos = 0
         while True:
             try:
+                fake_enc_pos -= 16
                 robot_server_dict = {
                 'pos':self.get_actual_pos(),
-                'encoder_vel':round(self.Encoder_Vel.get_value(),2),
-                'encoder_pos':round(self.Encoder_Pos.get_value(),2),
+                'encoder_vel':round(-160,2),
+                'encoder_pos':round(fake_enc_pos,2),
                 'start':self.Start_Prog.get_value(),
                 'abort':self.Abort_Prog.get_value(),
                 'rob_stopped':self.Rob_Stopped.get_value(),

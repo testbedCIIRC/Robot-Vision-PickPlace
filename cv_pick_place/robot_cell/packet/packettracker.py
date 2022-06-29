@@ -46,7 +46,7 @@ class PacketTracker:
 
         crop = self.get_crop_from_frame(self.packets[self.nextObjectID], frame)
         self.packets[self.nextObjectID].depth_maps = crop
-
+        self.packets[self.nextObjectID].id = self.nextObjectID      # ! only for itemObject
         self.nextObjectID += 1
 
     def deregister(self, objectID):
