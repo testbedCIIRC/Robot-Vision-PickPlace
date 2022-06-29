@@ -3,3 +3,5 @@ recording_*.npy
 
 .vscode/
 cv_pick_place/robot_cell/packet/data/
+
+temp_rgbd/
