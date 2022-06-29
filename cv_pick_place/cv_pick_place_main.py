@@ -46,6 +46,9 @@ def main(rc, server_in):
     rc.show_boot_screen('STARTING NEURAL NET...')
     pack_detect = ThresholdDetector()
 
+    # Initialize list for items ready to be picked
+    pick_list = []
+
     # Define fixed x position where robot waits for packet.
     x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
 
@@ -148,15 +151,29 @@ def main(rc, server_in):
             # If the conveyor is moving to the left direction.
             if is_conv_mov:
                 # Increase counter of frames with detections. 
-                track_frame += 1
-                # If counter larger than limit.
-                if track_frame > frames_lim:
-                    # Reset tracked frames count.
-                    track_frame = 0
-            # If conveyor stops moving to the left direction.
-            else:
-                # Set tracked frames count to 0.
-                track_frame = 0
+                for (objectID, packet) in registered_packets.items():
+                    packet.track_frame += 1
+                    # If counter larger than limit, and packet not already in pick list.
+                    if packet.track_frame > frames_lim and not packet.in_pick_list:     # TODO make item class and update main
+                        # Add to pick list.
+                        packet.in_pick_list = True
+                        pick_list.append = packet # ? copy
+
+        if is_rob_ready and homography is not None:
+            # Update pick list to current positions
+            for packet in pick_list:
+                packet.centroid = packet.getCentroidFromEncoder(encoder_pos)
+            # Get list of current world x coordinates
+            pick_list_positions = [packet.getCentroidInWorldFrame(homography)[0] for packet in pick_list]
+            # If item is too far remove it from list
+            while pick_list_positions[0] < MAX_PICK_X + robot_speed_offset:  # TODO find value for MPX and robot speed offset
+                pick_list.pop(0)
+                pick_list_positions.pop(0)
+            # Choose a item for picking
+            if len(pick_list) > 0:
+                # Chose farthest item on belt
+                pick_ID = np.array(pick_list_positions).argmax()
+                packet_to_pick = pick_list.pop(pick_ID)
             
             # Compute updated (x,y) pick positions of tracked moving packets and distance to packet.
             world_x, world_y, dist_to_pack, packet = rc.single_pack_tracking_update(
