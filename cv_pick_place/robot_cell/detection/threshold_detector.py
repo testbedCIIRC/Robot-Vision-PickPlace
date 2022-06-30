@@ -108,7 +108,7 @@ class ThresholdDetector:
                 continue
             
             # Get detected packet parameters
-            packet = self.get_packet_from_contour(contour, object_type)
+            packet = self.get_packet_from_contour(contour, object_type, depth_frame, encoder_pos)
 
             # Check for squareness
             side_ratio = packet.width / packet.height
