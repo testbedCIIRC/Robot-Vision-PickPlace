@@ -33,7 +33,7 @@ from robot_cell.control.fake_robot_control import FakeRobotControl
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = False
+USE_DEEP_DETECTOR = True
 
 def main(rc, server_in):
     """
@@ -135,7 +135,8 @@ def main(rc, server_in):
         if USE_DEEP_DETECTOR:
             image_frame, detected_packets = pack_detect.deep_pack_obj_detector(rgb_frame, 
                                                                                depth_frame,
-                                                                               encoder_pos)
+                                                                               encoder_pos
+                                                                               bnd_box=bbox)
         else:
             image_frame, detected_packets = pack_detect.detect_packet_hsv(image_frame,
                                                                           rgb_frame,
@@ -218,7 +219,7 @@ def main(rc, server_in):
             drawText(image_frame, text_robot, (10, int(75 * text_size)), text_size)
 
         # Show frames on cv2 window
-        #image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
+        image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
         cv2.imshow("Frame", image_frame)
 
         # Increase counter for homography update.
@@ -235,7 +236,7 @@ def main(rc, server_in):
         if key == ord('i'):
             rc.change_gripper_state(True)
 
-        if key == ord('m') :
+        if key == ord('m'):
             conv_right = rc.change_conveyor_right(conv_right)
         
         if key == ord('n'):
