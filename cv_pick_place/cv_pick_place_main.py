@@ -104,7 +104,7 @@ def main(rc, server_in):
 
         try:
             # Try to detect tags in rgb frame.
-            rgb_frame = apriltag.detect_tags(rgb_frame)
+            image_frame = apriltag.detect_tags(rgb_frame)
 
             # Update homography on first frame of 500 frames.
             if frame_count == 1:
@@ -133,13 +133,16 @@ def main(rc, server_in):
         
         # Detect packets using neural network.
         if USE_DEEP_DETECTOR:
-            _, detected_packets = pack_detect.deep_pack_obj_detector(rgb_frame, 
-                                                                     depth_frame,
-                                                                     encoder_pos)
+            image_frame, detected_packets = pack_detect.deep_pack_obj_detector(rgb_frame, 
+                                                                               depth_frame,
+                                                                               encoder_pos)
         else:
-            detected_packets = pack_detect.detect_packet_hsv(rgb_frame,
-                                                            depth_frame,
-                                                            encoder_pos)
+            image_frame, detected_packets = pack_detect.detect_packet_hsv(image_frame,
+                                                                          rgb_frame,
+                                                                          depth_frame,
+                                                                          encoder_pos,
+                                                                          bbox,
+                                                                          text_size)
 
         # Update tracked packets for current frame.
         labeled_packets = pt.track_items(detected_packets)
@@ -203,40 +206,6 @@ def main(rc, server_in):
         # Show depth frame overlay.
         if depth_map:
             image_frame = cv2.addWeighted(image_frame, 0.8, colorized_depth, 0.3, 0)
-
-        # Draw detected item info
-        for item in registered_packets:
-            if item.disappeared == 0:
-                if bbox:
-                    # Draw bounding rectangle
-                    cv2.rectangle(image_frame, 
-                                (item.centroid[0] - int(item.width / 2), item.centroid[1] - int(item.height / 2)), 
-                                (item.centroid[0] + int(item.width / 2), item.centroid[1] + int(item.height / 2)), 
-                                (255, 0, 0), 2, lineType=cv2.LINE_AA)
-
-                    # Draw item contours
-                    cv2.drawContours(image_frame, 
-                                    [item.box], 
-                                    -1, 
-                                    (0, 255, 0), 2, lineType=cv2.LINE_AA)
-
-                # Draw centroid
-                cv2.drawMarker(image_frame, 
-                               item.centroid, 
-                               (0, 0, 255), cv2.MARKER_CROSS, 10, cv2.LINE_4)
-
-                # Draw centroid estimated with encoder position
-                cv2.drawMarker(image_frame, 
-                               item.getCentroidFromEncoder(encoder_pos), 
-                               (255, 255, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
-
-                # Draw packet ID
-                text_id = "ID {}".format(item.id)
-                drawText(image_frame, text_id, (item.centroid[0] + 10, item.centroid[1]), text_size)
-
-                # Draw packet centroid
-                text_centroid = "X: {}, Y: {}".format(item.centroid[0], item.centroid[1])
-                drawText(image_frame, text_centroid, (item.centroid[0] + 10, item.centroid[1] + int(45 * text_size)), text_size)
 
         # Show FPS and robot position data
         if f_data:

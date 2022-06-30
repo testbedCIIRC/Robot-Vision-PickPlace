@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 
 from robot_cell.packet.packet_object import Packet
+from robot_cell.functions import *
 
 class ThresholdDetector:
     def __init__(self, ignore_vertical_px = 60, ignore_horizontal_px = 10, max_ratio_error = 0.1,
@@ -44,13 +45,47 @@ class ThresholdDetector:
                         encoder_position = encoder_pos)
         
         return packet
+
+    def draw_packet_info(self, image_frame, packet, encoder_position, draw_box = True, text_size = 1):
+        if draw_box:
+            # Draw bounding rectangle
+            cv2.rectangle(image_frame, 
+                          (packet.centroid[0] - int(packet.width / 2), packet.centroid[1] - int(packet.height / 2)), 
+                          (packet.centroid[0] + int(packet.width / 2), packet.centroid[1] + int(packet.height / 2)), 
+                          (255, 0, 0), 2, lineType=cv2.LINE_AA)
+
+            # Draw item contours
+            cv2.drawContours(image_frame, 
+                             [packet.box], 
+                             -1, 
+                             (0, 255, 0), 2, lineType=cv2.LINE_AA)
+
+        # Draw centroid
+        cv2.drawMarker(image_frame, 
+                       packet.centroid, 
+                       (0, 0, 255), cv2.MARKER_CROSS, 10, cv2.LINE_4)
+
+        # Draw centroid estimated with encoder position
+        cv2.drawMarker(image_frame, 
+                       packet.getCentroidFromEncoder(encoder_position), 
+                       (255, 255, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
+
+        # Draw packet ID
+        text_id = "ID {}".format(packet.id)
+        drawText(image_frame, text_id, (packet.centroid[0] + 10, packet.centroid[1]), text_size)
+
+        # Draw packet centroid
+        text_centroid = "X: {}, Y: {}".format(packet.centroid[0], packet.centroid[1])
+        drawText(image_frame, text_centroid, (packet.centroid[0] + 10, packet.centroid[1] + int(45 * text_size)), text_size)
+
+        return image_frame
         
-    def detect_packet_hsv(self, rgb_frame, depth_frame, encoder_pos):
+    def detect_packet_hsv(self, image_frame, rgb_frame, depth_frame, encoder_position, draw_box = True, text_size = 1):
         self.detected_objects = []
         
         if self.homography_determinant is None:
             print("[WARINING] ObjectDetector: No homography matrix set")
-            return self.detected_objects
+            return image_frame, self.detected_objects
         
         frame_height = rgb_frame.shape[0]
         frame_width = rgb_frame.shape[1]
@@ -84,7 +119,7 @@ class ThresholdDetector:
                 continue
             
             # Get detected packet parameters
-            packet = self.get_packet_from_contour(contour, object_type, depth_frame, encoder_pos)
+            packet = self.get_packet_from_contour(contour, object_type, depth_frame, encoder_position)
             
             # Check for squareness
             side_ratio = packet.width / packet.height
@@ -94,6 +129,8 @@ class ThresholdDetector:
             # Check if packet is far enough from edge
             if packet.centroid[0] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[0] + packet.width/2 > (frame_width - self.ignore_horizontal_px):
                 continue
+
+            image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box, text_size)
             
             self.detected_objects.append(packet)
 
@@ -108,7 +145,7 @@ class ThresholdDetector:
                 continue
             
             # Get detected packet parameters
-            packet = self.get_packet_from_contour(contour, object_type, depth_frame, encoder_pos)
+            packet = self.get_packet_from_contour(contour, object_type, depth_frame, encoder_position)
 
             # Check for squareness
             side_ratio = packet.width / packet.height
@@ -119,6 +156,8 @@ class ThresholdDetector:
             if packet.centroid[0] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[0] + packet.width/2 > (frame_width - self.ignore_horizontal_px):
                 continue
             
+            image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box, text_size)
+
             self.detected_objects.append(packet)
 
-        return self.detected_objects
+        return image_frame, self.detected_objects

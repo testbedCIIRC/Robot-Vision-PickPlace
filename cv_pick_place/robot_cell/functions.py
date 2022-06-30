@@ -10,7 +10,7 @@ def drawText(frame, text, position, size = 1):
     cv2.putText(frame, 
                 text, 
                 position,
-                cv2.FONT_HERSHEY_SIMPLEX, size, (255, 255, 255), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, size, (255, 255, 255), 1)
 
 
 def meanFilter(depth_frame):
