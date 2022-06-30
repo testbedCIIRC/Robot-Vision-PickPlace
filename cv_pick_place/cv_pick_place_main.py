@@ -71,6 +71,7 @@ def main(rc, server_in):
     conv_right = False # Conveyor heading right enable.
     homography = None # Homography matrix.
     track_result = None # Result of pack_obj_tracking_update.
+    text_size = 1
 
     # Predefine packet z and x offsets with robot speed of 55%.
     # Index corresponds to type of packet.
@@ -98,6 +99,8 @@ def main(rc, server_in):
         frame_height, frame_width, frame_channel_count = rgb_frame.shape
 
         image_frame = rgb_frame.copy()
+
+        text_size = (frame_height // 480)
 
         try:
             # Try to detect tags in rgb frame.
@@ -229,21 +232,21 @@ def main(rc, server_in):
 
                 # Draw packet ID
                 text_id = "ID {}".format(item.id)
-                drawText(image_frame, text_id, (item.centroid[0] + 10, item.centroid[1]))
+                drawText(image_frame, text_id, (item.centroid[0] + 10, item.centroid[1]), text_size)
 
                 # Draw packet centroid
                 text_centroid = "X: {}, Y: {}".format(item.centroid[0], item.centroid[1])
-                drawText(image_frame, text_centroid, (item.centroid[0] + 10, item.centroid[1] + 25))
+                drawText(image_frame, text_centroid, (item.centroid[0] + 10, item.centroid[1] + 25), text_size)
 
         # Show FPS and robot position data
         if f_data:
             # Draw FPS to screen
             text_fps = "FPS: {:.2f}".format(1.0 / (time.time() - start_time))
-            drawText(image_frame, text_fps, (10, 25))
+            drawText(image_frame, text_fps, (10, 25), text_size)
 
             # Draw OPCUA data to screen
             text_robot = str(robot_server_dict)
-            drawText(image_frame, text_robot, (10, 50))
+            drawText(image_frame, text_robot, (10, 50), text_size)
 
         # Show frames on cv2 window
         image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
