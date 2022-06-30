@@ -309,7 +309,7 @@ def program_mode(rc, rd):
             t2.start()
 
     # If input is exit, exit python.
-    if mode == 'exit':
+    if mode == 'e':
         exit()
 
     # Return function recursively.
