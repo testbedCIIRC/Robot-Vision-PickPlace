@@ -4,7 +4,7 @@ from collections import OrderedDict
 import numpy as np
 
 class ItemTracker:
-    def __init__(self, max_disappeared_frames = 10, guard = 250, max_item_distance = 300):
+    def __init__(self, max_disappeared_frames = 10, guard = 250, max_item_distance = 200):
         """
         ItemTracker object constructor.
     
@@ -135,6 +135,6 @@ class ItemTracker:
                     minimal_dist_index = tracked_item_index
             
             if minimal_dist_index is not None and minimal_distance < self.max_item_distance:
-                labeled_item_list[detected_item_index].id = self.item_database[tracked_item_index].id
+                labeled_item_list[detected_item_index].id = self.item_database[minimal_dist_index].id
 
         return labeled_item_list
