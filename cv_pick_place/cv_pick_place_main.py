@@ -130,9 +130,9 @@ def main(rc, server_in):
         
         # Detect packets using neural network.
         if USE_DEEP_DETECTOR:
-            detected_packets = pack_detect.deep_pack_obj_detector(rgb_frame, 
-                                                                  depth_frame,
-                                                                  encoder_pos)
+            _, detected_packets = pack_detect.deep_pack_obj_detector(rgb_frame, 
+                                                                     depth_frame,
+                                                                     encoder_pos)
         else:
             detected_packets = pack_detect.detect_packet_hsv(rgb_frame,
                                                             depth_frame,
