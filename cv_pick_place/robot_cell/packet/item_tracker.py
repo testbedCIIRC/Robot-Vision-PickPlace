@@ -25,6 +25,7 @@ class ItemTracker:
         self.next_item_id = 0
         self.item_database = []
         self.max_item_distance = max_item_distance
+        self.max_disappeared_frames = maxDisappeared
 
     def register_item(self, item):
         item.id = self.next_item_id
@@ -66,7 +67,7 @@ class ItemTracker:
                     break
         
         for tracked_item in self.item_database:
-            if tracked_item.disappeared > self.maxDisappeared:
+            if tracked_item.disappeared > self.max_disappeared_frames:
                 self.deregister_item(tracked_item.id)
 
     def track_items(self, detected_item_list):

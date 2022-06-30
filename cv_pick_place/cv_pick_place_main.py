@@ -42,7 +42,7 @@ def main(rc, server_in):
     """
     # Inititalize objects.
     apriltag = ProcessingApriltag()
-    pt = PacketTracker(maxDisappeared=10, guard=25)    
+    pt = PacketTracker(maxDisappeared=10, guard=25)
     dc = DepthCamera()
     rc.show_boot_screen('STARTING NEURAL NET...')
     pack_detect = ThresholdDetector()
@@ -84,7 +84,7 @@ def main(rc, server_in):
         # Get frames from realsense.
         success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
         if not success:
-            pass
+            continue
 
         # Crop and resize depth frame to match rgb frame.
         height, width, depth = rgb_frame.shape
@@ -192,7 +192,7 @@ def main(rc, server_in):
                         (255, 255, 0), 2)
 
         # Show frames on cv2 window.
-        img_detect = cv2.resize(img_detect, (width//2,height//2))
+        img_detect = cv2.resize(img_detect, (width // 2, height // 2))
         cv2.imshow("Frame", img_detect)
 
         # Increase counter for homography update.
