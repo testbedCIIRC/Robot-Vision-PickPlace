@@ -9,24 +9,17 @@ class ItemTracker:
         ItemTracker object constructor.
     
         Parameters:
-        maxDisappeared (int): Maximum number of frames before deregister.
+        max_disappeared_frames (int): Maximum number of frames before deregister.
         guard (int): When packet depth is cropped, the resulting crop will have 'guard' extra pixels on each side
-        maxCentroidDistance (int): Maximal distance which packet can travel when it disappears in frame pixels
+        max_item_distance (int): Maximal distance which packet can travel when it disappears in frame pixels
 
         """
-        self.nextObjectID = 0
-        self.packets = OrderedDict()
-
-        self.guard = guard
-        self.maxCentroidDistance = max_item_distance
-
-        # Maximum consecutive frames a given object is allowed to be marked as "disappeared"
-        self.maxDisappeared = max_disappeared_frames
-
-        self.next_item_id = 0
         self.item_database = []
+        self.next_item_id = 0
+
         self.max_item_distance = max_item_distance
         self.max_disappeared_frames = max_disappeared_frames
+        self.guard = guard
 
     def register_item(self, item):
         """
@@ -73,6 +66,8 @@ class ItemTracker:
         # Update parameters
         tracked_item.centroid = new_item.centroid
         tracked_item.disappeared = 0
+        tracked_item.box = new_item.box
+        tracked_item.angle = new_item.angle
 
         return tracked_item
 
