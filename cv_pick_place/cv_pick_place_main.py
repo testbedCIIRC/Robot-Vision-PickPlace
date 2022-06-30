@@ -33,7 +33,7 @@ from robot_cell.control.fake_robot_control import FakeRobotControl
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = True
+USE_DEEP_DETECTOR = False
 
 def main(rc, server_in):
     """
@@ -100,7 +100,7 @@ def main(rc, server_in):
 
         image_frame = rgb_frame.copy()
 
-        text_size = (frame_height // 480)
+        text_size = (frame_height / 1000)
 
         try:
             # Try to detect tags in rgb frame.
@@ -236,20 +236,20 @@ def main(rc, server_in):
 
                 # Draw packet centroid
                 text_centroid = "X: {}, Y: {}".format(item.centroid[0], item.centroid[1])
-                drawText(image_frame, text_centroid, (item.centroid[0] + 10, item.centroid[1] + 25), text_size)
+                drawText(image_frame, text_centroid, (item.centroid[0] + 10, item.centroid[1] + int(45 * text_size)), text_size)
 
         # Show FPS and robot position data
         if f_data:
             # Draw FPS to screen
             text_fps = "FPS: {:.2f}".format(1.0 / (time.time() - start_time))
-            drawText(image_frame, text_fps, (10, 25), text_size)
+            drawText(image_frame, text_fps, (10, int(35 * text_size)), text_size)
 
             # Draw OPCUA data to screen
             text_robot = str(robot_server_dict)
-            drawText(image_frame, text_robot, (10, 50), text_size)
+            drawText(image_frame, text_robot, (10, int(75 * text_size)), text_size)
 
         # Show frames on cv2 window
-        image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
+        #image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
         cv2.imshow("Frame", image_frame)
 
         # Increase counter for homography update.
