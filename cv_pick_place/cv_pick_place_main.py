@@ -98,13 +98,11 @@ def main(rc, server_in):
         # Crop and resize depth frame to match rgb frame.
         frame_height, frame_width, frame_channel_count = rgb_frame.shape
 
-        image_frame = rgb_frame.copy()
-
         text_size = (frame_height / 1000)
 
         try:
             # Try to detect tags in rgb frame.
-            image_frame = apriltag.detect_tags(rgb_frame)
+            rgb_frame = apriltag.detect_tags(rgb_frame)
 
             # Update homography on first frame of 500 frames.
             if frame_count == 1:
@@ -138,8 +136,7 @@ def main(rc, server_in):
                                                                                encoder_pos,
                                                                                bnd_box=bbox)
         else:
-            image_frame, detected_packets = pack_detect.detect_packet_hsv(image_frame,
-                                                                          rgb_frame,
+            image_frame, detected_packets = pack_detect.detect_packet_hsv(rgb_frame,
                                                                           depth_frame,
                                                                           encoder_pos,
                                                                           bbox,
