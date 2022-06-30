@@ -30,6 +30,7 @@ from robot_cell.detection.apriltag_detection import ProcessingApriltag
 
 from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.control.fake_robot_control import FakeRobotControl
+from robot_cell.packet.item_tracker import ItemTracker
 
 def main(rc, server_in):
     """
@@ -42,7 +43,7 @@ def main(rc, server_in):
     """
     # Inititalize objects.
     apriltag = ProcessingApriltag()
-    pt = PacketTracker(maxDisappeared=10, guard=25)
+    pt = ItemTracker(max_disappeared_frames = 10, guard = 25)
     dc = DepthCamera()
     rc.show_boot_screen('STARTING NEURAL NET...')
     pack_detect = ThresholdDetector()
@@ -118,11 +119,13 @@ def main(rc, server_in):
             pass
         
         # Detect packets using neural network.
-        img_detect, detected = pack_detect.detect_packet_hsv(rgb_frame, 
+        img_detect, detected_packets = pack_detect.detect_packet_hsv(rgb_frame, 
                                                              depth_frame,
                                                              encoder_pos)
         # Update tracked packets for current frame.
-        registered_packets, deregistered_packets = pt.update(detected, depth_frame)
+        labeled_packets = pt.track_items(detected_packets)
+        pt.update_item_database(labeled_packets)
+        registered_packets = pt.item_database
         print({
             'packs': registered_packets,
             'rob_stop': rob_stopped, 
@@ -130,7 +133,7 @@ def main(rc, server_in):
             'prog_done': prog_done})
 
         # When detected not empty, objects are being detected.
-        is_detect = len(detected) != 0 
+        is_detect = len(detected_packets) != 0 
         # When speed of conveyor more than -100 it is moving to the left.
         is_conv_mov = encoder_vel < - 100.0
         #Robot ready when programs are fully finished and it isn't moving.
@@ -152,31 +155,45 @@ def main(rc, server_in):
                 track_frame = 0
             
             # Compute updated (x,y) pick positions of tracked moving packets and distance to packet.
-            world_x, world_y, dist_to_pack, packet = rc.single_pack_tracking_update(
-                                                        registered_packets, 
-                                                        img_detect, 
-                                                        homography, 
-                                                        is_detect,
-                                                        x_fixed, 
-                                                        track_frame,
-                                                        frames_lim,
-                                                        encoder_pos)
-            track_result = (world_x, world_y, dist_to_pack)                                            
+            # world_x, world_y, dist_to_pack, packet = rc.single_pack_tracking_update(
+            #                                             registered_packets, 
+            #                                             img_detect, 
+            #                                             homography, 
+            #                                             is_detect,
+            #                                             x_fixed, 
+            #                                             track_frame,
+            #                                             frames_lim,
+            #                                             encoder_pos)
+            # track_result = (world_x, world_y, dist_to_pack)                                            
             #Trigger start of the pick and place program.
-            rc.single_pack_tracking_program_start(
-                                        track_result, 
-                                        packet, 
-                                        encoder_pos, 
-                                        encoder_vel, 
-                                        is_rob_ready, 
-                                        pack_x_offsets, 
-                                        pack_depths)
+            # rc.single_pack_tracking_program_start(
+            #                             track_result, 
+            #                             packet, 
+            #                             encoder_pos, 
+            #                             encoder_vel, 
+            #                             is_rob_ready, 
+            #                             pack_x_offsets, 
+            #                             pack_depths)
 
         # Show point cloud visualization when packets are deregistered.
-        if len(deregistered_packets) > 0:
-            pclv = PointCloudViz(".", deregistered_packets[-1])
-            pclv.show_point_cloud()
-            del pclv
+        # if len(deregistered_packets) > 0:
+        #     pclv = PointCloudViz(".", deregistered_packets[-1])
+        #     pclv.show_point_cloud()
+        #     del pclv
+
+        # Draw both the ID and centroid of packet objects
+        for item in registered_packets:
+            if item.disappeared == 0:
+                centroid_tup = item.centroid
+                centroid = np.array([centroid_tup[0],centroid_tup[1]]).astype('int')
+                text1 = "ID {}".format(item.id)
+                text2 = "X: {}, Y: {}".format(centroid[0], centroid[1])
+                cv2.putText(img_detect, text1, (centroid[0] + 10, centroid[1]), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+                cv2.putText(img_detect, text2, (centroid[0] + 10, centroid[1] + 25), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+                cv2.circle(img_detect, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
+                cv2.circle(img_detect, item.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
 
         # Show depth frame overlay.
         if depth_map:
