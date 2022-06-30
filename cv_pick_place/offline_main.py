@@ -20,7 +20,7 @@ if __name__ == '__main__':
     # Start threads
     q = Queue(maxsize = 1)
     t1 = Thread(target = main, args =(rc, q))
-    t2 = Thread(target = rc.robot_server, args =(q, ))
+    t2 = Thread(target = rc.robot_server, args =(q, ), daemon=True)
     t1.start()
     t2.start()
 

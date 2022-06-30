@@ -31,6 +31,9 @@ from robot_cell.detection.apriltag_detection import ProcessingApriltag
 from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.control.fake_robot_control import FakeRobotControl
 from robot_cell.packet.item_tracker import ItemTracker
+from robot_cell.functions import *
+
+USE_DEEP_DETECTOR = True
 
 def main(rc, server_in):
     """
@@ -46,7 +49,11 @@ def main(rc, server_in):
     pt = ItemTracker(max_disappeared_frames = 10, guard = 25)
     dc = DepthCamera()
     rc.show_boot_screen('STARTING NEURAL NET...')
-    pack_detect = ThresholdDetector()
+
+    if USE_DEEP_DETECTOR:
+        pack_detect = PacketDetector(paths, files, check_point)
+    else:
+        pack_detect = ThresholdDetector()
 
     # Define fixed x position where robot waits for packet.
     x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
@@ -58,7 +65,7 @@ def main(rc, server_in):
     frame_count = 1 # Counter of frames for homography update.
     bbox = True # Bounding box visualization enable.
     f_data = False # Show frame data (robot pos, encoder vel, FPS ...).
-    depth_map = True # Overlay colorized depth enable.
+    depth_map = False # Overlay colorized depth enable.
     is_detect = False # Detecting objects enable.
     conv_left = False # Conveyor heading left enable.
     conv_right = False # Conveyor heading right enable.
@@ -88,7 +95,9 @@ def main(rc, server_in):
             continue
 
         # Crop and resize depth frame to match rgb frame.
-        height, width, depth = rgb_frame.shape
+        frame_height, frame_width, frame_channel_count = rgb_frame.shape
+
+        image_frame = rgb_frame.copy()
 
         try:
             # Try to detect tags in rgb frame.
@@ -103,7 +112,8 @@ def main(rc, server_in):
             is_type_np = type(homography).__module__ == np.__name__
             is_marker_detect = is_type_np or homography == None
 
-            pack_detect.set_homography(homography)
+            if not USE_DEEP_DETECTOR:
+                pack_detect.set_homography(homography)
 
             # Reset not detected tags warning.
             if is_marker_detect:
@@ -119,21 +129,27 @@ def main(rc, server_in):
             pass
         
         # Detect packets using neural network.
-        img_detect, detected_packets = pack_detect.detect_packet_hsv(rgb_frame, 
-                                                             depth_frame,
-                                                             encoder_pos)
+        if USE_DEEP_DETECTOR:
+            detected_packets = pack_detect.deep_pack_obj_detector(rgb_frame, 
+                                                                  depth_frame,
+                                                                  encoder_pos)
+        else:
+            detected_packets = pack_detect.detect_packet_hsv(rgb_frame,
+                                                            depth_frame,
+                                                            encoder_pos)
+
         # Update tracked packets for current frame.
         labeled_packets = pt.track_items(detected_packets)
         pt.update_item_database(labeled_packets)
         registered_packets = pt.item_database
         print({
             'packs': registered_packets,
-            'rob_stop': rob_stopped, 
-            'stop_acti': stop_active, 
+            'rob_stop': rob_stopped,
+            'stop_acti': stop_active,
             'prog_done': prog_done})
 
         # When detected not empty, objects are being detected.
-        is_detect = len(detected_packets) != 0 
+        is_detect = len(detected_packets) != 0
         # When speed of conveyor more than -100 it is moving to the left.
         is_conv_mov = encoder_vel < - 100.0
         #Robot ready when programs are fully finished and it isn't moving.
@@ -181,36 +197,57 @@ def main(rc, server_in):
         #     pclv.show_point_cloud()
         #     del pclv
 
-        # Draw both the ID and centroid of packet objects
-        for item in registered_packets:
-            if item.disappeared == 0:
-                centroid_tup = item.centroid
-                centroid = np.array([centroid_tup[0],centroid_tup[1]]).astype('int')
-                text1 = "ID {}".format(item.id)
-                text2 = "X: {}, Y: {}".format(centroid[0], centroid[1])
-                cv2.putText(img_detect, text1, (centroid[0] + 10, centroid[1]), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                cv2.putText(img_detect, text2, (centroid[0] + 10, centroid[1] + 25), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-                cv2.circle(img_detect, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
-                cv2.circle(img_detect, item.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
-
         # Show depth frame overlay.
         if depth_map:
-            img_detect = cv2.addWeighted(img_detect, 0.8, colorized_depth, 0.3, 0)
+            image_frame = cv2.addWeighted(image_frame, 0.8, colorized_depth, 0.3, 0)
 
-        # Show robot position data and FPS.
+        # Draw detected item info
+        for item in registered_packets:
+            if item.disappeared == 0:
+                if bbox:
+                    # Draw bounding rectangle
+                    cv2.rectangle(image_frame, 
+                                (item.centroid[0] - int(item.width / 2), item.centroid[1] - int(item.height / 2)), 
+                                (item.centroid[0] + int(item.width / 2), item.centroid[1] + int(item.height / 2)), 
+                                (255, 0, 0), 2, lineType=cv2.LINE_AA)
+
+                    # Draw item contours
+                    cv2.drawContours(image_frame, 
+                                    [item.box], 
+                                    -1, 
+                                    (0, 255, 0), 2, lineType=cv2.LINE_AA)
+
+                # Draw centroid
+                cv2.drawMarker(image_frame, 
+                               item.centroid, 
+                               (0, 0, 255), cv2.MARKER_CROSS, 10, cv2.LINE_4)
+
+                # Draw centroid estimated with encoder position
+                cv2.drawMarker(image_frame, 
+                               item.getCentroidFromEncoder(encoder_pos), 
+                               (255, 255, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
+
+                # Draw packet ID
+                text_id = "ID {}".format(item.id)
+                drawText(image_frame, text_id, (item.centroid[0] + 10, item.centroid[1]))
+
+                # Draw packet centroid
+                text_centroid = "X: {}, Y: {}".format(item.centroid[0], item.centroid[1])
+                drawText(image_frame, text_centroid, (item.centroid[0] + 10, item.centroid[1] + 25))
+
+        # Show FPS and robot position data
         if f_data:
-            cv2.putText(img_detect,str(robot_server_dict),(10,25),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
-            cv2.putText(img_detect,
-                        "FPS:"+str(1.0/(time.time() - start_time)),
-                        (10,40),cv2.FONT_HERSHEY_SIMPLEX, 0.57, 
-                        (255, 255, 0), 2)
+            # Draw FPS to screen
+            text_fps = "FPS: {:.2f}".format(1.0 / (time.time() - start_time))
+            drawText(image_frame, text_fps, (10, 25))
 
-        # Show frames on cv2 window.
-        img_detect = cv2.resize(img_detect, (width // 2, height // 2))
-        cv2.imshow("Frame", img_detect)
+            # Draw OPCUA data to screen
+            text_robot = str(robot_server_dict)
+            drawText(image_frame, text_robot, (10, 50))
+
+        # Show frames on cv2 window
+        image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
+        cv2.imshow("Frame", image_frame)
 
         # Increase counter for homography update.
         frame_count += 1
@@ -294,7 +331,7 @@ def program_mode(rc, rd):
         else:
             q = Queue(maxsize = 1)
             t1 = Thread(target = robot_prog, args =(rc, q))
-            t2 = Thread(target = rc.robot_server, args =(q, ))
+            t2 = Thread(target = rc.robot_server, args =(q, ), daemon=True)
             t1.start()
             t2.start()
 
