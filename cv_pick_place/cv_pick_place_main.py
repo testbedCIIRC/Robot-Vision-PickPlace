@@ -135,7 +135,7 @@ def main(rc, server_in):
         if USE_DEEP_DETECTOR:
             image_frame, detected_packets = pack_detect.deep_pack_obj_detector(rgb_frame, 
                                                                                depth_frame,
-                                                                               encoder_pos
+                                                                               encoder_pos,
                                                                                bnd_box=bbox)
         else:
             image_frame, detected_packets = pack_detect.detect_packet_hsv(image_frame,
@@ -358,7 +358,8 @@ if __name__ == '__main__':
     '1 : Pick and place with static conveyor and hand gestures\n'+
     '2 : Pick and place with static conveyor and multithreading\n'+
     '3 : Pick and place with moving conveyor, point cloud and multithreading\n'+
-    '4 : Main Pick and place\n')
+    '4 : Main Pick and place\n'+
+    'e : To exit program\n')
 
     # Start program mode selection.
     program_mode(rc, rd)
