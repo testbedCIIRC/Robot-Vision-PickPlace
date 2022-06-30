@@ -48,9 +48,9 @@ def main(rc, server_in):
     apriltag = ProcessingApriltag()
     pt = ItemTracker(max_disappeared_frames = 10, guard = 25)
     dc = DepthCamera()
-    rc.show_boot_screen('STARTING NEURAL NET...')
 
     if USE_DEEP_DETECTOR:
+        rc.show_boot_screen('STARTING NEURAL NET...')
         pack_detect = PacketDetector(paths, files, check_point)
     else:
         pack_detect = ThresholdDetector()
