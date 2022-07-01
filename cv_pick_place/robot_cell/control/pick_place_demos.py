@@ -344,7 +344,7 @@ class RobotDemos:
                 print('Program Aborted: ',abort)
                 time.sleep(0.5)
                 
-    def main_pick_place(self, rc, paths, files, check_point, server_in):
+    def main_pick_place(self, rc, paths, files, check_point, server_in, connection_encoder):
         """
         Pick and place with static conveyor and multithreading.
 
@@ -516,7 +516,7 @@ class RobotDemos:
                 time.sleep(0.5)
                 break
 
-    def main_pick_place_conveyor_w_point_cloud(self, rc, paths, files, check_point, server_in):
+    def main_pick_place_conveyor_w_point_cloud(self, rc, paths, files, check_point, server_in, connection_encoder):
         """
         Thread for pick and place with moving conveyor and point cloud operations.
         
