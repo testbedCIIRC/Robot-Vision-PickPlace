@@ -19,6 +19,8 @@ class Packet:
         encoder_position (float): position of encoder.
     
         """
+        self.id = None
+
         # Tuple of 2 numbers describing center of the packet
         self.centroid = centroid
 

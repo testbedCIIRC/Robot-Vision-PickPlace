@@ -2,15 +2,26 @@ import numpy as np
 import cv2
 
 from robot_cell.packet.item_object import Item
-
-ignore_region_vertical = 140
-ignore_region_horizontal = 10
+from robot_cell.functions import *
 
 class ThresholdDetector:
-    def __init__(self):
+    def __init__(self, ignore_vertical_px = 60, ignore_horizontal_px = 10, max_ratio_error = 0.1,
+                       white_lower = [40, 0, 90], white_upper = [140, 255, 255],
+                       brown_lower = [5, 20, 70], brown_upper = [35, 255, 255]):
         self.detected_objects = []
         self.homography_matrix = None
         self.homography_determinant = None
+
+        self.ignore_vertical_px = ignore_vertical_px
+        self.ignore_horizontal_px = ignore_horizontal_px
+
+        self.max_ratio_error = max_ratio_error
+
+        self.white_lower = np.array([white_lower])
+        self.white_upper = np.array([white_upper])
+
+        self.brown_lower = np.array([brown_lower])
+        self.brown_upper = np.array([brown_upper])
         
     def set_homography(self, homography_matrix):
         self.homography_matrix = homography_matrix
@@ -33,42 +44,68 @@ class ThresholdDetector:
                         encoder_position = encoder_pos)
         
         return packet
+
+    def draw_packet_info(self, image_frame, packet, encoder_position, draw_box = True, text_size = 1):
+        if draw_box:
+            # Draw bounding rectangle
+            cv2.rectangle(image_frame, 
+                          (packet.centroid[0] - int(packet.width / 2), packet.centroid[1] - int(packet.height / 2)), 
+                          (packet.centroid[0] + int(packet.width / 2), packet.centroid[1] + int(packet.height / 2)), 
+                          (255, 0, 0), 2, lineType=cv2.LINE_AA)
+
+            # Draw item contours
+            cv2.drawContours(image_frame, 
+                             [packet.box], 
+                             -1, 
+                             (0, 255, 0), 2, lineType=cv2.LINE_AA)
+
+        # Draw centroid
+        cv2.drawMarker(image_frame, 
+                       packet.centroid, 
+                       (0, 0, 255), cv2.MARKER_CROSS, 10, cv2.LINE_4)
+
+        # Draw centroid estimated with encoder position
+        cv2.drawMarker(image_frame, 
+                       packet.getCentroidFromEncoder(encoder_position), 
+                       (255, 255, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
+
+        # Draw packet ID
+        text_id = "ID {}".format(packet.id)
+        drawText(image_frame, text_id, (packet.centroid[0] + 10, packet.centroid[1]), text_size)
+
+        # Draw packet centroid
+        text_centroid = "X: {}, Y: {}".format(packet.centroid[0], packet.centroid[1])
+        drawText(image_frame, text_centroid, (packet.centroid[0] + 10, packet.centroid[1] + int(45 * text_size)), text_size)
+
+        return image_frame
         
-    def detect_packet_hsv(self, rgb_frame, depth_frame, encoder_pos):
+    def detect_packet_hsv(self, rgb_frame, depth_frame, encoder_position, draw_box = True, text_size = 1):
         self.detected_objects = []
         
         if self.homography_determinant is None:
             print("[WARINING] ObjectDetector: No homography matrix set")
-            return rgb_frame, self.detected_objects
+            return image_frame, self.detected_objects
+
+        image_frame = rgb_frame.copy()
         
         frame_height = rgb_frame.shape[0]
         frame_width = rgb_frame.shape[1]
-
-        image_frame = rgb_frame.copy()
         
         # Get binary mask
         hsv_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2HSV)
         
-        # blue_lower = np.array([60, 35, 140])
-        # blue_upper = np.array([180, 255, 255])
-        # blue_mask = cv2.inRange(hsv_frame, blue_lower, blue_upper)
-        
-        brown_lower = np.array([5, 20, 70])
-        brown_upper = np.array([35, 255, 255])
-        brown_mask = cv2.inRange(hsv_frame, brown_lower, brown_upper)
-        brown_mask[:ignore_region_vertical, :] = 0
-        brown_mask[(frame_height - ignore_region_vertical):, :] = 0
-        
-        white_lower = np.array([40, 0, 90])
-        white_upper = np.array([140, 255, 255])
-        white_mask = cv2.inRange(hsv_frame, white_lower, white_upper)
-        white_mask[:ignore_region_vertical, :] = 0
-        white_mask[(frame_height - ignore_region_vertical):, :] = 0
+        white_mask = cv2.inRange(hsv_frame, self.white_lower, self.white_upper)
+        white_mask[:self.ignore_vertical_px, :] = 0
+        white_mask[(frame_height - self.ignore_vertical_px):, :] = 0
 
-        brown_contour_list, _ = cv2.findContours(brown_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        brown_mask = cv2.inRange(hsv_frame, self.brown_lower, self.brown_upper)
+        brown_mask[:self.ignore_vertical_px, :] = 0
+        brown_mask[(frame_height - self.ignore_vertical_px):, :] = 0
+
         white_contour_list, _ = cv2.findContours(white_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        brown_contour_list, _ = cv2.findContours(brown_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # Detect white packets from white binary mask contours
+        # Detect WHITE packets from white binary mask contours
         for contour in white_contour_list:
             area_cm2 = abs(cv2.contourArea(contour) * self.homography_determinant)
             object_type = 0
@@ -83,34 +120,22 @@ class ThresholdDetector:
                 continue
             
             # Get detected packet parameters
-            packet = self.get_packet_from_contour(contour, object_type, depth_frame, encoder_pos)
+            packet = self.get_packet_from_contour(contour, object_type, depth_frame, encoder_position)
             
             # Check for squareness
             side_ratio = packet.width / packet.height
-            if not 1.3 > side_ratio > 0.7:
+            if not (1 + self.max_ratio_error) > side_ratio > (1 - self.max_ratio_error):
                 continue
 
             # Check if packet is far enough from edge
-            if packet.centroid[0] - packet.width / 2 < ignore_region_horizontal or packet.centroid[0] + packet.width/2 > (frame_width - ignore_region_horizontal):
+            if packet.centroid[0] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[0] + packet.width/2 > (frame_width - self.ignore_horizontal_px):
                 continue
 
-            cv2.rectangle(image_frame, 
-                      (packet.centroid[0] - int(packet.width / 2), packet.centroid[1] - int(packet.height / 2)), 
-                      (packet.centroid[0] + int(packet.width / 2), packet.centroid[1] + int(packet.height / 2)), 
-                      (255, 0, 0), 2, lineType=cv2.LINE_AA)
-
-            cv2.drawContours(image_frame, 
-                            [packet.box], 
-                            -1, 
-                            (0, 255, 0), 2, lineType=cv2.LINE_AA)
-
-            cv2.drawMarker(image_frame, 
-                        packet.centroid, 
-                        (0, 0, 255), cv2.MARKER_CROSS, 10, cv2.LINE_4)
+            image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box, text_size)
             
             self.detected_objects.append(packet)
 
-        # Detect brown packets from brown binary mask contours
+        # Detect BROWN packets from brown binary mask contours
         for contour in brown_contour_list:
             area_cm2 = abs(cv2.contourArea(contour) * self.homography_determinant)
             object_type = 0
@@ -121,31 +146,19 @@ class ThresholdDetector:
                 continue
             
             # Get detected packet parameters
-            packet = self.get_packet_from_contour(contour, object_type, depth_frame, encoder_pos)
+            packet = self.get_packet_from_contour(contour, object_type, depth_frame, encoder_position)
 
             # Check for squareness
             side_ratio = packet.width / packet.height
-            if not 1.3 > side_ratio > 0.7:
+            if not (1 + self.max_ratio_error) > side_ratio > (1 - self.max_ratio_error):
                 continue
 
             # Check if packet is far enough from edge
-            if packet.centroid[0] - packet.width / 2 < ignore_region_horizontal or packet.centroid[0] + packet.width/2 > (frame_width - ignore_region_horizontal):
+            if packet.centroid[0] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[0] + packet.width/2 > (frame_width - self.ignore_horizontal_px):
                 continue
-
-            cv2.rectangle(image_frame, 
-                      (packet.centroid[0] - int(packet.width / 2), packet.centroid[1] - int(packet.height / 2)), 
-                      (packet.centroid[0] + int(packet.width / 2), packet.centroid[1] + int(packet.height / 2)), 
-                      (255, 0, 0), 2, lineType=cv2.LINE_AA)
-
-            cv2.drawContours(image_frame, 
-                            [packet.box], 
-                            -1, 
-                            (0, 255, 0), 2, lineType=cv2.LINE_AA)
-
-            cv2.drawMarker(image_frame, 
-                        packet.centroid, 
-                        (0, 0, 255), cv2.MARKER_CROSS, 10, cv2.LINE_4)
             
+            image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box, text_size)
+
             self.detected_objects.append(packet)
 
         return image_frame, self.detected_objects
