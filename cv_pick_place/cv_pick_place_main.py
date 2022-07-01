@@ -35,9 +35,9 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = False
+USE_DEEP_DETECTOR = True
 
-def main(rc, server_in):
+def main(rc, paths, files, check_point, server_in):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
     
@@ -56,6 +56,10 @@ def main(rc, server_in):
         pack_detect = PacketDetector(paths, files, check_point)
     else:
         pack_detect = ThresholdDetector()
+
+    robot_server_dict = None
+    rc.connect_OPCUA_server()
+    rc.get_nodes()
 
     # Define fixed x position where robot waits for packet.
     x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
@@ -79,16 +83,12 @@ def main(rc, server_in):
     # Index corresponds to type of packet.
     pack_depths = [10.0, 3.0, 5.0, 5.0] # List of z positions at pick.
     pack_x_offsets = [50.0, 180.0, 130.0, 130.0] # List of x positions at pick.
-    
-    robot_server_dict = None
-    rc.connect_OPCUA_server()
-    rc.get_nodes()
 
     while True:
-        # Start timer for FPS estimation.
+        # Start timer for FPS estimation
         start_time = time.time()
 
-        # Read data dict from PLC server stored in queue object.
+        # Read data dict from PLC server
         if server_in.poll():
             robot_server_dict = server_in.recv()
             rob_stopped = robot_server_dict['rob_stopped']
@@ -225,7 +225,7 @@ def main(rc, server_in):
             drawText(image_frame, text_robot, (10, int(75 * text_size)), text_size)
 
         # Show frames on cv2 window
-        #image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
+        image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
         cv2.imshow("Frame", image_frame)
 
         # Increase counter for homography update.
@@ -273,7 +273,7 @@ def main(rc, server_in):
             rc.close_program()
             break
 
-def program_mode(rc, rd):
+def program_mode(demos, r_ctrl, r_comm):
     """
     Program selection function.
 
@@ -287,58 +287,44 @@ def program_mode(rc, rd):
     # Dictionary with robot positions and robot programs.
     modes_dict = {
         '1':{'dict':Pick_place_dict, 
-            'func':rd.main_robot_control_demo},
+            'func':demos.main_robot_control_demo},
         '2':{'dict':Pick_place_dict, 
-            'func':rd.main_pick_place},
+            'func':demos.main_pick_place},
         '3':{'dict':Pick_place_dict_conv_mov, 
-            'func':rd.main_pick_place_conveyor_w_point_cloud},
+            'func':demos.main_pick_place_conveyor_w_point_cloud},
         '4':{'dict':Pick_place_dict_conv_mov, 
             'func':main}
                 }
 
     # If mode is a program key.
     if mode in modes_dict:
-        # Set robot positions and robot program.
-        rc.rob_dict = modes_dict[mode]['dict']
+        # Set robot positions and robot program
+        r_ctrl.rob_dict = modes_dict[mode]['dict']
         robot_prog = modes_dict[mode]['func']
 
-        # If first mode (not threaded) start program.
+        # If first mode (not threaded) start program
         if mode == '1':
-            robot_prog(rc)
+            robot_prog(r_ctrl)
 
-        # Otherwise start selected threaded program.
+        # Otherwise start selected threaded program
         else:
-            q = Queue(maxsize = 1)
-            t1 = Thread(target = robot_prog, args =(rc, q))
-            t2 = Thread(target = rc.robot_server, args =(q, ), daemon=True)
-            t1.start()
-            t2.start()
+            connection_1, connection_2 = Pipe()
+            main_proc = Process(target = robot_prog, args = (r_ctrl, paths, files, check_point, connection_1))
+            info_server_proc = Process(target = r_comm.robot_server, args = (connection_2, ))
 
-    if mode == 'p':
-        # Initialize robot control objects
-        r_ctrl = RobotControl(Pick_place_dict_conv_mov)
-        r_comm = RobotCommunication()
+            main_proc.start()
+            info_server_proc.start()
 
-        # Create processes and connections
-        connection_1, connection_2 = Pipe()
-        main_proc = Process(target = main, args = (r_ctrl, connection_1))
-        info_server_proc = Process(target = r_comm.robot_server, args = (connection_2, ))
-
-        # Start processes
-        main_proc.start()
-        info_server_proc.start()
-
-        # Wait for main process to end and kill the server processes
-        main_proc.join()
-        info_server_proc.kill()
-
+            # Wait for the main process to end
+            main_proc.join()
+            info_server_proc.kill()
 
     # If input is exit, exit python.
     if mode == 'e':
         exit()
 
     # Return function recursively.
-    return program_mode(rc, rd)
+    return program_mode(demos, r_ctrl, r_comm)
 
 if __name__ == '__main__':
     # Define model parameters.
@@ -375,8 +361,9 @@ if __name__ == '__main__':
     Pick_place_dict = robot_poses['Pick_place_dict']
     
     # Initialize robot demos and robot control objects.
-    rc = RobotControl(None)
-    rd = RobotDemos(paths, files, check_point)
+    r_ctrl = RobotControl(None)
+    r_comm = RobotCommunication()
+    demos = RobotDemos(paths, files, check_point)
 
     # Show message about robot programs.
     print('Select pick and place mode: \n'+
@@ -387,4 +374,4 @@ if __name__ == '__main__':
     'e : To exit program\n')
 
     # Start program mode selection.
-    program_mode(rc, rd)
+    program_mode(demos, r_ctrl, r_comm)
