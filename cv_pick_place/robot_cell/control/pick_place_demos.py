@@ -344,7 +344,7 @@ class RobotDemos:
                 print('Program Aborted: ',abort)
                 time.sleep(0.5)
                 
-    def main_pick_place(self, rc, server_in):
+    def main_pick_place(self, rc, paths, files, check_point, server_in):
         """
         Pick and place with static conveyor and multithreading.
 
@@ -357,7 +357,12 @@ class RobotDemos:
         ct = CentroidTracker()    
         dc = DepthCamera()    
         rc.show_boot_screen('STARTING NEURAL NET...')
-        pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
+        pack_detect = PacketDetector(paths, files, check_point)
+
+        robot_server_dict = None
+        rc.connect_OPCUA_server()
+        rc.get_nodes()
+
         warn_count = 0
         track_frame = 0
         is_detect = False
@@ -368,12 +373,17 @@ class RobotDemos:
         f_data = False
         homography = None
         while True:
-            # print('in size:',server_in.qsize())
-            robot_server_dict = server_in.get()
+            # Start timer for FPS estimation
             start_time = time.time()
-            rob_stopped = robot_server_dict['rob_stopped']
-            stop_active = robot_server_dict['stop_active']
-            prog_done = robot_server_dict['prog_done']
+
+            # Read data dict from PLC server
+            if server_in.poll():
+                robot_server_dict = server_in.recv()
+                rob_stopped = robot_server_dict['rob_stopped']
+                stop_active = robot_server_dict['stop_active']
+                prog_done = robot_server_dict['prog_done']
+            elif robot_server_dict is None:
+                continue
 
             ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
             
@@ -506,7 +516,7 @@ class RobotDemos:
                 time.sleep(0.5)
                 break
 
-    def main_pick_place_conveyor_w_point_cloud(self, rc, server_in):
+    def main_pick_place_conveyor_w_point_cloud(self, rc, paths, files, check_point, server_in):
         """
         Thread for pick and place with moving conveyor and point cloud operations.
         
@@ -520,7 +530,11 @@ class RobotDemos:
         pt = PacketTracker(maxDisappeared=10)    
         dc = DepthCamera()
         rc.show_boot_screen('STARTING NEURAL NET...')
-        pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
+        pack_detect = PacketDetector(paths, files, check_point)
+
+        robot_server_dict = None
+        rc.connect_OPCUA_server()
+        rc.get_nodes()
 
         # Define fixed x position where robot waits for packet.
         x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
@@ -548,13 +562,16 @@ class RobotDemos:
             # Start timer for FPS estimation.
             start_time = time.time()
 
-            # Read data dict from PLC server stored in queue object.
-            robot_server_dict = server_in.get()
-            rob_stopped = robot_server_dict['rob_stopped']
-            stop_active = robot_server_dict['stop_active']
-            prog_done = robot_server_dict['prog_done']
-            encoder_vel = robot_server_dict['encoder_vel']
-            encoder_pos = robot_server_dict['encoder_pos']
+            # Read data dict from PLC server
+            if server_in.poll():
+                robot_server_dict = server_in.recv()
+                rob_stopped = robot_server_dict['rob_stopped']
+                stop_active = robot_server_dict['stop_active']
+                prog_done = robot_server_dict['prog_done']
+                encoder_vel = robot_server_dict['encoder_vel']
+                encoder_pos = robot_server_dict['encoder_pos']
+            elif robot_server_dict is None:
+                continue
 
             # Get frames from realsense.
             ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()

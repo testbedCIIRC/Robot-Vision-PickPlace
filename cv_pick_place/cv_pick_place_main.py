@@ -17,11 +17,14 @@ from threading import Thread
 from threading import Timer
 from collections import OrderedDict
 from scipy.spatial import distance as dist
+from multiprocessing import Process
+from multiprocessing import Pipe
 
 from robot_cell.packet.packet_object import Packet
 from robot_cell.packet.packettracker import PacketTracker
 from robot_cell.packet.point_cloud_viz import PointCloudViz
 from robot_cell.packet.centroidtracker import CentroidTracker
+from robot_cell.control.robot_communication import RobotCommunication
 from robot_cell.control.robot_control import RobotControl
 from robot_cell.control.pick_place_demos import RobotDemos
 from robot_cell.detection.realsense_depth import DepthCamera
@@ -29,13 +32,12 @@ from robot_cell.detection.packet_detector import PacketDetector
 from robot_cell.detection.apriltag_detection import ProcessingApriltag
 
 from robot_cell.detection.threshold_detector import ThresholdDetector
-from robot_cell.control.fake_robot_control import FakeRobotControl
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
 USE_DEEP_DETECTOR = True
 
-def main(rc, server_in):
+def main(rc, paths, files, check_point, server_in):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
     
@@ -54,6 +56,10 @@ def main(rc, server_in):
         pack_detect = PacketDetector(paths, files, check_point)
     else:
         pack_detect = ThresholdDetector()
+
+    robot_server_dict = None
+    rc.connect_OPCUA_server()
+    rc.get_nodes()
 
     # Define fixed x position where robot waits for packet.
     x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
@@ -77,18 +83,21 @@ def main(rc, server_in):
     # Index corresponds to type of packet.
     pack_depths = [10.0, 3.0, 5.0, 5.0] # List of z positions at pick.
     pack_x_offsets = [50.0, 180.0, 130.0, 130.0] # List of x positions at pick.
-    
+
     while True:
-        # Start timer for FPS estimation.
+        # Start timer for FPS estimation
         start_time = time.time()
 
-        # Read data dict from PLC server stored in queue object.
-        robot_server_dict = server_in.get()
-        rob_stopped = robot_server_dict['rob_stopped']
-        stop_active = robot_server_dict['stop_active']
-        prog_done = robot_server_dict['prog_done']
-        encoder_vel = robot_server_dict['encoder_vel']
-        encoder_pos = robot_server_dict['encoder_pos']
+        # Read data dict from PLC server
+        if server_in.poll():
+            robot_server_dict = server_in.recv()
+            rob_stopped = robot_server_dict['rob_stopped']
+            stop_active = robot_server_dict['stop_active']
+            prog_done = robot_server_dict['prog_done']
+            encoder_vel = robot_server_dict['encoder_vel']
+            encoder_pos = robot_server_dict['encoder_pos']
+        elif robot_server_dict is None:
+            continue
 
         # Get frames from realsense.
         success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
@@ -264,7 +273,7 @@ def main(rc, server_in):
             rc.close_program()
             break
 
-def program_mode(rc, rd):
+def program_mode(demos, r_ctrl, r_comm):
     """
     Program selection function.
 
@@ -278,39 +287,44 @@ def program_mode(rc, rd):
     # Dictionary with robot positions and robot programs.
     modes_dict = {
         '1':{'dict':Pick_place_dict, 
-            'func':rd.main_robot_control_demo},
+            'func':demos.main_robot_control_demo},
         '2':{'dict':Pick_place_dict, 
-            'func':rd.main_pick_place},
+            'func':demos.main_pick_place},
         '3':{'dict':Pick_place_dict_conv_mov, 
-            'func':rd.main_pick_place_conveyor_w_point_cloud},
+            'func':demos.main_pick_place_conveyor_w_point_cloud},
         '4':{'dict':Pick_place_dict_conv_mov, 
             'func':main}
                 }
 
     # If mode is a program key.
     if mode in modes_dict:
-        # Set robot positions and robot program.
-        rc.rob_dict = modes_dict[mode]['dict']
+        # Set robot positions and robot program
+        r_ctrl.rob_dict = modes_dict[mode]['dict']
         robot_prog = modes_dict[mode]['func']
 
-        # If first mode (not threaded) start program.
+        # If first mode (not threaded) start program
         if mode == '1':
-            robot_prog(rc)
+            robot_prog(r_ctrl)
 
-        # Otherwise start selected threaded program.
+        # Otherwise start selected threaded program
         else:
-            q = Queue(maxsize = 1)
-            t1 = Thread(target = robot_prog, args =(rc, q))
-            t2 = Thread(target = rc.robot_server, args =(q, ), daemon=True)
-            t1.start()
-            t2.start()
+            connection_1, connection_2 = Pipe()
+            main_proc = Process(target = robot_prog, args = (r_ctrl, paths, files, check_point, connection_1))
+            info_server_proc = Process(target = r_comm.robot_server, args = (connection_2, ))
+
+            main_proc.start()
+            info_server_proc.start()
+
+            # Wait for the main process to end
+            main_proc.join()
+            info_server_proc.kill()
 
     # If input is exit, exit python.
     if mode == 'e':
         exit()
 
     # Return function recursively.
-    return program_mode(rc, rd)
+    return program_mode(demos, r_ctrl, r_comm)
 
 if __name__ == '__main__':
     # Define model parameters.
@@ -347,8 +361,9 @@ if __name__ == '__main__':
     Pick_place_dict = robot_poses['Pick_place_dict']
     
     # Initialize robot demos and robot control objects.
-    rc = RobotControl(None)
-    rd = RobotDemos(paths, files, check_point)
+    r_ctrl = RobotControl(None)
+    r_comm = RobotCommunication()
+    demos = RobotDemos(paths, files, check_point)
 
     # Show message about robot programs.
     print('Select pick and place mode: \n'+
@@ -359,4 +374,4 @@ if __name__ == '__main__':
     'e : To exit program\n')
 
     # Start program mode selection.
-    program_mode(rc, rd)
+    program_mode(demos, r_ctrl, r_comm)
