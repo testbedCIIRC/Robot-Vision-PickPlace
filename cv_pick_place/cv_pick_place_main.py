@@ -21,6 +21,7 @@ from scipy.spatial import distance as dist
 from robot_cell.packet.packet_object import Packet
 from robot_cell.packet.item_object import Item
 from robot_cell.packet.packettracker import PacketTracker
+from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.packet.point_cloud_viz import PointCloudViz
 from robot_cell.packet.centroidtracker import CentroidTracker
 from robot_cell.control.robot_control import RobotControl
@@ -43,7 +44,8 @@ def main(rc, server_in):
     """
     # Inititalize objects.
     apriltag = ProcessingApriltag()
-    pt = PacketTracker(maxDisappeared=10, guard=25)    
+    # pt = ItemTracker(maxDisappeared=10, guard=30, max_item_distance=300)    
+    pt = PacketTracker(maxDisappeared=10, guard=30)    
     dc = DepthCamera()
     rc.show_boot_screen('STARTING NEURAL NET...')
     pack_detect = ThresholdDetector()
@@ -68,13 +70,13 @@ def main(rc, server_in):
     homography = None # Homography matrix.
     track_result = None # Result of pack_obj_tracking_update.
 
+    # robot state variable
+    state == "READY"
+
     # Predefine packet z and x offsets with robot speed of 55%.
     # Index corresponds to type of packet.
     pack_depths = [10.0, 3.0, 5.0, 5.0] # List of z positions at pick.
     pack_x_offsets = [50.0, 180.0, 130.0, 130.0] # List of x positions at pick.
-    # TODO remove after testing
-    is_rob_ready = False
-    robot_ready_counter = 0
     
     while True:
         # Start timer for FPS estimation.
@@ -87,6 +89,7 @@ def main(rc, server_in):
         prog_done = robot_server_dict['prog_done']
         encoder_vel = robot_server_dict['encoder_vel']
         encoder_pos = robot_server_dict['encoder_pos']
+        pos = robot_server_dict['pos']
 
         # Get frames from realsense.
         success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
@@ -141,19 +144,10 @@ def main(rc, server_in):
         # When speed of conveyor more than -100 it is moving to the left.
         is_conv_mov = encoder_vel < - 100.0
         #Robot ready when programs are fully finished and it isn't moving.
-        # is_rob_ready = prog_done and (rob_stopped or not stop_active)     # ! only for pick selection testing TODO restore after
-        # TODO remove
-        # Simulating robot for packet selection testing
-        if not is_rob_ready:
-            robot_ready_counter += 1
-            if robot_ready_counter > 30:
-                robot_ready_counter = 0
-                print("DEBUG: Robot is ready")
-                is_rob_ready = True
+        is_rob_ready = prog_done and (rob_stopped or not stop_active)
 
 
         # TODO remove VIS TEST 
-        encoder_pos += 20 
         for (objectID, packet) in registered_packets.items():
             # Draw both the ID and centroid of packet objects.
             centroid_tup = packet.centroid
@@ -167,7 +161,7 @@ def main(rc, server_in):
         # print("PICK LIST")
         # print(pick_list)
 
-
+        # Add to pick list
         # If packets are being tracked.
         if is_detect:
             # If the conveyor is moving to the left direction.
@@ -177,44 +171,91 @@ def main(rc, server_in):
                     packet.track_frame += 1
                     # If counter larger than limit, and packet not already in pick list.
                     if packet.track_frame > frames_lim and not packet.in_pick_list:
-                        print("DEBUG: Add packet ID: {} to pick list".format(str(packet.id)))
+                        print("INFO: Add packet ID: {} to pick list".format(str(packet.id)))
                         # Add to pick list.
                         packet.in_pick_list = True
                         pick_list.append(packet) # ? copy
 
-        if is_rob_ready and pick_list and homography is not None:
+        # ROBOT READY 
+        if state == "READY" and is_rob_ready and pick_list and homography is not None:
             # Update pick list to current positions
             for packet in pick_list:
                 packet.centroid = packet.getCentroidFromEncoder(encoder_pos)
             # Get list of current world x coordinates
-            pick_list_positions = [packet.getCentroidInWorldFrame(homography)[0] for packet in pick_list]
+            pick_list_positions = np.array([packet.getCentroidInWorldFrame(homography)[0] for packet in pick_list])
             print("DEBUG: Pick distances")
             print(pick_list_positions)
             # If item is too far remove it from list
-            while pick_list and pick_list_positions[0] > 400: #MAX_PICK_X + robot_speed_offset:  # TODO find value for MPX and robot speed offset
-                print("DEBUG: Removed first packet from pick list")
-                pick_list.pop(0)
-                pick_list_positions.pop(0)
-            # Choose a item for picking
-            if len(pick_list) > 0:
-                # Chose farthest item on belt
-                pick_ID = np.array(pick_list_positions).argmax()
-                packet_to_pick = pick_list.pop(pick_ID)
-                print("DEBUG: Chose packet ID: {} to pick".format(str(packet.id)))
-                is_rob_ready = False        # TODO remove after testing
+            is_valid_position = pick_list_positions < 1600   # TODO find position after which it does not pick up - depends on enc_vel and robot speed
+            pick_list = np.ndarray.tolist(np.asanyarray(pick_list)[is_valid_position])     
+            pick_list_positions = pick_list_positions[is_valid_position]
 
-            """
-            # Compute updated (x,y) pick positions of tracked moving packets and distance to packet.
-            world_x, world_y, dist_to_pack, packet = rc.single_pack_tracking_update(
-                                                        registered_packets, 
-                                                        img_detect, 
-                                                        homography, 
-                                                        is_detect,
-                                                        x_fixed, 
-                                                        track_frame,
-                                                        frames_lim,
-                                                        encoder_pos)
-            track_result = (world_x, world_y, dist_to_pack)                                            
+            # Choose a item for picking
+            if pick_list:
+                # Chose farthest item on belt
+                pick_ID = pick_list_positions.argmax()
+                packet_to_pick = pick_list.pop(pick_ID)
+                print("INFO: Chose packet ID: {} to pick".format(str(packet.id)))
+
+            # Set positions and Start robot
+            packet_x,packet_y = packet_to_pick.getCentroidInWorldFrame(homography)
+            packet_x = x_fixed  # for testing # TODO find offset value from packet
+            angle = packet.angle
+            gripper_rot = rc.compute_gripper_rot(angle)
+            packet_type = packet.pack_type
+
+            # Set packet depth to fixed value bz type
+            packet_z = pack_depths[packet_type]
+
+            # Check if y is range of conveyor width and adjust accordingly.
+            if packet_y < 75.0:
+                packet_y = 75.0
+
+            elif packet_y > 470.0:
+                packet_y = 470.0
+            # TODO clamp x position when it's variable
+
+            prepick_xyz_coords = np.array([packet_x, packet_y, packet_z])
+
+            # Change end points of robot.   
+            rc.change_trajectory(
+                            packet_x,
+                            packet_y, 
+                            gripper_rot, 
+                            packet_type,
+                            x_offset = pack_x_offsets[packet_type],
+                            pack_z = packet_z)
+
+            # Start robot program.   #! only once
+            rc.start_program()
+            state = "TO_PREPICK"
+            print("state: TO_PREPICK")
+
+
+        # TO PREPICK
+        if state == "TO_PREPICK":
+            # check if robot arrived to prepick position
+            curr_xyz_coords = np.array(pos[0:3])
+            robot_dist = np.linalg.norm(prepick_xyz_coords-curr_xyz_coords)
+            if robot_dist > 15: # TODO check value
+                state = "WAIT_FOR_PACKET"
+                print("state: WAIT_FOR_PACKET")
+
+        # WAIT FOR PACKET
+        if state == "WAIT_FOR_PACKET":
+            # check encoder and activate robot      # TODO add encoder
+            pass # skip for testing with laser start
+            state = "PICKING"
+            print("state: PICKING")
+
+        if state == "PICKING":
+            if is_rob_ready:
+                state = "READY"
+                print("state: READY")
+
+            
+
+            """                         
             #Trigger start of the pick and place program.
             rc.single_pack_tracking_program_start(
                                         track_result, 
