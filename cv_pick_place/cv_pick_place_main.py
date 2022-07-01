@@ -35,9 +35,9 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = True
+USE_DEEP_DETECTOR = False
 
-def main(rc, paths, files, check_point, server_in):
+def main(rc, paths, files, check_point, connection_info, connection_encoder):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
     
@@ -58,6 +58,7 @@ def main(rc, paths, files, check_point, server_in):
         pack_detect = ThresholdDetector()
 
     robot_server_dict = None
+    encoder_pos = None
     rc.connect_OPCUA_server()
     rc.get_nodes()
 
@@ -89,14 +90,19 @@ def main(rc, paths, files, check_point, server_in):
         start_time = time.time()
 
         # Read data dict from PLC server
-        if server_in.poll():
-            robot_server_dict = server_in.recv()
+        if connection_info.poll():
+            robot_server_dict = connection_info.recv()
             rob_stopped = robot_server_dict['rob_stopped']
             stop_active = robot_server_dict['stop_active']
             prog_done = robot_server_dict['prog_done']
             encoder_vel = robot_server_dict['encoder_vel']
-            encoder_pos = robot_server_dict['encoder_pos']
         elif robot_server_dict is None:
+            continue
+
+        # Read encoder value from PLC server
+        if connection_encoder.poll():
+            encoder_pos = connection_encoder.recv()
+        elif encoder_pos is None:
             continue
 
         # Get frames from realsense.
@@ -273,7 +279,7 @@ def main(rc, paths, files, check_point, server_in):
             rc.close_program()
             break
 
-def program_mode(demos, r_ctrl, r_comm):
+def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
     """
     Program selection function.
 
@@ -299,32 +305,36 @@ def program_mode(demos, r_ctrl, r_comm):
     # If mode is a program key.
     if mode in modes_dict:
         # Set robot positions and robot program
-        r_ctrl.rob_dict = modes_dict[mode]['dict']
+        r_control.rob_dict = modes_dict[mode]['dict']
         robot_prog = modes_dict[mode]['func']
 
         # If first mode (not threaded) start program
         if mode == '1':
-            robot_prog(r_ctrl)
+            robot_prog(r_control)
 
         # Otherwise start selected threaded program
         else:
-            connection_1, connection_2 = Pipe()
-            main_proc = Process(target = robot_prog, args = (r_ctrl, paths, files, check_point, connection_1))
-            info_server_proc = Process(target = r_comm.robot_server, args = (connection_2, ))
+            pipe_1_in, pipe_1_out = Pipe()
+            pipe_2_in, pipe_2_out = Pipe()
+            main_proc = Process(target = robot_prog, args = (r_control, paths, files, check_point, pipe_1_out, pipe_2_out))
+            info_server_proc = Process(target = r_comm_info.robot_server, args = (pipe_1_in, ))
+            encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (pipe_2_in, ))
 
             main_proc.start()
             info_server_proc.start()
+            encoder_server_proc.start()
 
             # Wait for the main process to end
             main_proc.join()
             info_server_proc.kill()
+            encoder_server_proc.kill()
 
     # If input is exit, exit python.
     if mode == 'e':
         exit()
 
     # Return function recursively.
-    return program_mode(demos, r_ctrl, r_comm)
+    return program_mode(demos, r_control, r_comm_info, r_comm_encoder)
 
 if __name__ == '__main__':
     # Define model parameters.
@@ -361,8 +371,9 @@ if __name__ == '__main__':
     Pick_place_dict = robot_poses['Pick_place_dict']
     
     # Initialize robot demos and robot control objects.
-    r_ctrl = RobotControl(None)
-    r_comm = RobotCommunication()
+    r_control = RobotControl(None)
+    r_comm_info = RobotCommunication()
+    r_comm_encoder = RobotCommunication()
     demos = RobotDemos(paths, files, check_point)
 
     # Show message about robot programs.
@@ -374,4 +385,4 @@ if __name__ == '__main__':
     'e : To exit program\n')
 
     # Start program mode selection.
-    program_mode(demos, r_ctrl, r_comm)
+    program_mode(demos, r_control, r_comm_info, r_comm_encoder)
