@@ -8,7 +8,7 @@ from robot_cell.control.robot_control import RobotControl
 from cv_pick_place_main import main
 
 if __name__ == '__main__':
-    # Define robot positions dictionaries from json file.
+    # Define robot positions dictionaries from json file
     file = open('robot_positions.json')
     robot_poses = json.load(file)
     Pick_place_dict_conv_mov_slow = robot_poses['Pick_place_dict_conv_mov_slow']
@@ -19,11 +19,15 @@ if __name__ == '__main__':
     r_ctrl = FakeRobotControl(Pick_place_dict_conv_mov)
     r_comm = FakeRobotCommunication()
 
-    # Start threads
+    # Create processes and connections
     connection_1, connection_2 = Pipe()
-    proc_server = Process(target = r_comm.robot_server, args = (connection_1, ))
-    proc_server.start()
+    main_proc = Process(target = main, args = (r_ctrl, connection_1))
+    info_server_proc = Process(target = r_comm.robot_server, args = (connection_2, ))
 
-    # Wait for threads to end
-    main(r_ctrl, connection_2)
-    proc_server.kill()
+    # Start processes
+    main_proc.start()
+    info_server_proc.start()
+
+    # Wait for main process to end and kill the server processes
+    main_proc.join()
+    info_server_proc.kill()

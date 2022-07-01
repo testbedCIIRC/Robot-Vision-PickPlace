@@ -17,11 +17,14 @@ from threading import Thread
 from threading import Timer
 from collections import OrderedDict
 from scipy.spatial import distance as dist
+from multiprocessing import Process
+from multiprocessing import Pipe
 
 from robot_cell.packet.packet_object import Packet
 from robot_cell.packet.packettracker import PacketTracker
 from robot_cell.packet.point_cloud_viz import PointCloudViz
 from robot_cell.packet.centroidtracker import CentroidTracker
+from robot_cell.control.robot_communication import RobotCommunication
 from robot_cell.control.robot_control import RobotControl
 from robot_cell.control.pick_place_demos import RobotDemos
 from robot_cell.detection.realsense_depth import DepthCamera
@@ -29,7 +32,6 @@ from robot_cell.detection.packet_detector import PacketDetector
 from robot_cell.detection.apriltag_detection import ProcessingApriltag
 
 from robot_cell.detection.threshold_detector import ThresholdDetector
-from robot_cell.control.fake_robot_control import FakeRobotControl
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
@@ -311,6 +313,25 @@ def program_mode(rc, rd):
             t2 = Thread(target = rc.robot_server, args =(q, ), daemon=True)
             t1.start()
             t2.start()
+
+    if mode == 'p':
+        # Initialize robot control objects
+        r_ctrl = RobotControl(Pick_place_dict_conv_mov)
+        r_comm = RobotCommunication()
+
+        # Create processes and connections
+        connection_1, connection_2 = Pipe()
+        main_proc = Process(target = main, args = (r_ctrl, connection_1))
+        info_server_proc = Process(target = r_comm.robot_server, args = (connection_2, ))
+
+        # Start processes
+        main_proc.start()
+        info_server_proc.start()
+
+        # Wait for main process to end and kill the server processes
+        main_proc.join()
+        info_server_proc.kill()
+
 
     # If input is exit, exit python.
     if mode == 'e':
