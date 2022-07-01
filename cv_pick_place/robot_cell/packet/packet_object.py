@@ -56,6 +56,11 @@ class Packet:
         # Used for offsetting centroid position calculated using encoder
         self.first_centroid_position = centroid
 
+        self.in_pick_list = False
+
+         # Number of frames item has been tracked
+        self.track_frame = 0
+
 
         self.marked_for_picking = False
     def getCentroidFromEncoder(self, encoder_position):

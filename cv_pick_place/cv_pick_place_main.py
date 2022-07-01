@@ -35,7 +35,7 @@ from robot_cell.control.fake_robot_control import FakeRobotControl
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = True
+USE_DEEP_DETECTOR = False
 
 def main(rc, server_in):
     """
@@ -48,7 +48,7 @@ def main(rc, server_in):
     """
     # Inititalize objects.
     apriltag = ProcessingApriltag()
-    pt = ItemTracker(max_disappeared_frames = 10, guard = 25)
+    pt = ItemTracker(max_disappeared_frames = 20, guard = 100, max_item_distance=500)
     dc = DepthCamera()
 
     if USE_DEEP_DETECTOR:
@@ -171,17 +171,16 @@ def main(rc, server_in):
 
         # TODO remove VIS TEST 
         for packet in registered_packets:
-            # Draw both the ID and centroid of packet objects.
-            centroid_tup = packet.centroid
-            centroid = np.array([centroid_tup[0],centroid_tup[1]]).astype('int')
-            text = "ID {}".format(objectID)
-            cv2.putText(image_frame, text, (centroid[0] , centroid[1] - 40), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            cv2.circle(image_frame, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
-            cv2.circle(image_frame, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
-        #     print("packet ID: {}, tracked: {}, ".format(str(packet.id), str(packet.track_frame)))
-        # print("PICK LIST")
-        # print(pick_list)
+            if packet.disappeared == 0:
+                # Draw packet ID
+                text_id = "ID {}".format(packet.id)
+                drawText(image_frame, text_id, (packet.centroid[0] + 10, packet.centroid[1]), text_size)
+
+                # Draw packet centroid
+                text_centroid = "X: {}, Y: {}".format(packet.centroid[0], packet.centroid[1])
+                drawText(image_frame, text_centroid, (packet.centroid[0] + 10, packet.centroid[1] + int(45 * text_size)), text_size)
+                
+                # print("packet ID: {}, tracked: {}, ".format(str(packet.id), str(packet.track_frame)))
 
         # Add to pick list
         # If packets are being tracked.
@@ -224,7 +223,7 @@ def main(rc, server_in):
             packet_x = x_fixed  # for testing # TODO find offset value from packet
             angle = packet.angle
             gripper_rot = rc.compute_gripper_rot(angle)
-            packet_type = packet.item_type
+            packet_type = packet.pack_type
 
             # Set packet depth to fixed value bz type
             packet_z = pack_depths[packet_type]
