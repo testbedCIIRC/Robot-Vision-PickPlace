@@ -35,7 +35,7 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = False
+USE_DEEP_DETECTOR = True
 
 def main(rc, paths, files, check_point, connection_info, connection_encoder):
     """
