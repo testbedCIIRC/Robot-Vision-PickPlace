@@ -91,7 +91,9 @@ while True:
     output_frame = cv2.bitwise_and(rgb_frame, rgb_frame, mask=mask)
 
     # Display output image
-    cv2.imshow('Frame', np.hstack([rgb_frame, output_frame]))
+    output_frame1 = cv2.resize(rgb_frame, (frame_width//2,frame_height//2))
+    output_frame2 = cv2.resize(output_frame, (frame_width//2,frame_height//2))
+    cv2.imshow('Frame', np.vstack([output_frame1, output_frame2]))
 
     key = cv2.waitKey(10)
 

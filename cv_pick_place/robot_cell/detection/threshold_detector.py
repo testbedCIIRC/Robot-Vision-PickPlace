@@ -3,7 +3,7 @@ import cv2
 
 from robot_cell.packet.item_object import Item
 
-ignore_region_vertical = 60
+ignore_region_vertical = 140
 ignore_region_horizontal = 10
 
 class ThresholdDetector:
@@ -87,7 +87,7 @@ class ThresholdDetector:
             
             # Check for squareness
             side_ratio = packet.width / packet.height
-            if not 1.1 > side_ratio > 0.9:
+            if not 1.3 > side_ratio > 0.7:
                 continue
 
             # Check if packet is far enough from edge
@@ -125,7 +125,7 @@ class ThresholdDetector:
 
             # Check for squareness
             side_ratio = packet.width / packet.height
-            if not 1.1 > side_ratio > 0.9:
+            if not 1.3 > side_ratio > 0.7:
                 continue
 
             # Check if packet is far enough from edge

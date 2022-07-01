@@ -71,7 +71,7 @@ def main(rc, server_in):
     track_result = None # Result of pack_obj_tracking_update.
 
     # robot state variable
-    state == "READY"
+    state = "READY"
 
     # Predefine packet z and x offsets with robot speed of 55%.
     # Index corresponds to type of packet.
@@ -202,7 +202,7 @@ def main(rc, server_in):
             packet_x = x_fixed  # for testing # TODO find offset value from packet
             angle = packet.angle
             gripper_rot = rc.compute_gripper_rot(angle)
-            packet_type = packet.pack_type
+            packet_type = packet.item_type
 
             # Set packet depth to fixed value bz type
             packet_z = pack_depths[packet_type]
@@ -215,7 +215,7 @@ def main(rc, server_in):
                 packet_y = 470.0
             # TODO clamp x position when it's variable
 
-            prepick_xyz_coords = np.array([packet_x, packet_y, packet_z])
+            prepick_xyz_coords = np.array([packet_x, packet_y, rc.rob_dict['pick_pos_base'][0]['z']])
 
             # Change end points of robot.   
             rc.change_trajectory(
