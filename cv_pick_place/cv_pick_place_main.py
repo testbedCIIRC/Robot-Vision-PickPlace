@@ -170,7 +170,7 @@ def main(rc, server_in):
 
 
         # TODO remove VIS TEST 
-        for (objectID, packet) in registered_packets.items():
+        for packet in registered_packets:
             # Draw both the ID and centroid of packet objects.
             centroid_tup = packet.centroid
             centroid = np.array([centroid_tup[0],centroid_tup[1]]).astype('int')
@@ -189,7 +189,7 @@ def main(rc, server_in):
             # If the conveyor is moving to the left direction.
             if is_conv_mov:
                 # Increase counter of frames with detections. 
-                for (objectID, packet) in registered_packets.items():
+                for packet in registered_packets:
                     packet.track_frame += 1
                     # If counter larger than limit, and packet not already in pick list.
                     if packet.track_frame > frames_lim and not packet.in_pick_list:
