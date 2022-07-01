@@ -205,7 +205,7 @@ class RobotCommunication:
                 'stop_active':self.Stop_Active.get_value(),
                 'prog_done':self.Prog_Done.get_value()
                 }
-                server_out.put(robot_server_dict)
+                server_out.send(robot_server_dict)
 
             except:
                 # Triggered when OPCUA server was disconnected.

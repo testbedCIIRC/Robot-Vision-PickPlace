@@ -1,8 +1,10 @@
 import json
-from queue import Queue
-from threading import Thread
+from multiprocessing import Process
+from multiprocessing import Pipe
 
-from robot_cell.control.fake_robot_control import FakeRobotControl
+from robot_cell.control.fake_robot_control import FakeRobotCommunication, FakeRobotControl
+from robot_cell.control.robot_communication import RobotCommunication
+from robot_cell.control.robot_control import RobotControl
 from cv_pick_place_main import main
 
 if __name__ == '__main__':
@@ -13,16 +15,15 @@ if __name__ == '__main__':
     Pick_place_dict_conv_mov = robot_poses['Pick_place_dict_conv_mov']
     Pick_place_dict = robot_poses['Pick_place_dict']
     
-    # Initialize robot demos and robot control objects.
-    rc = FakeRobotControl(None)
-    rc.rob_dict = Pick_place_dict_conv_mov
+    # Initialize robot control objects
+    r_ctrl = FakeRobotControl(Pick_place_dict_conv_mov)
+    r_comm = FakeRobotCommunication()
 
     # Start threads
-    q = Queue(maxsize = 1)
-    t1 = Thread(target = main, args =(rc, q))
-    t2 = Thread(target = rc.robot_server, args =(q, ), daemon=True)
-    t1.start()
-    t2.start()
+    connection_1, connection_2 = Pipe()
+    proc_server = Process(target = r_comm.robot_server, args = (connection_1, ))
+    proc_server.start()
 
     # Wait for threads to end
-    t1.join()
+    main(r_ctrl, connection_2)
+    proc_server.kill()

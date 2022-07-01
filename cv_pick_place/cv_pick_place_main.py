@@ -33,7 +33,7 @@ from robot_cell.control.fake_robot_control import FakeRobotControl
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = True
+USE_DEEP_DETECTOR = False
 
 def main(rc, server_in):
     """
@@ -78,17 +78,24 @@ def main(rc, server_in):
     pack_depths = [10.0, 3.0, 5.0, 5.0] # List of z positions at pick.
     pack_x_offsets = [50.0, 180.0, 130.0, 130.0] # List of x positions at pick.
     
+    robot_server_dict = None
+    rc.connect_OPCUA_server()
+    rc.get_nodes()
+
     while True:
         # Start timer for FPS estimation.
         start_time = time.time()
 
         # Read data dict from PLC server stored in queue object.
-        robot_server_dict = server_in.get()
-        rob_stopped = robot_server_dict['rob_stopped']
-        stop_active = robot_server_dict['stop_active']
-        prog_done = robot_server_dict['prog_done']
-        encoder_vel = robot_server_dict['encoder_vel']
-        encoder_pos = robot_server_dict['encoder_pos']
+        if server_in.poll():
+            robot_server_dict = server_in.recv()
+            rob_stopped = robot_server_dict['rob_stopped']
+            stop_active = robot_server_dict['stop_active']
+            prog_done = robot_server_dict['prog_done']
+            encoder_vel = robot_server_dict['encoder_vel']
+            encoder_pos = robot_server_dict['encoder_pos']
+        elif robot_server_dict is None:
+            continue
 
         # Get frames from realsense.
         success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
@@ -216,7 +223,7 @@ def main(rc, server_in):
             drawText(image_frame, text_robot, (10, int(75 * text_size)), text_size)
 
         # Show frames on cv2 window
-        image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
+        #image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
         cv2.imshow("Frame", image_frame)
 
         # Increase counter for homography update.
