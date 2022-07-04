@@ -472,12 +472,16 @@ class RobotControl(RobotCommunication):
                     self.start_program()
 
                 elif command == RcCommand.CHANGE_TRAJECTORY:
-                    self.change_trajectory(self, data['x'], 
-                                                 data['y'],
-                                                 data['rot'],
-                                                 data['packet_type'],
-                                                 data['x_offset'],
-                                                 data['pack_z'])
+                    try:
+                        self.change_trajectory(data['x'], 
+                                                data['y'],
+                                                data['rot'],
+                                                data['packet_type'],
+                                                x_offset=data['x_offset'],
+                                                pack_z=data['pack_z'])
+                    except Exception as e:
+                        print(e)
+                        print("ERROR")
 
                 else:
                     print('[WARNING]: Wrong command send to control server')

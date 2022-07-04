@@ -43,17 +43,25 @@ from robot_cell.functions import *
 
 USE_DEEP_DETECTOR = False
 
-# trajectory_dict = {
-# 'x': x,
-# 'y': y,
-# 'rot': rot,
-# 'packet_type': packet_type,
-# 'x_offset': x_offset,
-# 'pack_z': pack_z
-# }
-# control_pipe.send(RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict))
+def compute_gripper_rot(angle):
+    """
+    Computes the gripper rotation based on the detected packet angle.
 
-def main(x_fixed, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
+    Parameters:
+    angle (float): Detected angle of packet.
+
+    Returns:
+    float: Gripper rotation.
+
+    """
+    angle = abs(angle)
+    if angle > 45:
+        rot = 90 + (90 - angle)
+    if angle <= 45:
+        rot = 90 - angle
+    return rot
+
+def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
     
@@ -77,6 +85,8 @@ def main(x_fixed, paths, files, check_point, info_dict, encoder_pos_m, control_p
 
     # Initialize list for items ready to be picked
     pick_list = []
+
+    x_fixed = rob_dict['pick_pos_base'][0]['x']
 
     # Declare variables.
     warn_count = 0 # Counter for markers out of frame or moving.
@@ -111,6 +121,7 @@ def main(x_fixed, paths, files, check_point, info_dict, encoder_pos_m, control_p
             stop_active = info_dict['stop_active']
             prog_done = info_dict['prog_done']
             encoder_vel = info_dict['encoder_vel']
+            pos = info_dict['pos']
         except:
             print("NO INFO")
             continue
@@ -241,7 +252,7 @@ def main(x_fixed, paths, files, check_point, info_dict, encoder_pos_m, control_p
                 packet_x,packet_y = packet_to_pick.getCentroidInWorldFrame(homography)
                 packet_x = x_fixed  # for testing # TODO find offset value from packet
                 angle = packet.angle
-                gripper_rot = rc.compute_gripper_rot(angle)
+                gripper_rot = compute_gripper_rot(angle)
                 packet_type = packet.pack_type
 
                 # Set packet depth to fixed value by type
@@ -255,19 +266,21 @@ def main(x_fixed, paths, files, check_point, info_dict, encoder_pos_m, control_p
                     packet_y = 470.0
                 # TODO clamp x position when it's variable
 
-                prepick_xyz_coords = np.array([packet_x, packet_y, rc.rob_dict['pick_pos_base'][0]['z']])
+                prepick_xyz_coords = np.array([packet_x, packet_y, rob_dict['pick_pos_base'][0]['z']])
 
                 # Change end points of robot.   
-                rc.change_trajectory(
-                                packet_x,
-                                packet_y, 
-                                gripper_rot, 
-                                packet_type,
-                                x_offset = pack_x_offsets[packet_type],
-                                pack_z = packet_z)
+                trajectory_dict = {
+                    'x': packet_x,
+                    'y': packet_y,
+                    'rot': gripper_rot,
+                    'packet_type': packet_type,
+                    'x_offset': pack_x_offsets[packet_type],
+                    'pack_z': packet_z
+                    }
+                control_pipe.send(RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict))
 
                 # Start robot program.   #! only once
-                # rc.start_program()
+                control_pipe.send(RcData(RcCommand.START_PROGRAM))
                 state = "TO_PREPICK"
                 print("state: TO_PREPICK")
 
@@ -277,7 +290,7 @@ def main(x_fixed, paths, files, check_point, info_dict, encoder_pos_m, control_p
             # check if robot arrived to prepick position
             curr_xyz_coords = np.array(pos[0:3])
             robot_dist = np.linalg.norm(prepick_xyz_coords-curr_xyz_coords)
-            if robot_dist > 100: # TODO check value
+            if robot_dist > 10: # TODO check value
                 state = "WAIT_FOR_PACKET"
                 print("state: WAIT_FOR_PACKET")
 
@@ -298,7 +311,7 @@ def main(x_fixed, paths, files, check_point, info_dict, encoder_pos_m, control_p
                 #     p_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
                 #     print("X distance")
                 #     print(packet_x - p_x)
-                # rc.continue_program()
+                control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 state = "PICKING"
                 print("state: PICKING")
 
@@ -376,7 +389,7 @@ def main(x_fixed, paths, files, check_point, info_dict, encoder_pos_m, control_p
 
         if key == ord('r'):
             print(is_rob_ready)
-            
+
         if key == 27:
             control_pipe.send(RcData(RcCommand.CLOSE_PROGRAM))
             cv2.destroyAllWindows()
@@ -423,7 +436,7 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
 
                 control_pipe_1, control_pipe_2 = Pipe()
 
-                main_proc = Process(target = robot_prog, args = (r_control.rob_dict['pick_pos_base'][0]['x'], paths, files, check_point, info_dict, encoder_pos, control_pipe_1))
+                main_proc = Process(target = robot_prog, args = (r_control.rob_dict, paths, files, check_point, info_dict, encoder_pos, control_pipe_1))
                 info_server_proc = Process(target = r_comm_info.robot_server, args = (info_dict, ))
                 encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (encoder_pos, ))
                 control_server_proc = Process(target = r_control.control_server, args = (control_pipe_2, ))
