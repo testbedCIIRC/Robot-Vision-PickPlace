@@ -179,15 +179,15 @@ class RobotCommunication:
         c_pos = round(c_pos,2)
         return x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos
 
-    def robot_server(self, server_out):
+    def robot_server(self, connection):
         """
         Thread to get values from PLC server.
 
         Parameters:
-        server_out (object): Queue object where data from PLC server is placed.
+        connection (multiprocessing.Pipe): Sends data to another thread
 
         """
-        # Connect server and get nodes.
+        # Connect server and get nodes
         self.connect_OPCUA_server()
         self.get_nodes()
         #Enabling laser sensor to synchornize robot with moving packets.
@@ -205,9 +205,28 @@ class RobotCommunication:
                 'stop_active':self.Stop_Active.get_value(),
                 'prog_done':self.Prog_Done.get_value()
                 }
-                server_out.put(robot_server_dict)
-
+                connection.send(robot_server_dict)
             except:
-                # Triggered when OPCUA server was disconnected.
-                print('[INFO]: Queue empty.')
+                # Triggered when OPCUA server was disconnected
+                print('[INFO]: OPCUA disconnected.')
+                break
+
+    def encoder_server(self, connection):
+        """
+        Thread to get encoder value from PLC server.
+
+        Parameters:
+        connection (multiprocessing.Pipe): Sends data to another thread
+
+        """
+        # Connect server and get nodes
+        self.connect_OPCUA_server()
+        self.get_nodes()
+        time.sleep(0.5)
+        while True:
+            try:
+                connection.send(round(self.Encoder_Pos.get_value(),2))
+            except:
+                # Triggered when OPCUA server was disconnected
+                print('[INFO]: OPCUA disconnected.')
                 break

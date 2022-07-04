@@ -16,6 +16,20 @@ from queue import Queue
 from threading import Thread
 from collections import OrderedDict
 
+from robot_cell.control.robot_communication import RobotCommunication
+from robot_cell.control.robot_control import RobotControl
+
+
+class FakeNode:
+    def __init__(self):
+        pass
+
+    def get_value(self):
+        return 0
+
+    def set_value(self, value):
+        pass
+
 
 class FakeClient:
     def __init__(self):
@@ -32,24 +46,7 @@ class FakeClient:
         pass
 
 
-class FakeNode:
-    def __init__(self):
-        pass
-
-    def get_value(self):
-        return 0
-
-    def set_value(self, value):
-        pass
-
-
-class FakeRobotCommunication:
-    def __init__(self):
-        """
-        RobotCommunication object constructor.
-
-        """
-        
+class FakeRobotCommunication(RobotCommunication):
     def connect_OPCUA_server(self):
         """
         Connects OPC UA Client to Server on PLC.
@@ -58,11 +55,14 @@ class FakeRobotCommunication:
         self.client = FakeClient()
         print('[INFO]: Client connected.')
 
-    def get_nodes(self):
+
+class FakeRobotControl(RobotControl):
+    def connect_OPCUA_server(self):
         """
-        Using the client.get_node method, it gets nodes from OPCUA Server on PLC.
+        Connects OPC UA Client to Server on PLC.
 
         """
+<<<<<<< HEAD
         self.Start_Prog = self.client.get_node(
             'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."start"')
         self.Conti_Prog = self.client.get_node(
@@ -650,3 +650,7 @@ class FakeRobotControl(FakeRobotCommunication):
 
                 # Start robot program.
                 self.start_program()
+=======
+        self.client = FakeClient()
+        print('[INFO]: Client connected.')
+>>>>>>> main
