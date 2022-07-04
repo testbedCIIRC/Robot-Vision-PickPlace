@@ -26,6 +26,8 @@ from robot_cell.packet.point_cloud_viz import PointCloudViz
 from robot_cell.packet.centroidtracker import CentroidTracker
 from robot_cell.control.robot_communication import RobotCommunication
 from robot_cell.control.robot_control import RobotControl
+from robot_cell.control.robot_control import RcCommand
+from robot_cell.control.robot_control import RcData
 from robot_cell.control.pick_place_demos import RobotDemos
 from robot_cell.detection.realsense_depth import DepthCamera
 from robot_cell.detection.packet_detector import PacketDetector
@@ -35,9 +37,9 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = True
+USE_DEEP_DETECTOR = False
 
-def main(rc, paths, files, check_point, connection_info, connection_encoder):
+def main(rc, paths, files, check_point, info_pipe, encoder_pipe, control_pipe):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
     
@@ -52,18 +54,18 @@ def main(rc, paths, files, check_point, connection_info, connection_encoder):
     dc = DepthCamera()
 
     if USE_DEEP_DETECTOR:
-        rc.show_boot_screen('STARTING NEURAL NET...')
+        show_boot_screen('STARTING NEURAL NET...')
         pack_detect = PacketDetector(paths, files, check_point)
     else:
         pack_detect = ThresholdDetector()
 
     robot_server_dict = None
     encoder_pos = None
-    rc.connect_OPCUA_server()
-    rc.get_nodes()
+    #rc.connect_OPCUA_server()
+    #rc.get_nodes()
 
     # Define fixed x position where robot waits for packet.
-    x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
+    #x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
 
     # Declare variables.
     warn_count = 0 # Counter for markers out of frame or moving.
@@ -90,8 +92,8 @@ def main(rc, paths, files, check_point, connection_info, connection_encoder):
         start_time = time.time()
 
         # Read data dict from PLC server
-        if connection_info.poll():
-            robot_server_dict = connection_info.recv()
+        if info_pipe.poll():
+            robot_server_dict = info_pipe.recv()
             rob_stopped = robot_server_dict['rob_stopped']
             stop_active = robot_server_dict['stop_active']
             prog_done = robot_server_dict['prog_done']
@@ -100,8 +102,8 @@ def main(rc, paths, files, check_point, connection_info, connection_encoder):
             continue
 
         # Read encoder value from PLC server
-        if connection_encoder.poll():
-            encoder_pos = connection_encoder.recv()
+        if encoder_pipe.poll():
+            encoder_pos = encoder_pipe.recv()
         elif encoder_pos is None:
             continue
 
@@ -243,16 +245,18 @@ def main(rc, paths, files, check_point, connection_info, connection_encoder):
         key = cv2.waitKey(1)
 
         if key == ord('o'):
-            rc.change_gripper_state(False)
+            control_pipe.send(RcData(RcCommand.GRIPPER, False))
 
         if key == ord('i'):
-            rc.change_gripper_state(True)
+            control_pipe.send(RcData(RcCommand.GRIPPER, True))
 
         if key == ord('m'):
-            conv_right = rc.change_conveyor_right(conv_right)
+            control_pipe.send(RcData(RcCommand.CONVEYOR_RIGHT, conv_right))
+            conv_right = not conv_right
         
         if key == ord('n'):
-            conv_left = rc.change_conveyor_left(conv_left)
+            control_pipe.send(RcData(RcCommand.CONVEYOR_LEFT, conv_left))
+            conv_left = not conv_right
 
         if key == ord('l'):
             bbox = not bbox
@@ -267,16 +271,18 @@ def main(rc, paths, files, check_point, connection_info, connection_encoder):
             is_detect = not is_detect
 
         if key == ord('a'):
-            rc.abort_program()
+            control_pipe.send(RcData(RcCommand.ABORT_PROGRAM))
         
         if key == ord('c'):
-            rc.continue_program()
+            control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
         
         if key == ord('s'):
-            rc.stop_program()
+            control_pipe.send(RcData(RcCommand.STOP_PROGRAM))
         
         if key == 27:
-            rc.close_program()
+            control_pipe.send(RcData(RcCommand.CLOSE_PROGRAM))
+            cv2.destroyAllWindows()
+            dc.release()
             break
 
 def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
@@ -314,20 +320,25 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
 
         # Otherwise start selected threaded program
         else:
-            pipe_1_in, pipe_1_out = Pipe()
-            pipe_2_in, pipe_2_out = Pipe()
-            main_proc = Process(target = robot_prog, args = (r_control, paths, files, check_point, pipe_1_out, pipe_2_out))
-            info_server_proc = Process(target = r_comm_info.robot_server, args = (pipe_1_in, ))
-            encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (pipe_2_in, ))
+            pipe_info_1, pipe_info_2 = Pipe()
+            pipe_encoder_1, pipe_encoder_2 = Pipe()
+            pipe_control_1, pipe_control_2 = Pipe()
+
+            main_proc = Process(target = robot_prog, args = (r_control, paths, files, check_point, pipe_info_1, pipe_encoder_1, pipe_control_1))
+            info_server_proc = Process(target = r_comm_info.robot_server, args = (pipe_info_2, ))
+            encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (pipe_encoder_2, ))
+            control_server_proc = Process(target = r_control.control_server, args = (pipe_control_2, ))
 
             main_proc.start()
             info_server_proc.start()
             encoder_server_proc.start()
+            control_server_proc.start()
 
             # Wait for the main process to end
             main_proc.join()
             info_server_proc.kill()
             encoder_server_proc.kill()
+            control_server_proc.kill()
 
     # If input is exit, exit python.
     if mode == 'e':

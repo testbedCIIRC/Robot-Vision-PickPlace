@@ -179,12 +179,12 @@ class RobotCommunication:
         c_pos = round(c_pos,2)
         return x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos
 
-    def robot_server(self, connection):
+    def robot_server(self, pipe):
         """
         Thread to get values from PLC server.
 
         Parameters:
-        connection (multiprocessing.Pipe): Sends data to another thread
+        pipe (multiprocessing.Pipe): Sends data to another thread
 
         """
         # Connect server and get nodes
@@ -205,18 +205,18 @@ class RobotCommunication:
                 'stop_active':self.Stop_Active.get_value(),
                 'prog_done':self.Prog_Done.get_value()
                 }
-                connection.send(robot_server_dict)
+                pipe.send(robot_server_dict)
             except:
                 # Triggered when OPCUA server was disconnected
                 print('[INFO]: OPCUA disconnected.')
                 break
 
-    def encoder_server(self, connection):
+    def encoder_server(self, pipe):
         """
         Thread to get encoder value from PLC server.
 
         Parameters:
-        connection (multiprocessing.Pipe): Sends data to another thread
+        pipe (multiprocessing.Pipe): Sends data to another thread
 
         """
         # Connect server and get nodes
@@ -225,7 +225,7 @@ class RobotCommunication:
         time.sleep(0.5)
         while True:
             try:
-                connection.send(round(self.Encoder_Pos.get_value(),2))
+                pipe.send(round(self.Encoder_Pos.get_value(), 2))
             except:
                 # Triggered when OPCUA server was disconnected
                 print('[INFO]: OPCUA disconnected.')

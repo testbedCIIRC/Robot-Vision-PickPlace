@@ -16,6 +16,24 @@ from queue import Queue
 from threading import Thread
 from collections import OrderedDict
 from robot_cell.control.robot_communication import RobotCommunication
+from enum import Enum
+
+
+class RcCommand(Enum):
+    GRIPPER = 1
+    CONVEYOR_LEFT = 2
+    CONVEYOR_RIGHT = 3
+    ABORT_PROGRAM = 4
+    CONTINUE_PROGRAM = 5
+    STOP_PROGRAM = 6
+    CLOSE_PROGRAM = 7
+
+
+class RcData():
+    def __init__(self, command, data = None):
+        self.command = command
+        self.data = data
+    
 
 class RobotControl(RobotCommunication):
     def __init__(self, rob_dict):
@@ -30,21 +48,6 @@ class RobotControl(RobotCommunication):
 
         # Inherit RobotCommunication.
         super().__init__()
-
-    def show_boot_screen(self, message):
-        """
-        Opens main frame window with boot screen message.
-    
-        Parameters:
-        message (str): Message to be displayed.
-
-        """
-        cv2.namedWindow('Frame')
-        boot_screen = np.zeros((960,1280))
-        cv2.putText(boot_screen, message, (1280//2 - 150, 960//2),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-        cv2.imshow("Frame", boot_screen)
-        cv2.waitKey(1)
 
     def continue_program(self):
         """
@@ -96,7 +99,6 @@ class RobotControl(RobotCommunication):
         self.Abort_Prog.set_value(ua.DataValue(False))
         self.Conti_Prog.set_value(ua.DataValue(False))
         self.client.disconnect()
-        cv2.destroyAllWindows()
         print('[INFO]: Client disconnected.')
         time.sleep(0.5)
 
@@ -427,3 +429,48 @@ class RobotControl(RobotCommunication):
 
                 # Start robot program.
                 self.start_program()
+
+    def control_server(self, pipe):
+        # Connect server and get nodes
+        self.connect_OPCUA_server()
+        self.get_nodes()
+
+        # Enabling laser sensor to synchornize robot with moving packets.
+        self.Laser_Enable.set_value(ua.DataValue(True))
+
+        time.sleep(0.5)
+        while True:
+            try:
+                input = pipe.recv()
+                command = input.command
+                data = input.data
+
+                if command == RcCommand.GRIPPER:
+                    self.change_gripper_state(data)
+
+                elif command == RcCommand.CONVEYOR_LEFT:
+                    self.change_conveyor_left(data)
+
+                elif command == RcCommand.CONVEYOR_RIGHT:
+                    self.change_conveyor_right(data)
+
+                elif command == RcCommand.ABORT_PROGRAM:
+                    self.abort_program()
+
+                elif command == RcCommand.CONTINUE_PROGRAM:
+                    self.continue_program()
+
+                elif command == RcCommand.STOP_PROGRAM:
+                    self.stop_program()
+
+                elif command == RcCommand.CLOSE_PROGRAM:
+                    self.close_program()
+
+                else:
+                    print('[WARNING]: Wrong command send to control server')
+
+
+            except:
+                # Triggered when OPCUA server was disconnected
+                print('[INFO]: OPCUA disconnected')
+                break
