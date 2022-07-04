@@ -344,13 +344,13 @@ class RobotDemos:
                 print('Program Aborted: ',abort)
                 time.sleep(0.5)
                 
-    def main_pick_place(self, rc, paths, files, check_point, server_in, connection_encoder):
+    def main_pick_place(self, rc, paths, files, check_point, info_pipe):
         """
         Pick and place with static conveyor and multithreading.
 
         Parameters:
         rc (object): RobotControl object for program execution.
-        server_in (object): Queue object containing data from the PLC server.
+        info_pipe (object): Queue object containing data from the PLC server.
 
         """
         apriltag = ProcessingApriltag()
@@ -377,8 +377,8 @@ class RobotDemos:
             start_time = time.time()
 
             # Read data dict from PLC server
-            if server_in.poll():
-                robot_server_dict = server_in.recv()
+            if info_pipe.poll():
+                robot_server_dict = info_pipe.recv()
                 rob_stopped = robot_server_dict['rob_stopped']
                 stop_active = robot_server_dict['stop_active']
                 prog_done = robot_server_dict['prog_done']
@@ -516,13 +516,13 @@ class RobotDemos:
                 time.sleep(0.5)
                 break
 
-    def main_pick_place_conveyor_w_point_cloud(self, rc, paths, files, check_point, server_in, connection_encoder):
+    def main_pick_place_conveyor_w_point_cloud(self, rc, paths, files, check_point, info_pipe):
         """
         Thread for pick and place with moving conveyor and point cloud operations.
         
         Parameters:
         rc (object): RobotControl object for program execution.
-        server_in (object): Queue object containing data from the PLC server.
+        info_pipe (object): Queue object containing data from the PLC server.
         
         """
         # Inititalize objects.
@@ -563,8 +563,8 @@ class RobotDemos:
             start_time = time.time()
 
             # Read data dict from PLC server
-            if server_in.poll():
-                robot_server_dict = server_in.recv()
+            if info_pipe.poll():
+                robot_server_dict = info_pipe.recv()
                 rob_stopped = robot_server_dict['rob_stopped']
                 stop_active = robot_server_dict['stop_active']
                 prog_done = robot_server_dict['prog_done']

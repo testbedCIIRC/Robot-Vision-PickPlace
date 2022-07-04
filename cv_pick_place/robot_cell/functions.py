@@ -13,6 +13,23 @@ def drawText(frame, text, position, size = 1):
                 cv2.FONT_HERSHEY_SIMPLEX, size, (255, 255, 255), 2)
 
 
+def show_boot_screen(message, resolution = (960,1280)):
+    """
+    Opens main frame window with boot screen message.
+
+    Parameters:
+    message (str): Message to be displayed.
+
+    """
+    boot_screen = np.zeros(resolution)
+    cv2.namedWindow('Frame')
+    cv2.putText(boot_screen, message, 
+                (resolution[0] // 2 - 150, resolution[1] // 2),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+    cv2.imshow("Frame", boot_screen)
+    cv2.waitKey(1)
+
+
 def meanFilter(depth_frame):
     kernel = np.ones((10, 10), np.float32) / 25
     filtered_depth_frame = cv2.filter2D(depth_frame, -1, kernel)

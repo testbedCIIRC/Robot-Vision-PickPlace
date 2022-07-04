@@ -16,6 +16,7 @@ from queue import Queue
 from threading import Thread
 from collections import OrderedDict
 
+
 class RobotCommunication:
     def __init__(self):
         """
@@ -179,12 +180,12 @@ class RobotCommunication:
         c_pos = round(c_pos,2)
         return x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos
 
-    def robot_server(self, connection):
+    def robot_server(self, info_dict):
         """
         Thread to get values from PLC server.
 
         Parameters:
-        connection (multiprocessing.Pipe): Sends data to another thread
+        pipe (multiprocessing.Pipe): Sends data to another thread
 
         """
         # Connect server and get nodes
@@ -195,28 +196,25 @@ class RobotCommunication:
         time.sleep(0.5)
         while True:
             try:
-                robot_server_dict = {
-                'pos':self.get_actual_pos(),
-                'encoder_vel':round(self.Encoder_Vel.get_value(),2),
-                'encoder_pos':round(self.Encoder_Pos.get_value(),2),
-                'start':self.Start_Prog.get_value(),
-                'abort':self.Abort_Prog.get_value(),
-                'rob_stopped':self.Rob_Stopped.get_value(),
-                'stop_active':self.Stop_Active.get_value(),
-                'prog_done':self.Prog_Done.get_value()
-                }
-                connection.send(robot_server_dict)
+                info_dict['pos'] = self.get_actual_pos()
+                info_dict['encoder_vel'] = round(self.Encoder_Vel.get_value(),2)
+                info_dict['encoder_pos'] = round(self.Encoder_Pos.get_value(),2)
+                info_dict['start'] = self.Start_Prog.get_value()
+                info_dict['abort'] = self.Abort_Prog.get_value()
+                info_dict['rob_stopped'] = self.Rob_Stopped.get_value()
+                info_dict['stop_active'] = self.Stop_Active.get_value()
+                info_dict['prog_done'] = self.Prog_Done.get_value()
             except:
                 # Triggered when OPCUA server was disconnected
                 print('[INFO]: OPCUA disconnected.')
                 break
 
-    def encoder_server(self, connection):
+    def encoder_server(self, encoder_pos):
         """
         Thread to get encoder value from PLC server.
 
         Parameters:
-        connection (multiprocessing.Pipe): Sends data to another thread
+        pipe (multiprocessing.Pipe): Sends data to another thread
 
         """
         # Connect server and get nodes
@@ -225,7 +223,7 @@ class RobotCommunication:
         time.sleep(0.5)
         while True:
             try:
-                connection.send(round(self.Encoder_Pos.get_value(),2))
+                encoder_pos.value = round(self.Encoder_Pos.get_value(), 2)
             except:
                 # Triggered when OPCUA server was disconnected
                 print('[INFO]: OPCUA disconnected.')
