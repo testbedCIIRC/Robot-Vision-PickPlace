@@ -194,7 +194,7 @@ def main(rc, paths, files, check_point, connection_info, connection_encoder):
                 # Draw packet centroid
                 text_centroid = "X: {}, Y: {}".format(packet.centroid[0], packet.centroid[1])
                 drawText(image_frame, text_centroid, (packet.centroid[0] + 10, packet.centroid[1] + int(45 * text_size)), text_size)
-                
+                cv2.circle(image_frame, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
                 # print("packet ID: {}, tracked: {}, ".format(str(packet.id), str(packet.track_frame)))
 
         # Add to pick list
@@ -264,7 +264,7 @@ def main(rc, paths, files, check_point, connection_info, connection_encoder):
                                 pack_z = packet_z)
 
                 # Start robot program.   #! only once
-                rc.start_program()
+                # rc.start_program()
                 state = "TO_PREPICK"
                 print("state: TO_PREPICK")
 
@@ -274,7 +274,7 @@ def main(rc, paths, files, check_point, connection_info, connection_encoder):
             # check if robot arrived to prepick position
             curr_xyz_coords = np.array(pos[0:3])
             robot_dist = np.linalg.norm(prepick_xyz_coords-curr_xyz_coords)
-            if robot_dist > 10: # TODO check value
+            if robot_dist > 100: # TODO check value
                 state = "WAIT_FOR_PACKET"
                 print("state: WAIT_FOR_PACKET")
 
@@ -295,7 +295,7 @@ def main(rc, paths, files, check_point, connection_info, connection_encoder):
                 #     p_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
                 #     print("X distance")
                 #     print(packet_x - p_x)
-                rc.continue_program()
+                # rc.continue_program()
                 state = "PICKING"
                 print("state: PICKING")
 
