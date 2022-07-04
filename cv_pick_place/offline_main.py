@@ -1,6 +1,7 @@
 import json
 from multiprocessing import Process
 from multiprocessing import Pipe
+from multiprocessing import Lock
 
 from robot_cell.control.fake_robot_control import FakeRobotCommunication, FakeRobotControl
 from robot_cell.control.robot_communication import RobotCommunication
@@ -21,14 +22,14 @@ if __name__ == '__main__':
     r_comm_encoder = FakeRobotCommunication()
 
     # Create processes and connections
-    pipe_info_1, pipe_info_2 = Pipe()
-    pipe_encoder_1, pipe_encoder_2 = Pipe()
-    pipe_control_1, pipe_control_2 = Pipe()
+    info_lock = Lock()
+    encoder_lock = Lock()
+    control_pipe_1, control_pipe_2 = Pipe()
 
-    main_proc = Process(target = main, args = (r_control, None, None, None, pipe_info_1, pipe_encoder_1, pipe_control_1))
-    info_server_proc = Process(target = r_comm_info.robot_server, args = (pipe_info_2, ))
-    encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (pipe_encoder_2, ))
-    control_server_proc = Process(target = r_control.control_server, args = (pipe_control_2, ))
+    main_proc = Process(target = main, args = (r_control.rob_dict['pick_pos_base'][0]['x'], None, None, None, info_lock, encoder_lock, control_pipe_1))
+    info_server_proc = Process(target = r_comm_info.robot_server, args = (info_lock, ))
+    encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (encoder_lock, ))
+    control_server_proc = Process(target = r_control.control_server, args = (control_pipe_2, ))
 
     main_proc.start()
     info_server_proc.start()

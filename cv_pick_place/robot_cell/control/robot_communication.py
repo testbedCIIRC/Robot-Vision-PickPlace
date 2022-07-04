@@ -15,6 +15,10 @@ from scipy import ndimage
 from queue import Queue
 from threading import Thread
 from collections import OrderedDict
+import copy
+
+INFO_DICT_GLOBAL = None
+ENCODER_POS_GLOBAL = None
 
 class RobotCommunication:
     def __init__(self):
@@ -179,7 +183,7 @@ class RobotCommunication:
         c_pos = round(c_pos,2)
         return x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos
 
-    def robot_server(self, pipe):
+    def robot_server(self, lock):
         """
         Thread to get values from PLC server.
 
@@ -187,6 +191,7 @@ class RobotCommunication:
         pipe (multiprocessing.Pipe): Sends data to another thread
 
         """
+        global INFO_DICT_GLOBAL
         # Connect server and get nodes
         self.connect_OPCUA_server()
         self.get_nodes()
@@ -205,13 +210,15 @@ class RobotCommunication:
                 'stop_active':self.Stop_Active.get_value(),
                 'prog_done':self.Prog_Done.get_value()
                 }
-                pipe.send(robot_server_dict)
+                lock.acquire()
+                INFO_DICT_GLOBAL = copy.deepcopy(robot_server_dict)
+                lock.release()
             except:
                 # Triggered when OPCUA server was disconnected
                 print('[INFO]: OPCUA disconnected.')
                 break
 
-    def encoder_server(self, pipe):
+    def encoder_server(self, lock):
         """
         Thread to get encoder value from PLC server.
 
@@ -219,13 +226,17 @@ class RobotCommunication:
         pipe (multiprocessing.Pipe): Sends data to another thread
 
         """
+        global ENCODER_POS_GLOBAL
         # Connect server and get nodes
         self.connect_OPCUA_server()
         self.get_nodes()
         time.sleep(0.5)
         while True:
             try:
-                pipe.send(round(self.Encoder_Pos.get_value(), 2))
+                encoder_pos = round(self.Encoder_Pos.get_value(), 2)
+                lock.acquire()
+                ENCODER_POS_GLOBAL = copy.deepcopy(encoder_pos)
+                lock.release()
             except:
                 # Triggered when OPCUA server was disconnected
                 print('[INFO]: OPCUA disconnected.')

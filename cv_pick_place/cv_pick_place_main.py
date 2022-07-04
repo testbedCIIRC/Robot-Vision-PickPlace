@@ -18,7 +18,9 @@ from threading import Timer
 from collections import OrderedDict
 from scipy.spatial import distance as dist
 from multiprocessing import Process
+from multiprocessing import Lock
 from multiprocessing import Pipe
+import copy
 
 from robot_cell.packet.packet_object import Packet
 from robot_cell.packet.packettracker import PacketTracker
@@ -37,7 +39,10 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = True
+from robot_cell.control.robot_communication import INFO_DICT_GLOBAL
+from robot_cell.control.robot_communication import ENCODER_POS_GLOBAL
+
+USE_DEEP_DETECTOR = False
 
 # trajectory_dict = {
 # 'x': x,
@@ -49,7 +54,7 @@ USE_DEEP_DETECTOR = True
 # }
 # control_pipe.send(RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict))
 
-def main(x_fixed, paths, files, check_point, info_pipe, encoder_pipe, control_pipe):
+def main(x_fixed, paths, files, check_point, info_lock, encoder_lock, control_pipe):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
     
@@ -58,6 +63,8 @@ def main(x_fixed, paths, files, check_point, info_pipe, encoder_pipe, control_pi
     server_in (object): Queue object containing data from the PLC server.
     
     """
+    global INFO_DICT_GLOBAL
+    global ENCODER_POS_GLOBAL
     # Inititalize objects.
     apriltag = ProcessingApriltag()
     pt = ItemTracker(max_disappeared_frames = 10, guard = 25)
@@ -97,19 +104,23 @@ def main(x_fixed, paths, files, check_point, info_pipe, encoder_pipe, control_pi
         start_time = time.time()
 
         # Read data dict from PLC server
-        if info_pipe.poll():
-            robot_server_dict = info_pipe.recv()
-            rob_stopped = robot_server_dict['rob_stopped']
-            stop_active = robot_server_dict['stop_active']
-            prog_done = robot_server_dict['prog_done']
-            encoder_vel = robot_server_dict['encoder_vel']
-        elif robot_server_dict is None:
+        info_lock.acquire()
+        robot_server_dict = copy.deepcopy(INFO_DICT_GLOBAL)
+        info_lock.release()
+
+        if robot_server_dict is None:
             continue
 
-        # Read encoder value from PLC server
-        if encoder_pipe.poll():
-            encoder_pos = encoder_pipe.recv()
-        elif encoder_pos is None:
+        rob_stopped = robot_server_dict['rob_stopped']
+        stop_active = robot_server_dict['stop_active']
+        prog_done = robot_server_dict['prog_done']
+        encoder_vel = robot_server_dict['encoder_vel']
+
+        encoder_lock.acquire()
+        encoder_pos = copy.deepcopy(ENCODER_POS_GLOBAL)
+        encoder_lock.release()
+
+        if encoder_pos is None:
             continue
 
         # Get frames from realsense.
@@ -324,14 +335,14 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
             robot_prog(r_control)
 
         elif mode == '4':
-            pipe_info_1, pipe_info_2 = Pipe()
-            pipe_encoder_1, pipe_encoder_2 = Pipe()
-            pipe_control_1, pipe_control_2 = Pipe()
+            info_lock = Lock()
+            encoder_lock = Lock()
+            control_pipe_1, control_pipe_2 = Pipe()
 
-            main_proc = Process(target = robot_prog, args = (r_control.rob_dict['pick_pos_base'][0]['x'], paths, files, check_point, pipe_info_1, pipe_encoder_1, pipe_control_1))
-            info_server_proc = Process(target = r_comm_info.robot_server, args = (pipe_info_2, ))
-            encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (pipe_encoder_2, ))
-            control_server_proc = Process(target = r_control.control_server, args = (pipe_control_2, ))
+            main_proc = Process(target = robot_prog, args = (r_control.rob_dict['pick_pos_base'][0]['x'], paths, files, check_point, info_lock, encoder_lock, control_pipe_1))
+            info_server_proc = Process(target = r_comm_info.robot_server, args = (info_lock, ))
+            encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (encoder_lock, ))
+            control_server_proc = Process(target = r_control.control_server, args = (control_pipe_2, ))
 
             main_proc.start()
             info_server_proc.start()
@@ -345,18 +356,18 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
             control_server_proc.kill()
 
         # Otherwise start selected threaded program
-        else:
-            pipe_info_1, pipe_info_2 = Pipe()
+        # else:
+        #     pipe_info_1, pipe_info_2 = Pipe()
 
-            main_proc = Process(target = robot_prog, args = (r_control, paths, files, check_point, pipe_info_1))
-            info_server_proc = Process(target = r_comm_info.robot_server, args = (pipe_info_2, ))
+        #     main_proc = Process(target = robot_prog, args = (r_control, paths, files, check_point, pipe_info_1))
+        #     info_server_proc = Process(target = r_comm_info.robot_server, args = (pipe_info_2, ))
 
-            main_proc.start()
-            info_server_proc.start()
+        #     main_proc.start()
+        #     info_server_proc.start()
 
-            # Wait for the main process to end
-            main_proc.join()
-            info_server_proc.kill()
+        #     # Wait for the main process to end
+        #     main_proc.join()
+        #     info_server_proc.kill()
 
     # If input is exit, exit python.
     if mode == 'e':
