@@ -207,10 +207,11 @@ def main(rc, server_in):
             print("DEBUG: Pick distances")
             print(pick_list_positions)
             # If item is too far remove it from list
-            is_valid_position = pick_list_positions < 1600   # TODO find position after which it does not pick up - depends on enc_vel and robot speed
+            is_valid_position = pick_list_positions < 1150   # TODO find position after which it does not pick up - depends on enc_vel and robot speed
             pick_list = np.ndarray.tolist(np.asanyarray(pick_list)[is_valid_position])     
             pick_list_positions = pick_list_positions[is_valid_position]
-
+            print("DEBUG: Pick distances after removal")
+            print(pick_list_positions)
             # Choose a item for picking
             if pick_list:
                 # Chose farthest item on belt
@@ -218,39 +219,39 @@ def main(rc, server_in):
                 packet_to_pick = pick_list.pop(pick_ID)
                 print("INFO: Chose packet ID: {} to pick".format(str(packet.id)))
 
-            # Set positions and Start robot
-            packet_x,packet_y = packet_to_pick.getCentroidInWorldFrame(homography)
-            packet_x = x_fixed  # for testing # TODO find offset value from packet
-            angle = packet.angle
-            gripper_rot = rc.compute_gripper_rot(angle)
-            packet_type = packet.pack_type
+                # Set positions and Start robot
+                packet_x,packet_y = packet_to_pick.getCentroidInWorldFrame(homography)
+                packet_x = x_fixed  # for testing # TODO find offset value from packet
+                angle = packet.angle
+                gripper_rot = rc.compute_gripper_rot(angle)
+                packet_type = packet.pack_type
 
-            # Set packet depth to fixed value bz type
-            packet_z = pack_depths[packet_type]
+                # Set packet depth to fixed value by type
+                packet_z = pack_depths[packet_type]
 
-            # Check if y is range of conveyor width and adjust accordingly.
-            if packet_y < 75.0:
-                packet_y = 75.0
+                # Check if y is range of conveyor width and adjust accordingly.
+                if packet_y < 75.0:
+                    packet_y = 75.0
 
-            elif packet_y > 470.0:
-                packet_y = 470.0
-            # TODO clamp x position when it's variable
+                elif packet_y > 470.0:
+                    packet_y = 470.0
+                # TODO clamp x position when it's variable
 
-            prepick_xyz_coords = np.array([packet_x, packet_y, rc.rob_dict['pick_pos_base'][0]['z']])
+                prepick_xyz_coords = np.array([packet_x, packet_y, rc.rob_dict['pick_pos_base'][0]['z']])
 
-            # Change end points of robot.   
-            rc.change_trajectory(
-                            packet_x,
-                            packet_y, 
-                            gripper_rot, 
-                            packet_type,
-                            x_offset = pack_x_offsets[packet_type],
-                            pack_z = packet_z)
+                # Change end points of robot.   
+                rc.change_trajectory(
+                                packet_x,
+                                packet_y, 
+                                gripper_rot, 
+                                packet_type,
+                                x_offset = pack_x_offsets[packet_type],
+                                pack_z = packet_z)
 
-            # Start robot program.   #! only once
-            rc.start_program()
-            state = "TO_PREPICK"
-            print("state: TO_PREPICK")
+                # Start robot program.   #! only once
+                rc.start_program()
+                state = "TO_PREPICK"
+                print("state: TO_PREPICK")
 
 
         # TO PREPICK
@@ -258,16 +259,29 @@ def main(rc, server_in):
             # check if robot arrived to prepick position
             curr_xyz_coords = np.array(pos[0:3])
             robot_dist = np.linalg.norm(prepick_xyz_coords-curr_xyz_coords)
-            if robot_dist > 15: # TODO check value
+            if robot_dist > 10: # TODO check value
                 state = "WAIT_FOR_PACKET"
                 print("state: WAIT_FOR_PACKET")
 
         # WAIT FOR PACKET
         if state == "WAIT_FOR_PACKET":
-            # check encoder and activate robot      # TODO add encoder
-            pass # skip for testing with laser start
-            state = "PICKING"
-            print("state: PICKING")
+            # TODO add return to ready if it misses packet
+            # check encoder and activate robot 
+            packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
+            p_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
+            print("X distance")
+            print(packet_x - p_x)
+            if p_x > packet_x -70:
+                # print("DEBUG: Fast encoder update")
+                # while  p_x < packet_x - 20:
+                #     encoder_pos = round(rc.Encoder_Pos.get_value(),2)
+                #     packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
+                #     p_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
+                #     print("X distance")
+                #     print(packet_x - p_x)
+                rc.continue_program()
+                state = "PICKING"
+                print("state: PICKING")
 
         if state == "PICKING":
             if is_rob_ready:
@@ -338,6 +352,9 @@ def main(rc, server_in):
         
         if key == ord('s'):
             rc.stop_program()
+
+        if key == ord('r'):
+            print(is_rob_ready)
         
         if key == 27:
             rc.close_program()
