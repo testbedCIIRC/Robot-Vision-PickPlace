@@ -286,7 +286,8 @@ def main(rc, paths, files, check_point, connection_info, connection_encoder):
             p_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
             print("X distance")
             print(packet_x - p_x)
-            if p_x > packet_x -70:
+            # If packet is close enough continue picking operation
+            if p_x > packet_x - 70:
                 # print("DEBUG: Fast encoder update")
                 # while  p_x < packet_x - 20:
                 #     encoder_pos = round(rc.Encoder_Pos.get_value(),2)
