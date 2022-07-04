@@ -18,7 +18,7 @@ from threading import Timer
 from collections import OrderedDict
 from scipy.spatial import distance as dist
 from multiprocessing import Process
-from multiprocessing import Lock
+from multiprocessing import Manager
 from multiprocessing import Pipe
 import copy
 
@@ -39,9 +39,6 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-from robot_cell.control.robot_communication import INFO_DICT_GLOBAL
-from robot_cell.control.robot_communication import ENCODER_POS_GLOBAL
-
 USE_DEEP_DETECTOR = False
 
 # trajectory_dict = {
@@ -54,7 +51,7 @@ USE_DEEP_DETECTOR = False
 # }
 # control_pipe.send(RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict))
 
-def main(x_fixed, paths, files, check_point, info_lock, encoder_lock, control_pipe):
+def main(x_fixed, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
     
@@ -75,9 +72,6 @@ def main(x_fixed, paths, files, check_point, info_lock, encoder_lock, control_pi
         pack_detect = PacketDetector(paths, files, check_point)
     else:
         pack_detect = ThresholdDetector()
-
-    robot_server_dict = None
-    encoder_pos = None
 
     # Declare variables.
     warn_count = 0 # Counter for markers out of frame or moving.
@@ -104,24 +98,16 @@ def main(x_fixed, paths, files, check_point, info_lock, encoder_lock, control_pi
         start_time = time.time()
 
         # Read data dict from PLC server
-        info_lock.acquire()
-        robot_server_dict = copy.deepcopy(INFO_DICT_GLOBAL)
-        info_lock.release()
-
-        if robot_server_dict is None:
+        try:
+            rob_stopped = info_dict['rob_stopped']
+            stop_active = info_dict['stop_active']
+            prog_done = info_dict['prog_done']
+            encoder_vel = info_dict['encoder_vel']
+        except:
+            print("NO INFO")
             continue
 
-        rob_stopped = robot_server_dict['rob_stopped']
-        stop_active = robot_server_dict['stop_active']
-        prog_done = robot_server_dict['prog_done']
-        encoder_vel = robot_server_dict['encoder_vel']
-
-        encoder_lock.acquire()
-        encoder_pos = copy.deepcopy(ENCODER_POS_GLOBAL)
-        encoder_lock.release()
-
-        if encoder_pos is None:
-            continue
+        encoder_pos = encoder_pos_m.value
 
         # Get frames from realsense.
         success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
@@ -245,11 +231,11 @@ def main(x_fixed, paths, files, check_point, info_lock, encoder_lock, control_pi
             drawText(image_frame, text_fps, (10, int(35 * text_size)), text_size)
 
             # Draw OPCUA data to screen
-            text_robot = str(robot_server_dict)
+            text_robot = str(info_dict)
             drawText(image_frame, text_robot, (10, int(75 * text_size)), text_size)
 
         # Show frames on cv2 window
-        image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
+        #image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
         cv2.imshow("Frame", image_frame)
 
         # Increase counter for homography update.
@@ -335,25 +321,27 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
             robot_prog(r_control)
 
         elif mode == '4':
-            info_lock = Lock()
-            encoder_lock = Lock()
-            control_pipe_1, control_pipe_2 = Pipe()
+            with Manager() as manager:
+                info_dict = manager.dict()
+                encoder_pos = manager.Value('d', 0.0)
 
-            main_proc = Process(target = robot_prog, args = (r_control.rob_dict['pick_pos_base'][0]['x'], paths, files, check_point, info_lock, encoder_lock, control_pipe_1))
-            info_server_proc = Process(target = r_comm_info.robot_server, args = (info_lock, ))
-            encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (encoder_lock, ))
-            control_server_proc = Process(target = r_control.control_server, args = (control_pipe_2, ))
+                control_pipe_1, control_pipe_2 = Pipe()
 
-            main_proc.start()
-            info_server_proc.start()
-            encoder_server_proc.start()
-            control_server_proc.start()
+                main_proc = Process(target = robot_prog, args = (r_control.rob_dict['pick_pos_base'][0]['x'], paths, files, check_point, info_dict, encoder_pos, control_pipe_1))
+                info_server_proc = Process(target = r_comm_info.robot_server, args = (info_dict, ))
+                encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (encoder_pos, ))
+                control_server_proc = Process(target = r_control.control_server, args = (control_pipe_2, ))
 
-            # Wait for the main process to end
-            main_proc.join()
-            info_server_proc.kill()
-            encoder_server_proc.kill()
-            control_server_proc.kill()
+                main_proc.start()
+                info_server_proc.start()
+                encoder_server_proc.start()
+                control_server_proc.start()
+
+                # Wait for the main process to end
+                main_proc.join()
+                info_server_proc.kill()
+                encoder_server_proc.kill()
+                control_server_proc.kill()
 
         # Otherwise start selected threaded program
         # else:

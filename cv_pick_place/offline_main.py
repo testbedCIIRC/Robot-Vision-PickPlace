@@ -1,7 +1,7 @@
 import json
 from multiprocessing import Process
 from multiprocessing import Pipe
-from multiprocessing import Lock
+from multiprocessing import Manager
 
 from robot_cell.control.fake_robot_control import FakeRobotCommunication, FakeRobotControl
 from robot_cell.control.robot_communication import RobotCommunication
@@ -22,22 +22,24 @@ if __name__ == '__main__':
     r_comm_encoder = FakeRobotCommunication()
 
     # Create processes and connections
-    info_lock = Lock()
-    encoder_lock = Lock()
-    control_pipe_1, control_pipe_2 = Pipe()
+    with Manager() as manager:
+            info_dict = manager.dict()
+            encoder_pos = manager.Value('d', 0.0)
 
-    main_proc = Process(target = main, args = (r_control.rob_dict['pick_pos_base'][0]['x'], None, None, None, info_lock, encoder_lock, control_pipe_1))
-    info_server_proc = Process(target = r_comm_info.robot_server, args = (info_lock, ))
-    encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (encoder_lock, ))
-    control_server_proc = Process(target = r_control.control_server, args = (control_pipe_2, ))
+            control_pipe_1, control_pipe_2 = Pipe()
 
-    main_proc.start()
-    info_server_proc.start()
-    encoder_server_proc.start()
-    control_server_proc.start()
+            main_proc = Process(target = main, args = (r_control.rob_dict['pick_pos_base'][0]['x'], None, None, None, info_dict, encoder_pos, control_pipe_1))
+            info_server_proc = Process(target = r_comm_info.robot_server, args = (info_dict, ))
+            encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (encoder_pos, ))
+            control_server_proc = Process(target = r_control.control_server, args = (control_pipe_2, ))
 
-    # Wait for the main process to end
-    main_proc.join()
-    info_server_proc.kill()
-    encoder_server_proc.kill()
-    control_server_proc.kill()
+            main_proc.start()
+            info_server_proc.start()
+            encoder_server_proc.start()
+            control_server_proc.start()
+
+            # Wait for the main process to end
+            main_proc.join()
+            info_server_proc.kill()
+            encoder_server_proc.kill()
+            control_server_proc.kill()
