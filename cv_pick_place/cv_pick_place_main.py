@@ -39,7 +39,7 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = False
+USE_DEEP_DETECTOR = True
 
 # trajectory_dict = {
 # 'x': x,
@@ -235,7 +235,7 @@ def main(x_fixed, paths, files, check_point, info_dict, encoder_pos_m, control_p
             drawText(image_frame, text_robot, (10, int(75 * text_size)), text_size)
 
         # Show frames on cv2 window
-        #image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
+        image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
         cv2.imshow("Frame", image_frame)
 
         # Increase counter for homography update.

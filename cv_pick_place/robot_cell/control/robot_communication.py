@@ -223,7 +223,7 @@ class RobotCommunication:
         time.sleep(0.5)
         while True:
             try:
-                encoder_pos = round(self.Encoder_Pos.get_value(), 2)
+                encoder_pos.value = round(self.Encoder_Pos.get_value(), 2)
             except:
                 # Triggered when OPCUA server was disconnected
                 print('[INFO]: OPCUA disconnected.')
