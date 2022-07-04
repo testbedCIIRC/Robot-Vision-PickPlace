@@ -51,6 +51,22 @@ class RobotControl(RobotCommunication):
         # Inherit RobotCommunication.
         super().__init__()
 
+    def show_boot_screen(self, message, resolution = (960,1280)):
+        """
+        Opens main frame window with boot screen message.
+
+        Parameters:
+        message (str): Message to be displayed.
+
+        """
+        boot_screen = np.zeros(resolution)
+        cv2.namedWindow('Frame')
+        cv2.putText(boot_screen, message, 
+                    (resolution[0] // 2 - 150, resolution[1] // 2),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+        cv2.imshow("Frame", boot_screen)
+        cv2.waitKey(1)
+
     def continue_program(self):
         """
         Continue robot action.

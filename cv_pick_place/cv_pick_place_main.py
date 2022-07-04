@@ -123,7 +123,6 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             encoder_vel = info_dict['encoder_vel']
             pos = info_dict['pos']
         except:
-            print("NO INFO")
             continue
 
         encoder_pos = encoder_pos_m.value
@@ -239,8 +238,6 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             is_valid_position = pick_list_positions < 1150   # TODO find position after which it does not pick up - depends on enc_vel and robot speed
             pick_list = np.ndarray.tolist(np.asanyarray(pick_list)[is_valid_position])     
             pick_list_positions = pick_list_positions[is_valid_position]
-            print("DEBUG: Pick distances after removal")
-            print(pick_list_positions)
             # Choose a item for picking
             if pick_list:
                 # Chose farthest item on belt
@@ -304,13 +301,6 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             print(packet_x - p_x)
             # If packet is close enough continue picking operation
             if p_x > packet_x - 70:
-                # print("DEBUG: Fast encoder update")
-                # while  p_x < packet_x - 20:
-                #     encoder_pos = round(rc.Encoder_Pos.get_value(),2)
-                #     packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
-                #     p_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
-                #     print("X distance")
-                #     print(packet_x - p_x)
                 control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 state = "PICKING"
                 print("state: PICKING")
@@ -453,18 +443,19 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
                 control_server_proc.kill()
 
         # Otherwise start selected threaded program
-        # else:
-        #     pipe_info_1, pipe_info_2 = Pipe()
+        else:
+            with Manager() as manager:
+                info_dict = manager.dict()
 
-        #     main_proc = Process(target = robot_prog, args = (r_control, paths, files, check_point, pipe_info_1))
-        #     info_server_proc = Process(target = r_comm_info.robot_server, args = (pipe_info_2, ))
+                main_proc = Process(target = robot_prog, args = (r_control, paths, files, check_point, info_dict))
+                info_server_proc = Process(target = r_comm_info.robot_server, args = (info_dict, ))
 
-        #     main_proc.start()
-        #     info_server_proc.start()
+                main_proc.start()
+                info_server_proc.start()
 
-        #     # Wait for the main process to end
-        #     main_proc.join()
-        #     info_server_proc.kill()
+                # Wait for the main process to end
+                main_proc.join()
+                info_server_proc.kill()
 
     # If input is exit, exit python.
     if mode == 'e':
