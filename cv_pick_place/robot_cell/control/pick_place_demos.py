@@ -344,13 +344,13 @@ class RobotDemos:
                 print('Program Aborted: ',abort)
                 time.sleep(0.5)
                 
-    def main_pick_place(self, rc, paths, files, check_point, server_in, connection_encoder):
+    def main_pick_place(self, rc, paths, files, check_point, info_dict):
         """
         Pick and place with static conveyor and multithreading.
 
         Parameters:
         rc (object): RobotControl object for program execution.
-        server_in (object): Queue object containing data from the PLC server.
+        info_pipe (object): Queue object containing data from the PLC server.
 
         """
         apriltag = ProcessingApriltag()
@@ -359,7 +359,6 @@ class RobotDemos:
         rc.show_boot_screen('STARTING NEURAL NET...')
         pack_detect = PacketDetector(paths, files, check_point)
 
-        robot_server_dict = None
         rc.connect_OPCUA_server()
         rc.get_nodes()
 
@@ -377,12 +376,11 @@ class RobotDemos:
             start_time = time.time()
 
             # Read data dict from PLC server
-            if server_in.poll():
-                robot_server_dict = server_in.recv()
-                rob_stopped = robot_server_dict['rob_stopped']
-                stop_active = robot_server_dict['stop_active']
-                prog_done = robot_server_dict['prog_done']
-            elif robot_server_dict is None:
+            try:
+                rob_stopped = info_dict['rob_stopped']
+                stop_active = info_dict['stop_active']
+                prog_done = info_dict['prog_done']
+            except:
                 continue
 
             ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
@@ -425,7 +423,7 @@ class RobotDemos:
                 img_detect = cv2.addWeighted(img_detect, 0.8, heatmap, 0.3, 0)
 
             if f_data:
-                cv2.putText(img_detect,str(robot_server_dict),(10,25),
+                cv2.putText(img_detect,str(info_dict),(10,25),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
                 cv2.putText(img_detect,
                             "FPS:"+str(1.0/(time.time() - start_time)),
@@ -452,7 +450,7 @@ class RobotDemos:
                                                 gripper_rot, 
                                                 packet_type)
                         rc.Start_Prog.set_value(ua.DataValue(True))
-                        print('Program Started: ',robot_server_dict['start'])
+                        print('Program Started: ',info_dict['start'])
                         rc.Start_Prog.set_value(ua.DataValue(False))
                         time.sleep(0.5)
                         bpressed = 0
@@ -491,7 +489,7 @@ class RobotDemos:
 
             if key == ord('a'):
                 rc.Abort_Prog.set_value(ua.DataValue(True))
-                print('Program Aborted: ',robot_server_dict['abort'])
+                print('Program Aborted: ',info_dict['abort'])
                 time.sleep(0.5)
             
             if key == ord('c'):
@@ -508,7 +506,7 @@ class RobotDemos:
             
             if key == 27:
                 rc.Abort_Prog.set_value(ua.DataValue(True))
-                print('Program Aborted: ',robot_server_dict['abort'])
+                print('Program Aborted: ',info_dict['abort'])
                 rc.Abort_Prog.set_value(ua.DataValue(False))
                 rc.client.disconnect()
                 cv2.destroyAllWindows()
@@ -516,13 +514,13 @@ class RobotDemos:
                 time.sleep(0.5)
                 break
 
-    def main_pick_place_conveyor_w_point_cloud(self, rc, paths, files, check_point, server_in, connection_encoder):
+    def main_pick_place_conveyor_w_point_cloud(self, rc, paths, files, check_point, info_dict):
         """
         Thread for pick and place with moving conveyor and point cloud operations.
         
         Parameters:
         rc (object): RobotControl object for program execution.
-        server_in (object): Queue object containing data from the PLC server.
+        info_pipe (object): Queue object containing data from the PLC server.
         
         """
         # Inititalize objects.
@@ -532,9 +530,9 @@ class RobotDemos:
         rc.show_boot_screen('STARTING NEURAL NET...')
         pack_detect = PacketDetector(paths, files, check_point)
 
-        robot_server_dict = None
         rc.connect_OPCUA_server()
         rc.get_nodes()
+        rc.Laser_Enable.set_value(ua.DataValue(True))
 
         # Define fixed x position where robot waits for packet.
         x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
@@ -563,14 +561,13 @@ class RobotDemos:
             start_time = time.time()
 
             # Read data dict from PLC server
-            if server_in.poll():
-                robot_server_dict = server_in.recv()
-                rob_stopped = robot_server_dict['rob_stopped']
-                stop_active = robot_server_dict['stop_active']
-                prog_done = robot_server_dict['prog_done']
-                encoder_vel = robot_server_dict['encoder_vel']
-                encoder_pos = robot_server_dict['encoder_pos']
-            elif robot_server_dict is None:
+            try:
+                rob_stopped = info_dict['rob_stopped']
+                stop_active = info_dict['stop_active']
+                prog_done = info_dict['prog_done']
+                encoder_vel = info_dict['encoder_vel']
+                encoder_pos = info_dict['encoder_pos']
+            except:
                 continue
 
             # Get frames from realsense.
@@ -684,7 +681,7 @@ class RobotDemos:
 
             # Show robot position data and FPS.
             if f_data:
-                cv2.putText(img_detect,str(robot_server_dict),(10,25),
+                cv2.putText(img_detect,str(info_dict),(10,25),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.57, (255, 255, 0), 2)
                 cv2.putText(img_detect,
                             "FPS:"+str(1.0/(time.time() - start_time)),

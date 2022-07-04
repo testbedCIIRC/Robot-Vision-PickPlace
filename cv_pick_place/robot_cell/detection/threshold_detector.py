@@ -1,7 +1,7 @@
-from email.mime import image
 import numpy as np
 import cv2
 
+from robot_cell.packet.item_object import Item
 from robot_cell.packet.packet_object import Packet
 from robot_cell.functions import *
 
@@ -38,7 +38,6 @@ class ThresholdDetector:
         packet = Packet(box = box, 
                         pack_type = type,
                         centroid = centroid,
-                        centroid_depth = depth_frame[centroid[1]][centroid[0]], 
                         angle = angle,
                         ymin = y, ymax = y + w, 
                         xmin = x, xmax = x + h, 
@@ -70,14 +69,6 @@ class ThresholdDetector:
         cv2.drawMarker(image_frame, 
                        packet.getCentroidFromEncoder(encoder_position), 
                        (255, 255, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
-
-        # Draw packet ID
-        text_id = "ID {}".format(packet.id)
-        drawText(image_frame, text_id, (packet.centroid[0] + 10, packet.centroid[1]), text_size)
-
-        # Draw packet centroid
-        text_centroid = "X: {}, Y: {}".format(packet.centroid[0], packet.centroid[1])
-        drawText(image_frame, text_centroid, (packet.centroid[0] + 10, packet.centroid[1] + int(45 * text_size)), text_size)
 
         return image_frame
         

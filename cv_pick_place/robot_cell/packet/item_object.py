@@ -1,37 +1,38 @@
 import numpy as np
 
-# Class containing relevant packet data for convenience
-class Packet:
-    def __init__(self, box = np.empty(()), pack_type = None, centroid = (0, 0), 
-                    centroid_depth = 0, angle = 0, width = 0, height = 0,
+# Class containing relevant item data
+class Item:
+    def __init__(self, id = None, box = np.empty(()), item_type = None, centroid = (0, 0), 
+                     angle = 0, width = 0, height = 0,
                      ymin= 0, ymax= 0, xmin= 0, xmax= 0, encoder_position = 0):
         """
-        Constructs packet objects.
+        Constructs item objects.
     
         Parameters:
-        box (numpy.ndarray): packet bounding box.
-        pack_type (bool): class of detected packet.
-        centroid (tuple): centroid of packet.
-        centroid_depth (int): depth of centroid from depth frame.
+        box (numpy.ndarray): item bounding box.
+        item_type (bool): class of detected item.
+        centroid (tuple): centroid of item.
         angle (float): angle of bounding box.
         width (int): width of bounding box.
         height (int): height of bounding box.
         encoder_position (float): position of encoder.
     
         """
-        self.id = None
+        # 
+        self.id = id
 
-        # Tuple of 2 numbers describing center of the packet
+        # Tuple of 2 numbers describing center of the item
         self.centroid = centroid
 
-        # List of angles for averaging
+        # Rotation angle
         self.angles = [angle]
         self.angle = angle
 
-        # Width and height of packet bounding box
+        # Width and height of item bounding box
         self.width = width
         self.height = height
 
+        self.box = box
         self.yminbbx = ymin
         self.ymaxbbx = ymax
         self.xminbbx = xmin
@@ -41,14 +42,14 @@ class Packet:
         self.depth_maps = np.empty(())
         self.color_frames = np.empty(())
 
-        # Number of frames the packet has disappeared for
+        # Number of frames the item has disappeared for
         self.disappeared = 0
 
-        self.time_of_disappearance = None
+        # Number of frames item has been tracked
+        self.track_frame = 0
 
-        self.box = box
 
-        self.pack_type = pack_type
+        self.item_type = item_type
 
         # Encoder data
         self.starting_encoder_position = encoder_position
@@ -58,14 +59,9 @@ class Packet:
 
         self.in_pick_list = False
 
-         # Number of frames item has been tracked
-        self.track_frame = 0
-
-
-        self.marked_for_picking = False
     def getCentroidFromEncoder(self, encoder_position):
         """
-        Computes actual centroid of packet from the encoder data.
+        Computes actual centroid of item from the encoder data.
     
         Parameters:
        
@@ -73,7 +69,7 @@ class Packet:
         
 
         Returns:
-        float: Updated x, y packet centroid.
+        float: Updated x, y item centroid.
     
         """
         # k = 0.8299  # 640 x 480
@@ -93,11 +89,11 @@ class Packet:
         
 
         Returns:
-        float: Updated x, y packet centroid in world coordinates.
+        float: Updated x, y item centroid in world coordinates.
     
         """
         centroid_robot_frame = np.matmul(homography, np.array([self.centroid[0], self.centroid[1], 1]))
 
-        packet_x = centroid_robot_frame[0] * 10
-        packet_y = centroid_robot_frame[1] * 10
-        return packet_x, packet_y
+        item_x = centroid_robot_frame[0] * 10
+        item_y = centroid_robot_frame[1] * 10
+        return item_x, item_y
