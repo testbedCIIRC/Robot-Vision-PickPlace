@@ -37,9 +37,19 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = False
+USE_DEEP_DETECTOR = True
 
-def main(rc, paths, files, check_point, info_pipe, encoder_pipe, control_pipe):
+# trajectory_dict = {
+# 'x': x,
+# 'y': y,
+# 'rot': rot,
+# 'packet_type': packet_type,
+# 'x_offset': x_offset,
+# 'pack_z': pack_z
+# }
+# control_pipe.send(RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict))
+
+def main(x_fixed, paths, files, check_point, info_pipe, encoder_pipe, control_pipe):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
     
@@ -61,11 +71,6 @@ def main(rc, paths, files, check_point, info_pipe, encoder_pipe, control_pipe):
 
     robot_server_dict = None
     encoder_pos = None
-    #rc.connect_OPCUA_server()
-    #rc.get_nodes()
-
-    # Define fixed x position where robot waits for packet.
-    #x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
 
     # Declare variables.
     warn_count = 0 # Counter for markers out of frame or moving.
@@ -256,7 +261,7 @@ def main(rc, paths, files, check_point, info_pipe, encoder_pipe, control_pipe):
         
         if key == ord('n'):
             control_pipe.send(RcData(RcCommand.CONVEYOR_LEFT, conv_left))
-            conv_left = not conv_right
+            conv_left = not conv_left
 
         if key == ord('l'):
             bbox = not bbox
@@ -318,13 +323,12 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
         if mode == '1':
             robot_prog(r_control)
 
-        # Otherwise start selected threaded program
-        else:
+        elif mode == '4':
             pipe_info_1, pipe_info_2 = Pipe()
             pipe_encoder_1, pipe_encoder_2 = Pipe()
             pipe_control_1, pipe_control_2 = Pipe()
 
-            main_proc = Process(target = robot_prog, args = (r_control, paths, files, check_point, pipe_info_1, pipe_encoder_1, pipe_control_1))
+            main_proc = Process(target = robot_prog, args = (r_control.rob_dict['pick_pos_base'][0]['x'], paths, files, check_point, pipe_info_1, pipe_encoder_1, pipe_control_1))
             info_server_proc = Process(target = r_comm_info.robot_server, args = (pipe_info_2, ))
             encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (pipe_encoder_2, ))
             control_server_proc = Process(target = r_control.control_server, args = (pipe_control_2, ))
@@ -339,6 +343,20 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
             info_server_proc.kill()
             encoder_server_proc.kill()
             control_server_proc.kill()
+
+        # Otherwise start selected threaded program
+        else:
+            pipe_info_1, pipe_info_2 = Pipe()
+
+            main_proc = Process(target = robot_prog, args = (r_control, paths, files, check_point, pipe_info_1))
+            info_server_proc = Process(target = r_comm_info.robot_server, args = (pipe_info_2, ))
+
+            main_proc.start()
+            info_server_proc.start()
+
+            # Wait for the main process to end
+            main_proc.join()
+            info_server_proc.kill()
 
     # If input is exit, exit python.
     if mode == 'e':

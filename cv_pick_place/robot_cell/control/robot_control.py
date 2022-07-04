@@ -27,6 +27,8 @@ class RcCommand(Enum):
     CONTINUE_PROGRAM = 5
     STOP_PROGRAM = 6
     CLOSE_PROGRAM = 7
+    START_PROGRAM = 8
+    CHANGE_TRAJECTORY = 9
 
 
 class RcData():
@@ -465,6 +467,17 @@ class RobotControl(RobotCommunication):
 
                 elif command == RcCommand.CLOSE_PROGRAM:
                     self.close_program()
+
+                elif command == RcCommand.START_PROGRAM:
+                    self.start_program()
+
+                elif command == RcCommand.CHANGE_TRAJECTORY:
+                    self.change_trajectory(self, data['x'], 
+                                                 data['y'],
+                                                 data['rot'],
+                                                 data['packet_type'],
+                                                 data['x_offset'],
+                                                 data['pack_z'])
 
                 else:
                     print('[WARNING]: Wrong command send to control server')
