@@ -72,14 +72,15 @@ class ThresholdDetector:
 
         return image_frame
         
-    def detect_packet_hsv(self, rgb_frame, depth_frame, encoder_position, draw_box = True, text_size = 1):
+    def detect_packet_hsv(self, rgb_frame, depth_frame, encoder_position, draw_box = True, text_size = 1, image_frame = None):
         self.detected_objects = []
         
         if self.homography_determinant is None:
             print("[WARINING] ObjectDetector: No homography matrix set")
             return image_frame, self.detected_objects
 
-        image_frame = rgb_frame.copy()
+        if image_frame is None or not image_frame.shape == rgb_frame.shape:
+            image_frame = rgb_frame.copy()
         
         frame_height = rgb_frame.shape[0]
         frame_width = rgb_frame.shape[1]

@@ -50,7 +50,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     """
     # Inititalize objects.
     apriltag = ProcessingApriltag()
-    pt = ItemTracker(max_disappeared_frames = 20, guard = 100, max_item_distance=500)
+    pt = ItemTracker(max_disappeared_frames = 20, guard = 100, max_item_distance = 500)
     dc = DepthCamera()
 
     if USE_DEEP_DETECTOR:
@@ -113,9 +113,11 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
         text_size = (frame_height / 1000)
 
+        image_frame = rgb_frame.copy()
+
         try:
             # Try to detect tags in rgb frame.
-            rgb_frame = apriltag.detect_tags(rgb_frame)
+            image_frame = apriltag.detect_tags(rgb_frame, image_frame = image_frame)
 
             # Update homography on first frame of 500 frames.
             if frame_count == 1:
@@ -132,7 +134,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             # Reset not detected tags warning.
             if is_marker_detect:
                 warn_count = 0
-                
+        
         # Triggered when no markers are in the frame.
         except Exception as e:
             warn_count += 1
@@ -147,13 +149,15 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             image_frame, detected_packets = pack_detect.deep_pack_obj_detector(rgb_frame, 
                                                                                depth_frame,
                                                                                encoder_pos,
-                                                                               bnd_box=bbox)
+                                                                               bnd_box = bbox,
+                                                                               image_frame = image_frame)
         else:
             image_frame, detected_packets = pack_detect.detect_packet_hsv(rgb_frame,
                                                                           depth_frame,
                                                                           encoder_pos,
                                                                           bbox,
-                                                                          text_size)
+                                                                          text_size,
+                                                                          image_frame = image_frame)
 
         # Update tracked packets for current frame.
         labeled_packets = pt.track_items(detected_packets)
@@ -171,7 +175,6 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         is_conv_mov = encoder_vel < - 100.0
         #Robot ready when programs are fully finished and it isn't moving.
         is_rob_ready = prog_done and (rob_stopped or not stop_active)
-
 
         # TODO remove VIS TEST 
         for packet in registered_packets:

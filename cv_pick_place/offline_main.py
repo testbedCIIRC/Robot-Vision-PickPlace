@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
         control_pipe_1, control_pipe_2 = Pipe()
 
-        main_proc = Process(target = main, args = (r_control.rob_dict['pick_pos_base'][0]['x'], paths, files, check_point, info_dict, encoder_pos, control_pipe_1))
+        main_proc = Process(target = main, args = (r_control.rob_dict, paths, files, check_point, info_dict, encoder_pos, control_pipe_1))
         info_server_proc = Process(target = r_comm_info.robot_server, args = (info_dict, ))
         encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (encoder_pos, ))
         control_server_proc = Process(target = r_control.control_server, args = (control_pipe_2, ))
