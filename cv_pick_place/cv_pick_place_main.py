@@ -12,15 +12,11 @@ from opcua import ua
 from opcua import Client
 import matplotlib as mpl
 from scipy import ndimage
-from queue import Queue
-from threading import Thread
-from threading import Timer
 from collections import OrderedDict
 from scipy.spatial import distance as dist
 from multiprocessing import Process
 from multiprocessing import Manager
 from multiprocessing import Pipe
-import copy
 
 from robot_cell.packet.packet_object import Packet
 from robot_cell.packet.item_object import Item
@@ -43,24 +39,6 @@ from robot_cell.functions import *
 
 USE_DEEP_DETECTOR = False
 
-def compute_gripper_rot(angle):
-    """
-    Computes the gripper rotation based on the detected packet angle.
-
-    Parameters:
-    angle (float): Detected angle of packet.
-
-    Returns:
-    float: Gripper rotation.
-
-    """
-    angle = abs(angle)
-    if angle > 45:
-        rot = 90 + (90 - angle)
-    if angle <= 45:
-        rot = 90 - angle
-    return rot
-
 def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
@@ -70,8 +48,6 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     server_in (object): Queue object containing data from the PLC server.
     
     """
-    global INFO_DICT_GLOBAL
-    global ENCODER_POS_GLOBAL
     # Inititalize objects.
     apriltag = ProcessingApriltag()
     pt = ItemTracker(max_disappeared_frames = 20, guard = 100, max_item_distance=500)
