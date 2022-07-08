@@ -28,7 +28,7 @@ if __name__ == '__main__':
     # Create processes and connections
     with Manager() as manager:
         info_dict = manager.dict()
-        encoder_pos = manager.Value('d', 0.0)
+        encoder_pos = manager.Value('d', None)
 
         control_pipe_1, control_pipe_2 = Pipe()
 

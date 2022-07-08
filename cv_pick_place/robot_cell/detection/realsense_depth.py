@@ -4,7 +4,7 @@ import time
 import cv2
 
 class DepthCamera:
-    def __init__(self, recording_file_name = 'recording_2022_04_23.npy', recording_fps = 5):
+    def __init__(self, recording_file_name = 'recording_2022_05_20.npy', recording_fps = 5):
         # Check if any RealSense camera is connected
         ctx = rs.context()
         devices = ctx.query_devices()

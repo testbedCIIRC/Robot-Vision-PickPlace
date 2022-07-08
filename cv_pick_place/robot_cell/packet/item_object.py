@@ -2,9 +2,20 @@ import numpy as np
 
 # Class containing relevant item data
 class Item:
-    def __init__(self, id = None, box = np.empty(()), item_type = None, centroid = (0, 0), 
-                     angle = 0, width = 0, height = 0,
-                     ymin= 0, ymax= 0, xmin= 0, xmax= 0, encoder_position = 0):
+    def __init__(self, 
+                 id = None,
+                 box = np.empty(()),
+                 item_type = None,
+                 centroid = (0, 0), 
+                 angle = 0,
+                 width = 0,
+                 height = 0,
+                 ymin= 0,
+                 ymax= 0,
+                 xmin= 0,
+                 xmax= 0,
+                 encoder_position = 0,
+                 crop_border_px = 10):
         """
         Constructs item objects.
     
@@ -20,6 +31,13 @@ class Item:
         """
         # 
         self.id = id
+
+        self.num_avg_depths = 0
+        self.avg_depth_crop = None
+        self.crop_border_px = crop_border_px
+
+        self.num_avg_angles = 0
+        self.avg_angle = None
 
         # Tuple of 2 numbers describing center of the item
         self.centroid = centroid
@@ -48,7 +66,6 @@ class Item:
         # Number of frames item has been tracked
         self.track_frame = 0
 
-
         self.item_type = item_type
 
         # Encoder data
@@ -58,6 +75,31 @@ class Item:
         self.first_centroid_position = centroid
 
         self.in_pick_list = False
+
+    def add_angle_to_average(self, angle):
+        if self.angle is None:
+            self.avg_angle_deg = angle
+        else:
+            self.avg_angle_deg = (self.num_avg_angles * self.avg_angle_deg + angle) / (self.num_avg_angles + 1)
+        
+        self.num_avg_angles += 1
+
+    def add_depth_crop_to_average(self, depth_crop):
+        if not self.avg_depth_crop.shape == depth_crop.shape:
+            print("[WARNING] Tried to average two depth maps with incompatible shape together: {} VS {}".format(self.avg_depth_crop.shape, depth_crop.shape))
+            return
+
+        if self.avg_depth_crop is None:
+            self.avg_depth_crop = depth_crop
+        else:
+            self.avg_depth_crop = (self.num_avg_depths * self.avg_depth_crop + depth_crop) / (self.num_avg_depths + 1)
+        
+        self.num_avg_depths += 1
+
+    def get_crop_from_frame(self, frame):
+        crop = frame[(self.centroid[1] - int(self.height / 2) - self.crop_border_px):(self.centroid[1] + int(self.height / 2) + self.crop_border_px),
+                     (self.centroid[0] - int(self.width / 2) - self.crop_border_px):(self.centroid[0] + int(self.width / 2) + self.crop_border_px)]
+        return crop
 
     def getCentroidFromEncoder(self, encoder_position):
         """
