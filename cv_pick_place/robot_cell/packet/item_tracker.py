@@ -67,7 +67,7 @@ class ItemTracker:
         tracked_item.centroid = new_item.centroid
         tracked_item.disappeared = 0
         tracked_item.box = new_item.box
-        tracked_item.angle = new_item.angle
+        tracked_item.add_angle_to_average(new_item.avg_angle_deg)
 
         return tracked_item
 

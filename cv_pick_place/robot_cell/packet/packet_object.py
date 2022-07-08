@@ -2,9 +2,20 @@ import numpy as np
 
 # Class containing relevant packet data for convenience
 class Packet:
-    def __init__(self, box = np.empty(()), pack_type = None, centroid = (0, 0), 
-                    centroid_depth = 0, angle = 0, width = 0, height = 0,
-                     ymin= 0, ymax= 0, xmin= 0, xmax= 0, encoder_position = 0):
+    def __init__(self,
+                 box = np.empty(()),
+                 pack_type = None,
+                 centroid = (0, 0), 
+                 centroid_depth = 0,
+                 angle = 0,
+                 width = 0,
+                 height = 0,
+                 ymin= 0,
+                 ymax= 0,
+                 xmin= 0,
+                 xmax= 0,
+                 encoder_position = 0,
+                 crop_border_px = 50):
         """
         Constructs packet objects.
     
@@ -19,7 +30,23 @@ class Packet:
         encoder_position (float): position of encoder.
     
         """
+
+        # NEW PACKET PARAMETERS
+        #######################
         self.id = None
+
+        self.crop_border_px = crop_border_px
+        self.num_avg_depths = 0
+        self.avg_depth_crop = None
+
+        self.num_avg_angles = 0
+        self.avg_angle_deg = None
+
+        self.in_pick_list = False
+
+
+        # OLD PACKET PARAMETERS
+        #######################
 
         # Tuple of 2 numbers describing center of the packet
         self.centroid = centroid
@@ -56,13 +83,34 @@ class Packet:
         # Used for offsetting centroid position calculated using encoder
         self.first_centroid_position = centroid
 
-        self.in_pick_list = False
-
          # Number of frames item has been tracked
         self.track_frame = 0
 
-
         self.marked_for_picking = False
+
+    def add_angle_to_average(self, angle):
+        if self.avg_angle_deg is None:
+            self.avg_angle_deg = angle
+        else:
+            self.avg_angle_deg = (self.num_avg_angles * self.avg_angle_deg + angle) / (self.num_avg_angles + 1)
+        
+        self.num_avg_angles += 1
+
+    def add_depth_crop_to_average(self, depth_crop):
+        if self.avg_depth_crop is None:
+            self.avg_depth_crop = depth_crop
+        else:
+            if not self.avg_depth_crop.shape == depth_crop.shape:
+                print("[WARNING] Tried to average two depth maps with incompatible shape together: {} VS {}".format(self.avg_depth_crop.shape, depth_crop.shape))
+                return
+            self.avg_depth_crop = (self.num_avg_depths * self.avg_depth_crop + depth_crop) / (self.num_avg_depths + 1)
+        self.num_avg_depths += 1
+
+    def get_crop_from_frame(self, frame):
+        crop = frame[(self.centroid[1] - self.height // 2 - self.crop_border_px):(self.centroid[1] + self.height // 2 + self.crop_border_px),
+                     (self.centroid[0] - self.width // 2 - self.crop_border_px):(self.centroid[0] + self.width // 2 + self.crop_border_px)]
+        return crop
+
     def getCentroidFromEncoder(self, encoder_position):
         """
         Computes actual centroid of packet from the encoder data.
@@ -71,7 +119,6 @@ class Packet:
        
         encoder_pos (float): current encoder position.
         
-
         Returns:
         float: Updated x, y packet centroid.
     
