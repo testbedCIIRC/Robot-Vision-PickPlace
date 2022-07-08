@@ -13,6 +13,25 @@ def drawText(frame, text, position, size = 1):
                 cv2.FONT_HERSHEY_SIMPLEX, size, (255, 255, 255), 2)
 
 
+def compute_gripper_rot(angle):
+    """
+    Computes the gripper rotation based on the detected packet angle.
+
+    Parameters:
+    angle (float): Detected angle of packet.
+
+    Returns:
+    float: Gripper rotation.
+
+    """
+    angle = abs(angle)
+    if angle > 45:
+        rot = 90 + (90 - angle)
+    if angle <= 45:
+        rot = 90 - angle
+    return rot
+
+
 def show_boot_screen(message, resolution = (960,1280)):
     """
     Opens main frame window with boot screen message.

@@ -12,15 +12,11 @@ from opcua import ua
 from opcua import Client
 import matplotlib as mpl
 from scipy import ndimage
-from queue import Queue
-from threading import Thread
-from threading import Timer
 from collections import OrderedDict
 from scipy.spatial import distance as dist
 from multiprocessing import Process
 from multiprocessing import Manager
 from multiprocessing import Pipe
-import copy
 
 from robot_cell.packet.packet_object import Packet
 from robot_cell.packet.item_object import Item
@@ -43,24 +39,6 @@ from robot_cell.functions import *
 
 USE_DEEP_DETECTOR = False
 
-def compute_gripper_rot(angle):
-    """
-    Computes the gripper rotation based on the detected packet angle.
-
-    Parameters:
-    angle (float): Detected angle of packet.
-
-    Returns:
-    float: Gripper rotation.
-
-    """
-    angle = abs(angle)
-    if angle > 45:
-        rot = 90 + (90 - angle)
-    if angle <= 45:
-        rot = 90 - angle
-    return rot
-
 def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
@@ -70,11 +48,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     server_in (object): Queue object containing data from the PLC server.
     
     """
-    global INFO_DICT_GLOBAL
-    global ENCODER_POS_GLOBAL
     # Inititalize objects.
     apriltag = ProcessingApriltag()
-    pt = ItemTracker(max_disappeared_frames = 20, guard = 100, max_item_distance=500)
+    pt = ItemTracker(max_disappeared_frames = 5, guard = 50, max_item_distance = 100)
     dc = DepthCamera()
 
     if USE_DEEP_DETECTOR:
@@ -125,7 +101,10 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         except:
             continue
 
+        # Read encoder dict from PLC server
         encoder_pos = encoder_pos_m.value
+        if encoder_pos is None:
+            continue
 
         # Get frames from realsense.
         success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
@@ -137,9 +116,11 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
         text_size = (frame_height / 1000)
 
+        image_frame = rgb_frame.copy()
+
         try:
             # Try to detect tags in rgb frame.
-            rgb_frame = apriltag.detect_tags(rgb_frame)
+            image_frame = apriltag.detect_tags(rgb_frame, image_frame = image_frame)
 
             # Update homography on first frame of 500 frames.
             if frame_count == 1:
@@ -156,7 +137,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             # Reset not detected tags warning.
             if is_marker_detect:
                 warn_count = 0
-                
+        
         # Triggered when no markers are in the frame.
         except Exception as e:
             warn_count += 1
@@ -171,17 +152,30 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             image_frame, detected_packets = pack_detect.deep_pack_obj_detector(rgb_frame, 
                                                                                depth_frame,
                                                                                encoder_pos,
-                                                                               bnd_box=bbox)
+                                                                               bnd_box = bbox,
+                                                                               image_frame = image_frame)
+            for packet in detected_packets:
+                packet.width = packet.width * frame_width
+                packet.height = packet.height * frame_height
         else:
             image_frame, detected_packets = pack_detect.detect_packet_hsv(rgb_frame,
                                                                           depth_frame,
                                                                           encoder_pos,
                                                                           bbox,
-                                                                          text_size)
+                                                                          text_size,
+                                                                          image_frame = image_frame)
 
-        # Update tracked packets for current frame.
+        # Update tracked packets from detected packets
         labeled_packets = pt.track_items(detected_packets)
         pt.update_item_database(labeled_packets)
+
+        # Update depth frames of tracked packets
+        for item in pt.item_database:
+            # Check if packet is far enough from edge
+            if item.centroid[0] - item.width / 2 > item.crop_border_px and item.centroid[0] + item.width / 2 < (frame_width - item.crop_border_px):
+                depth_crop = item.get_crop_from_frame(depth_frame)
+                item.add_depth_crop_to_average(depth_crop)
+
         registered_packets = pt.item_database
         # print({
         #     'packs': registered_packets,
@@ -196,7 +190,6 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         #Robot ready when programs are fully finished and it isn't moving.
         is_rob_ready = prog_done and (rob_stopped or not stop_active)
 
-
         # TODO remove VIS TEST 
         for packet in registered_packets:
             if packet.disappeared == 0:
@@ -209,6 +202,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 drawText(image_frame, text_centroid, (packet.centroid[0] + 10, packet.centroid[1] + int(45 * text_size)), text_size)
                 cv2.circle(image_frame, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
                 # print("packet ID: {}, tracked: {}, ".format(str(packet.id), str(packet.track_frame)))
+
+                if packet.avg_depth_crop is not None:
+                    cv2.imshow("Depth Crop", colorizeDepthFrame(packet.avg_depth_crop))
 
         # Add to pick list
         # If packets are being tracked.
@@ -422,7 +418,7 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
         elif mode == '4':
             with Manager() as manager:
                 info_dict = manager.dict()
-                encoder_pos = manager.Value('d', 0.0)
+                encoder_pos = manager.Value('d', None)
 
                 control_pipe_1, control_pipe_2 = Pipe()
 

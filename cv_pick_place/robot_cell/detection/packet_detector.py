@@ -339,7 +339,7 @@ class PacketDetector:
         else:
             return img_np_detect, detected
 
-    def deep_pack_obj_detector(self, color_frame, depth_frame, encoder_pos, bnd_box = True, segment = False):
+    def deep_pack_obj_detector(self, color_frame, depth_frame, encoder_pos, bnd_box = True, segment = False, image_frame = None):
         """
         Main packet detector function.
     
@@ -370,7 +370,12 @@ class PacketDetector:
         detections['num_detections'] = num_detections
         detections['detection_classes'] = detections['detection_classes'].astype(np.int64)
         label_id_offset = 1
-        img_np_detect = image_np.copy()
+
+        if image_frame is None or not image_frame.shape == color_frame.shape:
+            img_np_detect = image_np.copy()
+        else:
+            img_np_detect = image_frame
+
         boxes = detections['detection_boxes']
         max_boxes_to_draw = self.max_detect
         # get scores to get a threshold

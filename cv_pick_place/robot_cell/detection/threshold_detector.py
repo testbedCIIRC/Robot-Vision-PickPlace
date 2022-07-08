@@ -1,3 +1,4 @@
+from struct import pack
 import numpy as np
 import cv2
 
@@ -28,11 +29,11 @@ class ThresholdDetector:
         self.homography_matrix = homography_matrix
         self.homography_determinant = np.linalg.det(homography_matrix[0:2, 0:2])
         
-    def get_packet_from_contour(self, contour, type, depth_frame, encoder_pos):
-        rect = cv2.minAreaRect(contour)
-        centroid = (int(rect[0][0]), int(rect[0][1]))
-        box = np.int0(cv2.boxPoints(rect))
-        angle = int(rect[2])
+    def get_packet_from_contour(self, contour, type, encoder_pos):
+        rectangle = cv2.minAreaRect(contour)
+        centroid = (int(rectangle[0][0]), int(rectangle[0][1]))
+        box = np.int0(cv2.boxPoints(rectangle))
+        angle = int(rectangle[2])
         x, y, w, h = cv2.boundingRect(contour)
 
         packet = Packet(box = box, 
@@ -44,6 +45,8 @@ class ThresholdDetector:
                         width = w, height = h, 
                         encoder_position = encoder_pos)
         
+        packet.add_angle_to_average(angle)
+
         return packet
 
     def draw_packet_info(self, image_frame, packet, encoder_position, draw_box = True, text_size = 1):
@@ -72,14 +75,15 @@ class ThresholdDetector:
 
         return image_frame
         
-    def detect_packet_hsv(self, rgb_frame, depth_frame, encoder_position, draw_box = True, text_size = 1):
+    def detect_packet_hsv(self, rgb_frame, depth_frame, encoder_position, draw_box = True, text_size = 1, image_frame = None):
         self.detected_objects = []
         
         if self.homography_determinant is None:
             print("[WARINING] ObjectDetector: No homography matrix set")
             return image_frame, self.detected_objects
 
-        image_frame = rgb_frame.copy()
+        if image_frame is None or not image_frame.shape == rgb_frame.shape:
+            image_frame = rgb_frame.copy()
         
         frame_height = rgb_frame.shape[0]
         frame_width = rgb_frame.shape[1]
@@ -113,7 +117,7 @@ class ThresholdDetector:
                 continue
             
             # Get detected packet parameters
-            packet = self.get_packet_from_contour(contour, object_type, depth_frame, encoder_position)
+            packet = self.get_packet_from_contour(contour, object_type, encoder_position)
             
             # Check for squareness
             side_ratio = packet.width / packet.height
@@ -121,7 +125,7 @@ class ThresholdDetector:
                 continue
 
             # Check if packet is far enough from edge
-            if packet.centroid[0] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[0] + packet.width/2 > (frame_width - self.ignore_horizontal_px):
+            if packet.centroid[0] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[0] + packet.width / 2 > (frame_width - self.ignore_horizontal_px):
                 continue
 
             image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box, text_size)
@@ -139,7 +143,7 @@ class ThresholdDetector:
                 continue
             
             # Get detected packet parameters
-            packet = self.get_packet_from_contour(contour, object_type, depth_frame, encoder_position)
+            packet = self.get_packet_from_contour(contour, object_type, encoder_position)
 
             # Check for squareness
             side_ratio = packet.width / packet.height
@@ -147,7 +151,7 @@ class ThresholdDetector:
                 continue
 
             # Check if packet is far enough from edge
-            if packet.centroid[0] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[0] + packet.width/2 > (frame_width - self.ignore_horizontal_px):
+            if packet.centroid[0] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[0] + packet.width / 2 > (frame_width - self.ignore_horizontal_px):
                 continue
             
             image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box, text_size)
