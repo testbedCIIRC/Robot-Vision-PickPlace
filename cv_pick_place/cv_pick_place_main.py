@@ -37,7 +37,7 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = False
+USE_DEEP_DETECTOR = True
 
 def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
     """
@@ -128,6 +128,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 print('[INFO]: Homography matrix updated.')
 
             # If recieving homography matrix as np array.
+            #print(isinstance(homography, np.ndarray))
             is_type_np = type(homography).__module__ == np.__name__
             is_marker_detect = is_type_np or homography == None
 
@@ -153,6 +154,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                                                                                depth_frame,
                                                                                encoder_pos,
                                                                                bnd_box = bbox,
+                                                                               homography = homography,
                                                                                image_frame = image_frame)
             for packet in detected_packets:
                 packet.width = packet.width * frame_width
@@ -176,6 +178,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 depth_crop = item.get_crop_from_frame(depth_frame)
                 item.add_depth_crop_to_average(depth_crop)
 
+        # Update registered packet list with new packet info
         registered_packets = pt.item_database
         # print({
         #     'packs': registered_packets,
