@@ -420,9 +420,9 @@ class PacketDetector:
                             xmin= xmin, xmax= xmax, 
                             width = w, height = h, 
                             encoder_position = encoder_pos)
-                packet.set_type(detections['detection_classes'][i])
+                packet.set_type(int(detections['detection_classes'][i]))
                 packet.set_centroid(centroid[0], centroid[1], homography, encoder_pos)
-                packet.set_bounding_size(w, h, homography)
+                packet.set_bounding_size(int(w * width), int(h * height), homography)
                 packet.add_angle_to_average(angle)
                 if centroid[0] - w/2 > guard  and centroid[0] + w/2 < (width - guard ):
                     detected.append(packet)
