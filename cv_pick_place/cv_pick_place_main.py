@@ -154,6 +154,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                                                                                depth_frame,
                                                                                encoder_pos,
                                                                                bnd_box = bbox,
+                                                                               homography = homography,
                                                                                image_frame = image_frame)
             for packet in detected_packets:
                 packet.width = packet.width * frame_width
