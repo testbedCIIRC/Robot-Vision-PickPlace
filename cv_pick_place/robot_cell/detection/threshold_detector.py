@@ -44,7 +44,10 @@ class ThresholdDetector:
                         xmin = x, xmax = x + h, 
                         width = w, height = h, 
                         encoder_position = encoder_pos)
-        
+
+        packet.set_type(type)
+        packet.set_centroid(centroid[0], centroid[1], self.homography_matrix, encoder_pos)
+        packet.set_bounding_size(w, h, self.homography_matrix)
         packet.add_angle_to_average(angle)
 
         return packet

@@ -63,11 +63,23 @@ class ItemTracker:
             print("[WARNING] Tried to update two items with different IDs together")
             return
         
-        # Update parameters
+        # NEW parameters
+        tracked_item.centroid_px = new_item.centroid_px
+        tracked_item.centroid_mm = new_item.centroid_mm
+
+        tracked_item.width_bnd_px = new_item.width_bnd_px
+        tracked_item.width_bnd_mm = new_item.width_bnd_mm
+        tracked_item.height_bnd_px = new_item.height_bnd_px
+        tracked_item.height_bnd_mm = new_item.height_bnd_mm
+
+        tracked_item.add_angle_to_average(new_item.avg_angle_deg)
+
+        # OLD parameters
+        tracked_item.width = new_item.width
+        tracked_item.height = new_item.height
         tracked_item.centroid = new_item.centroid
         tracked_item.disappeared = 0
         tracked_item.box = new_item.box
-        tracked_item.add_angle_to_average(new_item.avg_angle_deg)
 
         return tracked_item
 
