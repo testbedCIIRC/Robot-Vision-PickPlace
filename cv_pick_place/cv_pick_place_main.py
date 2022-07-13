@@ -134,8 +134,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 print('[INFO]: Homography matrix updated.')
 
             # If recieving homography matrix as np array.
-            #print(isinstance(homography, np.ndarray))
-            is_type_np = type(homography).__module__ == np.__name__
+            is_type_np = isinstance(homography, np.ndarray)
             is_marker_detect = is_type_np or homography == None
 
             if not USE_DEEP_DETECTOR:
@@ -150,7 +149,6 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             warn_count += 1
             # Print warning only once.
             if warn_count == 1:
-                print(e)
                 print("[INFO]: Markers out of frame or moving.")
             pass
         
