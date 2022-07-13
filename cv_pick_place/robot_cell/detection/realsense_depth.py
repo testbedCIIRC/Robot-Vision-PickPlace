@@ -46,7 +46,7 @@ class IntelConfig:
 
 
 class DepthCamera:
-    def __init__(self, config_path = None, recording_path = 'recording_2022_05_20.npy', recording_fps = 5):
+    def __init__(self, config_path = None, recording_path = 'recording_2022_07_13.npy', recording_fps = 5):
         # Check if any RealSense camera is connected
         ctx = rs.context()
         devices = ctx.query_devices()
@@ -101,7 +101,7 @@ class DepthCamera:
             self.frame_index = 0
             
             # Delay between frames in nanoseconds
-            self.frame_delay_ns = (10.0 ** 9) / recording_fps
+            self.frame_delay_ns = (10.0 ** 9) // recording_fps
             self.last_time_ns = time.time_ns()
 
             # CLAHE for colorizing depth frames
@@ -156,7 +156,7 @@ class DepthCamera:
     def recorded_frame_function(self):
         # Block until time is right
         while time.time_ns() - self.last_time_ns < self.frame_delay_ns:
-            time.sleep(0.01)
+            time.sleep(0.001)
         
         # Update time
         self.last_time_ns = time.time_ns()

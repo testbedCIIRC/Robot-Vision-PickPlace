@@ -43,8 +43,8 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     """
     # Inititalize objects
     apriltag = ProcessingApriltag()
-    pt = ItemTracker(max_disappeared_frames = 5, guard = 50, max_item_distance = 100)
-    dc = DepthCamera(config_path = 'D435_camera_config.json', recording_path = 'recording_2022_05_20.npy', recording_fps = 5)
+    pt = ItemTracker(max_disappeared_frames = 20, guard = 50, max_item_distance = 400)
+    dc = DepthCamera(config_path = 'D435_camera_config.json')
 
     if DETECTOR_TYPE == 'deep_1':
         show_boot_screen('STARTING NEURAL NET...')
@@ -325,7 +325,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             text_robot = str(info_dict)
             drawText(image_frame, text_robot, (10, int(75 * text_size)), text_size)
 
-        #image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
+        image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
 
         # Show frames on cv2 window
         cv2.imshow("Frame", image_frame)
