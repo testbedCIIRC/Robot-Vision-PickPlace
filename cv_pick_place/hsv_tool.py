@@ -47,7 +47,7 @@ frame_bounds = 0
 
 freeze_frame = False
 
-dc = DepthCamera('recording_2022_05_20.npy', 5)
+dc = DepthCamera(config_path = 'D435_camera_config.json', recording_path = 'recording_2022_05_20.npy', recording_fps = 5)
 
 time.sleep(1)
 success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()

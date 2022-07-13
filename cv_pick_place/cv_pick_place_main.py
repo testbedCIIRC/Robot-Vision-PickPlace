@@ -37,7 +37,7 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = True
+USE_DEEP_DETECTOR = False
 
 def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
     """
@@ -57,7 +57,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         show_boot_screen('STARTING NEURAL NET...')
         pack_detect = PacketDetector(paths, files, check_point)
     else:
-        pack_detect = ThresholdDetector()
+        pack_detect = ThresholdDetector(ignore_vertical_px = 133, ignore_horizontal_px = 50, max_ratio_error = 0.15,
+                                        white_lower = [60, 0, 85], white_upper = [179, 255, 255],
+                                        brown_lower = [0, 33, 57], brown_upper = [60, 255, 178])
 
     # Initialize list for items ready to be picked
     pick_list = []
@@ -210,8 +212,10 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 cv2.circle(image_frame, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
                 # print("packet ID: {}, tracked: {}, ".format(str(packet.id), str(packet.track_frame)))
 
-                if packet.avg_depth_crop is not None:
-                    cv2.imshow("Depth Crop", colorizeDepthFrame(packet.avg_depth_crop))
+        for packet in registered_packets:
+            if packet.avg_depth_crop is not None:
+                cv2.imshow("Depth Crop", colorizeDepthFrame(packet.avg_depth_crop))
+                break
 
         # Add to pick list
         # If packets are being tracked.

@@ -6,6 +6,16 @@ from robot_cell.packet.item_object import Item
 from robot_cell.packet.packet_object import Packet
 from robot_cell.functions import *
 
+# Workstation with json camera config
+# White:
+# Lower HSV bounds: [60, 0, 85]
+# Upper HSV bounds: [179, 255, 255]
+# Frame bounds: 133
+# Brown:
+# Lower HSV bounds: [0, 33, 57]
+# Upper HSV bounds: [60, 255, 178]
+# Frame bounds: 133
+
 class ThresholdDetector:
     def __init__(self, ignore_vertical_px = 60, ignore_horizontal_px = 10, max_ratio_error = 0.1,
                        white_lower = [40, 0, 90], white_upper = [140, 255, 255],
