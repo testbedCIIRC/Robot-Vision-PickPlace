@@ -37,7 +37,9 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = False
+#DETECTOR_TYPE = 'deep_1'
+#DETECTOR_TYPE = 'deep_2'
+DETECTOR_TYPE = 'hsv'
 
 def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
     """
@@ -53,10 +55,13 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     pt = ItemTracker(max_disappeared_frames = 5, guard = 50, max_item_distance = 100)
     dc = DepthCamera(config_path = 'D435_camera_config.json', recording_path = 'recording_2022_05_20.npy', recording_fps = 5)
 
-    if USE_DEEP_DETECTOR:
+    if DETECTOR_TYPE == 'deep_1':
         show_boot_screen('STARTING NEURAL NET...')
         pack_detect = PacketDetector(paths, files, check_point)
-    else:
+    elif DETECTOR_TYPE == 'deep_2':
+        # TODO Implement new deep detector
+        pass
+    elif DETECTOR_TYPE == 'hsv':
         pack_detect = ThresholdDetector(ignore_vertical_px = 133, ignore_horizontal_px = 50, max_ratio_error = 0.15,
                                         white_lower = [60, 0, 85], white_upper = [179, 255, 255],
                                         brown_lower = [0, 33, 57], brown_upper = [60, 255, 178])
@@ -121,7 +126,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
         image_frame = rgb_frame.copy()
 
-        if show_hsv_mask and not USE_DEEP_DETECTOR:
+        if show_hsv_mask and DETECTOR_TYPE == 'hsv':
             image_frame = pack_detect.draw_hsv_mask(image_frame)
 
         try:
@@ -137,7 +142,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             is_type_np = isinstance(homography, np.ndarray)
             is_marker_detect = is_type_np or homography == None
 
-            if not USE_DEEP_DETECTOR:
+            if DETECTOR_TYPE == 'hsv':
                 pack_detect.set_homography(homography)
 
             # Reset not detected tags warning.
@@ -152,8 +157,8 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 print("[INFO]: Markers out of frame or moving.")
             pass
         
-        # Detect packets using neural network.
-        if USE_DEEP_DETECTOR:
+        # Detect packets using neural network
+        if DETECTOR_TYPE == 'deep_1':
             image_frame, detected_packets = pack_detect.deep_pack_obj_detector(rgb_frame, 
                                                                                depth_frame,
                                                                                encoder_pos,
@@ -163,7 +168,13 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             for packet in detected_packets:
                 packet.width = packet.width * frame_width
                 packet.height = packet.height * frame_height
-        else:
+        # Detect packets using neural network
+        elif DETECTOR_TYPE == 'deep_2':
+            # TODO Implement new deep detector
+            detected_packets = []
+            pass
+        # Detect packets using neural HSV thresholding
+        elif DETECTOR_TYPE == 'hsv':
             image_frame, detected_packets = pack_detect.detect_packet_hsv(rgb_frame,
                                                                           depth_frame,
                                                                           encoder_pos,
