@@ -77,6 +77,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     conv_right = False # Conveyor heading right enable.
     homography = None # Homography matrix.
     track_result = None # Result of pack_obj_tracking_update.
+    show_hsv_mask = False # Remove pixels not within HSV mask boundaries
     text_size = 1
 
     # robot state variable
@@ -117,6 +118,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         text_size = (frame_height / 1000)
 
         image_frame = rgb_frame.copy()
+
+        if show_hsv_mask and not USE_DEEP_DETECTOR:
+            image_frame = pack_detect.draw_hsv_mask(image_frame)
 
         try:
             # Try to detect tags in rgb frame.
@@ -366,6 +370,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         
         if key == ord('e'):
             is_detect = not is_detect
+
+        if key == ord ('v'):
+            show_hsv_mask = not show_hsv_mask
 
         if key == ord('a'):
             control_pipe.send(RcData(RcCommand.ABORT_PROGRAM))

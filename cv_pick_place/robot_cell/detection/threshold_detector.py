@@ -162,3 +162,24 @@ class ThresholdDetector:
             self.detected_objects.append(packet)
 
         return image_frame, self.detected_objects
+
+    def draw_hsv_mask(self, image_frame):
+        frame_height = image_frame.shape[0]
+        frame_width = image_frame.shape[1]
+        
+        # Get binary mask
+        hsv_frame = cv2.cvtColor(image_frame, cv2.COLOR_BGR2HSV)
+        
+        white_mask = cv2.inRange(hsv_frame, self.white_lower, self.white_upper)
+        white_mask[:self.ignore_vertical_px, :] = 0
+        white_mask[(frame_height - self.ignore_vertical_px):, :] = 0
+
+        brown_mask = cv2.inRange(hsv_frame, self.brown_lower, self.brown_upper)
+        brown_mask[:self.ignore_vertical_px, :] = 0
+        brown_mask[(frame_height - self.ignore_vertical_px):, :] = 0
+
+        mask = cv2.bitwise_or(white_mask, brown_mask)
+
+        image_frame = cv2.bitwise_and(image_frame, image_frame, mask=mask)
+
+        return image_frame
