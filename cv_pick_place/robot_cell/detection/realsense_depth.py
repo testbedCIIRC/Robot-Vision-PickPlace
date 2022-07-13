@@ -1,10 +1,52 @@
 import pyrealsense2 as rs
 import numpy as np
+import json
 import time
 import cv2
 
+
+class IntelConfig:
+    def __init__(self, config_path):
+        self.DS5_product_ids = ["0AD1", "0AD2", "0AD3", "0AD4", "0AD5", "0AF6", "0AFE", "0AFF", "0B00", "0B01", "0B03", "0B07", "0B3A", "0B5C"]
+        self.config_path = config_path
+
+    def find_device_that_supports_advanced_mode(self):
+        ctx = rs.context()
+        devices = ctx.query_devices()
+        for dev in devices:
+            if dev.supports(rs.camera_info.product_id) and str(
+                    dev.get_info(rs.camera_info.product_id)) in self.DS5_product_ids:
+                if dev.supports(rs.camera_info.name):
+                    print("Found device that supports advanced mode:", dev.get_info(rs.camera_info.name))
+                return dev
+        raise Exception("No device that supports advanced mode was found")
+
+    def open_camera(self):
+        # Open camera in advanced mode
+        dev = self.find_device_that_supports_advanced_mode()
+        advnc_mode = rs.rs400_advanced_mode(dev)
+
+        # read configuration file exported from RealSense Viewer
+        # Configuration file is edit of edge detector from intelsense sdk website which work on the parameter
+        # texture count and difference
+
+        # serialized_string = advnc_mode.serialize_json()
+        # print("Controls as JSON: \n", serialized_string)
+
+        with open(self.config_path) as f:
+            data = json.load(f)
+
+        json_string = str(data).replace("'", '\"')
+        advnc_mode.load_json(json_string)
+
+        # Configure depth and color streams
+        ctx = rs.context()
+        pipeline = rs.pipeline(ctx)
+        return pipeline
+
+
 class DepthCamera:
-    def __init__(self, recording_file_name = 'recording_2022_05_20.npy', recording_fps = 5):
+    def __init__(self, config_path = None, recording_path = 'recording_2022_05_20.npy', recording_fps = 5):
         # Check if any RealSense camera is connected
         ctx = rs.context()
         devices = ctx.query_devices()
@@ -13,7 +55,11 @@ class DepthCamera:
         # If cameras were detected, start video stream
         if self.is_camera_connected:
             # Configure depth and color streams
-            self.pipeline = rs.pipeline()
+            if config_path is None:
+                self.pipeline = rs.pipeline()
+            else:
+                self.ic = IntelConfig(config_path)
+                self.pipeline = self.ic.open_camera()
             self.config = rs.config()
 
             # Get device product line for setting a supporting resolution
@@ -48,7 +94,7 @@ class DepthCamera:
 
         # If no camera was detected, open file with a recording
         else:
-            with open(recording_file_name, 'rb') as f:
+            with open(recording_path, 'rb') as f:
                 self.recording = np.load(f)
 
             self.frame_count = self.recording.shape[3]

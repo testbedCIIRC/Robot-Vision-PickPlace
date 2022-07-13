@@ -37,7 +37,7 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
-USE_DEEP_DETECTOR = True
+USE_DEEP_DETECTOR = False
 
 def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
     """
@@ -51,7 +51,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     # Inititalize objects.
     apriltag = ProcessingApriltag()
     pt = ItemTracker(max_disappeared_frames = 5, guard = 50, max_item_distance = 100)
-    dc = DepthCamera()
+    dc = DepthCamera(config_path = 'D435_camera_config.json', recording_path = 'recording_2022_05_20.npy', recording_fps = 5)
 
     if USE_DEEP_DETECTOR:
         show_boot_screen('STARTING NEURAL NET...')
