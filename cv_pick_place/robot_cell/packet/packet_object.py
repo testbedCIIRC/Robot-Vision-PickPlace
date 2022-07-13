@@ -123,7 +123,7 @@ class Packet:
 
         self.marked_for_picking = False
 
-    def set_id(self, id):
+    def set_id(self, id: int) -> None:
         """
         Sets packet ID.
 
@@ -141,7 +141,7 @@ class Packet:
 
         self.id = id
     
-    def set_type(self, type):
+    def set_type(self, type: int) -> None:
         """
         Sets packet type.
 
@@ -160,7 +160,7 @@ class Packet:
         # OBSOLETE PARAM
         self.pack_type = type
 
-    def set_centroid(self, x, y, homography = None, encoder_pos = None):
+    def set_centroid(self, x: int, y: int, homography: np.ndarray = None, encoder_pos: int = None) -> None:
         """
         Sets packet centroid.
 
@@ -202,7 +202,7 @@ class Packet:
         # OBSOLETE PARAM
         self.centroid = (x, y)
 
-    def set_bounding_size(self, width, height, homography = None):
+    def set_bounding_size(self, width: int, height: int, homography: np.ndarray = None) -> None:
         """
         Sets width and height of packet bounding box.
 
@@ -241,7 +241,7 @@ class Packet:
         self.width = width
         self.height = height
 
-    def add_angle_to_average(self, angle):
+    def add_angle_to_average(self, angle: float) -> None:
         """
         Adds new angle value into the average angle of the packet.
 
@@ -266,7 +266,7 @@ class Packet:
         
         self.num_avg_angles += 1
 
-    def add_depth_crop_to_average(self, depth_crop):
+    def add_depth_crop_to_average(self, depth_crop: np.ndarray) -> None:
         """
         Adds new depth crop into the average depth image of the packet.
 
@@ -290,7 +290,7 @@ class Packet:
         
         self.num_avg_depths += 1
 
-    def get_crop_from_frame(self, frame):
+    def get_crop_from_frame(self, frame: np.ndarray) -> np.ndarray:
         """
         Crops packet with some small border around it (border given by self.crop_border_px) and returns the cropped array.
         If it is the first cropped depth map, packet width and height are used, otherwise the previous size is used.
