@@ -62,7 +62,7 @@ class ThresholdDetector:
 
         return packet
 
-    def draw_packet_info(self, image_frame, packet, encoder_position, draw_box = True, text_size = 1):
+    def draw_packet_info(self, image_frame, packet, encoder_position, draw_box = True):
         if draw_box:
             # Draw bounding rectangle
             cv2.rectangle(image_frame, 
@@ -88,7 +88,7 @@ class ThresholdDetector:
 
         return image_frame
         
-    def detect_packet_hsv(self, rgb_frame, depth_frame, encoder_position, draw_box = True, text_size = 1, image_frame = None):
+    def detect_packet_hsv(self, rgb_frame, encoder_position, draw_box = True, image_frame = None):
         self.detected_objects = []
         
         if self.homography_determinant is None:
@@ -141,7 +141,7 @@ class ThresholdDetector:
             if packet.centroid[0] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[0] + packet.width / 2 > (frame_width - self.ignore_horizontal_px):
                 continue
 
-            image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box, text_size)
+            image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box)
             
             self.detected_objects.append(packet)
 
@@ -167,7 +167,7 @@ class ThresholdDetector:
             if packet.centroid[0] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[0] + packet.width / 2 > (frame_width - self.ignore_horizontal_px):
                 continue
             
-            image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box, text_size)
+            image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box)
 
             self.detected_objects.append(packet)
 

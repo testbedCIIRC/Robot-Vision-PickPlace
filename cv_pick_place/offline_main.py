@@ -2,11 +2,8 @@ import json
 from multiprocessing import Process
 from multiprocessing import Pipe
 from multiprocessing import Manager
-from os import pathsep
 
 from robot_cell.control.fake_robot_control import FakeRobotCommunication, FakeRobotControl
-from robot_cell.control.robot_communication import RobotCommunication
-from robot_cell.control.robot_control import RobotControl
 from cv_pick_place_main import main
 
 if __name__ == '__main__':
