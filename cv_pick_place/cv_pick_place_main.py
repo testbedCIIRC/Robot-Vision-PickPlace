@@ -82,6 +82,8 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     homography = None # Homography matrix
     state = "READY" # Robot state variable
 
+    grip_time_offset = 1000
+
     while True:
         # Start timer for FPS estimation
         start_time = time.time()
@@ -217,7 +219,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             print("DEBUG: Pick distances")
             print(pick_list_positions)
             # If item is too far remove it from list
-            is_valid_position = pick_list_positions < 1150   # TODO find position after which it does not pick up - depends on enc_vel and robot speed
+            is_valid_position = pick_list_positions < 1600 - grip_time_offset  # TODO find position after which it does not pick up - depends on enc_vel and robot speed
             pick_list = np.ndarray.tolist(np.asanyarray(pick_list)[is_valid_position])     
             pick_list_positions = pick_list_positions[is_valid_position]
             # Choose a item for picking
@@ -228,8 +230,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 print("INFO: Chose packet ID: {} to pick".format(str(packet.id)))
 
                 # Set positions and Start robot
-                packet_x,packet_y = packet_to_pick.getCentroidInWorldFrame(homography)
-                packet_x = x_fixed  # for testing # TODO find offset value from packet
+                packet_x,pick_pos_y = packet_to_pick.getCentroidInWorldFrame(homography)
+                # packet_x = x_fixed  # for testing # TODO find offset value from packet
+                pick_pos_x = packet_x + grip_time_offset
                 angle = packet.angle
                 gripper_rot = compute_gripper_rot(angle)
                 packet_type = packet.pack_type
@@ -238,19 +241,25 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 packet_z = pack_depths[packet_type]
 
                 # Check if y is range of conveyor width and adjust accordingly.
-                if packet_y < 75.0:
-                    packet_y = 75.0
+                if pick_pos_y < 75.0:
+                    pick_pos_y = 75.0
 
-                elif packet_y > 470.0:
-                    packet_y = 470.0
+                elif pick_pos_y > 470.0:
+                    pick_pos_y = 470.0
                 # TODO clamp x position when it's variable
 
-                prepick_xyz_coords = np.array([packet_x, packet_y, rob_dict['pick_pos_base'][0]['z']])
+                if pick_pos_x < 600.0:
+                    pick_pos_x = 600.0
+
+                elif pick_pos_x > 1800.0:
+                    pick_pos_x = 1800.0
+
+                prepick_xyz_coords = np.array([pick_pos_x, pick_pos_y, rob_dict['pick_pos_base'][0]['z']])
 
                 # Change end points of robot.   
                 trajectory_dict = {
-                    'x': packet_x,
-                    'y': packet_y,
+                    'x': pick_pos_x,
+                    'y': pick_pos_y,
                     'rot': gripper_rot,
                     'packet_type': packet_type,
                     'x_offset': pack_x_offsets[packet_type],
@@ -276,15 +285,13 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         if state == "WAIT_FOR_PACKET":
             # TODO add return to ready if it misses packet
             encoder_pos = encoder_pos_m.value
-            if encoder_pos is None:
-                continue
             # check encoder and activate robot 
             packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
-            p_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
+            packet_pos_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
             print("X distance")
-            print(packet_x - p_x)
+            print(pick_pos_x - packet_pos_x)
             # If packet is close enough continue picking operation
-            if p_x > packet_x - 60:
+            if packet_pos_x > pick_pos_x - 200:
                 control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 state = "PICKING"
                 print("state: PICKING")
