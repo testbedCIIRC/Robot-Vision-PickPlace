@@ -308,15 +308,18 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 text_id = "ID {}, Type {}".format(packet.id, packet.type)
                 drawText(image_frame, text_id, (packet.centroid_px.x + 10, packet.centroid_px.y), text_size)
 
-                # Draw packet centroid in pixels
+                # Draw packet centroid value in pixels
                 text_centroid = "X: {}, Y: {} (px)".format(packet.centroid_px.x, packet.centroid_px.y)
                 drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(45 * text_size)), text_size)
-                cv2.circle(image_frame, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
 
-                # Draw packet centroid in milimeters
+                # Draw packet centroid value in milimeters
                 text_centroid = "X: {:.2f}, Y: {:.2f} (mm)".format(packet.centroid_mm.x, packet.centroid_mm.y)
                 drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(80 * text_size)), text_size)
-                cv2.circle(image_frame, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
+
+                packet_depth_mm = compute_mean_packet_z(packet, pack_depths[packet.type])
+                # Draw packet depth value in milimeters
+                text_centroid = "Z: {} (mm)".format(packet_depth_mm)
+                drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(115 * text_size)), text_size)
 
         # Draw packet depth crop to separate frame
         for packet in registered_packets:

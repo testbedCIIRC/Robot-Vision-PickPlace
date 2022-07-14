@@ -134,22 +134,18 @@ class RobotControl(RobotCommunication):
         Switch conveyor right direction on/off.
 
         """
-        conv_right = not conv_right
         self.Conveyor_Left.set_value(ua.DataValue(False))
         self.Conveyor_Right.set_value(ua.DataValue(conv_right))
         time.sleep(0.4)
-        return conv_right
     
     def change_conveyor_left(self, conv_left):
         """
         Switch conveyor left direction on/off.
 
         """
-        conv_left = not conv_left
         self.Conveyor_Right.set_value(ua.DataValue(False))
         self.Conveyor_Left.set_value(ua.DataValue(conv_left))
         time.sleep(0.4)
-        return conv_left
 
     def change_trajectory(self, x, y, rot, packet_type, x_offset = 0.0, pack_z = 5.0):
         """
