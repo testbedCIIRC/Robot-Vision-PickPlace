@@ -6,6 +6,16 @@ from robot_cell.packet.item_object import Item
 from robot_cell.packet.packet_object import Packet
 from robot_cell.functions import *
 
+# Workstation with json camera config
+# White:
+# Lower HSV bounds: [60, 0, 85]
+# Upper HSV bounds: [179, 255, 255]
+# Frame bounds: 133
+# Brown:
+# Lower HSV bounds: [0, 33, 57]
+# Upper HSV bounds: [60, 255, 178]
+# Frame bounds: 133
+
 class ThresholdDetector:
     def __init__(self, ignore_vertical_px = 60, ignore_horizontal_px = 10, max_ratio_error = 0.1,
                        white_lower = [40, 0, 90], white_upper = [140, 255, 255],
@@ -52,7 +62,7 @@ class ThresholdDetector:
 
         return packet
 
-    def draw_packet_info(self, image_frame, packet, encoder_position, draw_box = True, text_size = 1):
+    def draw_packet_info(self, image_frame, packet, encoder_position, draw_box = True):
         if draw_box:
             # Draw bounding rectangle
             cv2.rectangle(image_frame, 
@@ -78,7 +88,7 @@ class ThresholdDetector:
 
         return image_frame
         
-    def detect_packet_hsv(self, rgb_frame, depth_frame, encoder_position, draw_box = True, text_size = 1, image_frame = None):
+    def detect_packet_hsv(self, rgb_frame, encoder_position, draw_box = True, image_frame = None):
         self.detected_objects = []
         
         if self.homography_determinant is None:
@@ -131,7 +141,7 @@ class ThresholdDetector:
             if packet.centroid[0] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[0] + packet.width / 2 > (frame_width - self.ignore_horizontal_px):
                 continue
 
-            image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box, text_size)
+            image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box)
             
             self.detected_objects.append(packet)
 
@@ -157,8 +167,29 @@ class ThresholdDetector:
             if packet.centroid[0] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[0] + packet.width / 2 > (frame_width - self.ignore_horizontal_px):
                 continue
             
-            image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box, text_size)
+            image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box)
 
             self.detected_objects.append(packet)
 
         return image_frame, self.detected_objects
+
+    def draw_hsv_mask(self, image_frame):
+        frame_height = image_frame.shape[0]
+        frame_width = image_frame.shape[1]
+        
+        # Get binary mask
+        hsv_frame = cv2.cvtColor(image_frame, cv2.COLOR_BGR2HSV)
+        
+        white_mask = cv2.inRange(hsv_frame, self.white_lower, self.white_upper)
+        white_mask[:self.ignore_vertical_px, :] = 0
+        white_mask[(frame_height - self.ignore_vertical_px):, :] = 0
+
+        brown_mask = cv2.inRange(hsv_frame, self.brown_lower, self.brown_upper)
+        brown_mask[:self.ignore_vertical_px, :] = 0
+        brown_mask[(frame_height - self.ignore_vertical_px):, :] = 0
+
+        mask = cv2.bitwise_or(white_mask, brown_mask)
+
+        image_frame = cv2.bitwise_and(image_frame, image_frame, mask=mask)
+
+        return image_frame
