@@ -27,7 +27,7 @@ from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
 
-#DETECTOR_TYPE = 'deep_1'
+# DETECTOR_TYPE = 'deep_1'
 #DETECTOR_TYPE = 'deep_2'
 DETECTOR_TYPE = 'hsv'
 
@@ -206,7 +206,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
         # ROBOT READY 
         if state == "READY" and is_rob_ready and pick_list and homography is not None:
-            # TODO update encoder value
+            encoder_pos = encoder_pos_m.value
+            if encoder_pos is None:
+                continue
             # Update pick list to current positions
             for packet in pick_list:
                 packet.centroid = packet.getCentroidFromEncoder(encoder_pos)
@@ -266,21 +268,23 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             # check if robot arrived to prepick position
             curr_xyz_coords = np.array(pos[0:3])
             robot_dist = np.linalg.norm(prepick_xyz_coords-curr_xyz_coords)
-            if robot_dist > 10: # TODO check value
+            if robot_dist > 5: # TODO check value
                 state = "WAIT_FOR_PACKET"
                 print("state: WAIT_FOR_PACKET")
 
         # WAIT FOR PACKET
         if state == "WAIT_FOR_PACKET":
             # TODO add return to ready if it misses packet
-            # TODO update encoder value
+            encoder_pos = encoder_pos_m.value
+            if encoder_pos is None:
+                continue
             # check encoder and activate robot 
             packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
             p_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
             print("X distance")
             print(packet_x - p_x)
             # If packet is close enough continue picking operation
-            if p_x > packet_x - 70:
+            if p_x > packet_x - 60:
                 control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 state = "PICKING"
                 print("state: PICKING")
