@@ -708,10 +708,12 @@ class RobotDemos:
                 rc.change_gripper_state(True)
 
             if key == ord('m') :
-                conv_right = rc.change_conveyor_right(conv_right)
+                conv_right = not conv_right
+                rc.change_conveyor_right(conv_right)
             
             if key == ord('n'):
-                conv_left = rc.change_conveyor_left(conv_left)
+                conv_left = not conv_left
+                rc.change_conveyor_left(conv_left)
 
             if key == ord('l'):
                 bbox = not bbox
