@@ -60,28 +60,24 @@ def compute_mean_packet_z(packet, pack_z_fixed):
     conv2cam_dist = 777.0 # mm
     # range 25 - 13
     depth_mean = packet.avg_depth_crop
-    d_rows, d_cols = depth_mean.shape
-
-    print(d_rows, d_cols)
+    d_rows, d_cols = depth_mean.shape  
     
     # If depth frames are present.
     try:
         if d_rows > 0:
             # Get centroid from depth mean crop.
             centroid_depth = depth_mean[d_rows // 2, d_cols // 2]
-            print('Centroid_depth:', centroid_depth)
 
             # Compute packet z position with respect to conveyor base.
             pack_z = abs(conv2cam_dist - centroid_depth)
 
             # Return pack_z if in acceptable range, set to default if not.
-            pack_z_in_range = (pack_z > pack_z_fixed) and (pack_z < pack_z_fixed + 17.0)
+            if pack_z < pack_z_fixed:
+                pack_z = pack_z_fixed
+            elif pack_z > pack_z_fixed + 20.0:
+                pack_z = pack_z_fixed + 20.0
 
-            if pack_z_in_range:
-                print('[Info]: Pack z in range')
-                return pack_z
-            else:
-                return pack_z_fixed
+            return pack_z
 
         # When depth frames unavailable.
         else:

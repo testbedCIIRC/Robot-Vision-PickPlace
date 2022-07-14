@@ -79,12 +79,7 @@ class ThresholdDetector:
         # Draw centroid
         cv2.drawMarker(image_frame, 
                        packet.centroid, 
-                       (0, 0, 255), cv2.MARKER_CROSS, 10, cv2.LINE_4)
-
-        # Draw centroid estimated with encoder position
-        cv2.drawMarker(image_frame, 
-                       packet.getCentroidFromEncoder(encoder_position), 
-                       (255, 255, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
+                       (0, 0, 255), cv2.MARKER_CROSS, 20, cv2.LINE_4)
 
         return image_frame
         

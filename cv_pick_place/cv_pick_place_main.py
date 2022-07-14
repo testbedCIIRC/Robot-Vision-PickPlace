@@ -238,7 +238,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 packet_type = packet.pack_type
 
                 # Set packet depth to fixed value by type
-                packet_z = pack_depths[packet_type]
+                pick_pos_z = compute_mean_packet_z(packet, pack_depths[packet.type]) - 5 
 
                 # Check if y is range of conveyor width and adjust accordingly
                 if pick_pos_y < 75.0:
@@ -263,7 +263,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                     'rot': gripper_rot,
                     'packet_type': packet_type,
                     'x_offset': 0,
-                    'pack_z': packet_z
+                    'pack_z': pick_pos_z
                     }
                 control_pipe.send(RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict))
 
@@ -304,6 +304,12 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         # Draw packet info
         for packet in registered_packets:
             if packet.disappeared == 0:
+                # Draw centroid estimated with encoder position
+                cv2.drawMarker(image_frame, 
+                            packet.getCentroidFromEncoder(encoder_pos), 
+                       (255, 255, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
+
+
                 # Draw packet ID and type
                 text_id = "ID {}, Type {}".format(packet.id, packet.type)
                 drawText(image_frame, text_id, (packet.centroid_px.x + 10, packet.centroid_px.y), text_size)
@@ -318,7 +324,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
                 packet_depth_mm = compute_mean_packet_z(packet, pack_depths[packet.type])
                 # Draw packet depth value in milimeters
-                text_centroid = "Z: {} (mm)".format(packet_depth_mm)
+                text_centroid = "Z: {:.2f} (mm)".format(packet_depth_mm)
                 drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(115 * text_size)), text_size)
 
         # Draw packet depth crop to separate frame
