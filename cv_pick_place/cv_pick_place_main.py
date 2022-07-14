@@ -206,6 +206,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
         # ROBOT READY 
         if state == "READY" and is_rob_ready and pick_list and homography is not None:
+            # TODO update encoder value
             # Update pick list to current positions
             for packet in pick_list:
                 packet.centroid = packet.getCentroidFromEncoder(encoder_pos)
@@ -272,6 +273,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         # WAIT FOR PACKET
         if state == "WAIT_FOR_PACKET":
             # TODO add return to ready if it misses packet
+            # TODO update encoder value
             # check encoder and activate robot 
             packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
             p_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
