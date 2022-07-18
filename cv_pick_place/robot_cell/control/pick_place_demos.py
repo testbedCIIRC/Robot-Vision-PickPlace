@@ -229,7 +229,8 @@ class RobotDemos:
         packet_type = detected[0][4]
 
         rc.get_nodes()
-
+        rc.Pick_Place_Select.set_value(ua.DataValue(False))
+        time.sleep(0.5)
         frame_num = -1
         bpressed = 0
         dc = DepthCamera()
@@ -320,10 +321,7 @@ class RobotDemos:
                                                 packet_y, 
                                                 gripper_rot, 
                                                 packet_type)
-                        rc.Start_Prog.set_value(ua.DataValue(True))
-                        print('Program Started: ',start)
-                        rc.Start_Prog.set_value(ua.DataValue(False))
-                        time.sleep(0.5)
+                        rc.start_program()
                         bpressed = 0
                 elif key != ord('b'):
                     bpressed = 0
@@ -362,7 +360,8 @@ class RobotDemos:
 
         rc.connect_OPCUA_server()
         rc.get_nodes()
-
+        rc.Pick_Place_Select.set_value(ua.DataValue(False))
+        time.sleep(0.5)
         warn_count = 0
         track_frame = 0
         is_detect = False
@@ -449,10 +448,7 @@ class RobotDemos:
                                                 packet_y, 
                                                 gripper_rot, 
                                                 packet_type)
-                        rc.Start_Prog.set_value(ua.DataValue(True))
-                        print('Program Started: ',info_dict['start'])
-                        rc.Start_Prog.set_value(ua.DataValue(False))
-                        time.sleep(0.5)
+                        rc.start_program()
                         bpressed = 0
                 elif key != ord('b'):
                     bpressed = 0
@@ -534,7 +530,8 @@ class RobotDemos:
         rc.connect_OPCUA_server()
         rc.get_nodes()
         rc.Laser_Enable.set_value(ua.DataValue(True))
-
+        rc.Pick_Place_Select.set_value(ua.DataValue(False))
+        time.sleep(0.5)
         # Define fixed x position where robot waits for packet.
         x_fixed = rc.rob_dict['pick_pos_base'][0]['x']
 

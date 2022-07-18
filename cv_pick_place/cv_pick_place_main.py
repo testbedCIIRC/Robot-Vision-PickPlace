@@ -229,7 +229,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             print("DEBUG: Pick distances")
             print(pick_list_positions)
             # If item is too far remove it from list
-            is_valid_position = pick_list_positions < 1700 - grip_time_offset  # TODO find position after which it does not pick up - depends on enc_vel and robot speed
+            is_valid_position = pick_list_positions < 1800 - grip_time_offset  # TODO find position after which it does not pick up - depends on enc_vel and robot speed
             pick_list = np.ndarray.tolist(np.asanyarray(pick_list)[is_valid_position])     
             pick_list_positions = pick_list_positions[is_valid_position]
             # Choose a item for picking
@@ -248,21 +248,21 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 packet_type = packet.pack_type
 
                 # Set packet depth to fixed value by type
-                packet_z = pack_depths[packet_type]
+                pick_pos_z = compute_mean_packet_z(packet, pack_depths[packet.type]) - 5 
 
-                # Check if y is range of conveyor width and adjust accordingly.
+                # Check if y is range of conveyor width and adjust accordingly
                 if pick_pos_y < 75.0:
                     pick_pos_y = 75.0
 
                 elif pick_pos_y > 470.0:
                     pick_pos_y = 470.0
-                # TODO clamp x position when it's variable
 
+                # Check if x is range
                 if pick_pos_x < 600.0:
                     pick_pos_x = 600.0
 
-                elif pick_pos_x > 1700.0:
-                    pick_pos_x = 1700.0
+                elif pick_pos_x > 1800.0:
+                    pick_pos_x = 1800.0
 
                 prepick_xyz_coords = np.array([pick_pos_x, pick_pos_y, rob_dict['pick_pos_base'][0]['z']])
 
@@ -272,13 +272,12 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                     'y': pick_pos_y,
                     'rot': gripper_rot,
                     'packet_type': packet_type,
-                    # 'x_offset': pack_x_offsets[packet_type],
                     'x_offset': 0,
-                    'pack_z': packet_z
+                    'pack_z': pick_pos_z
                     }
                 control_pipe.send(RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict))
 
-                # Start robot program.   #! only once
+                # Start robot program.
                 control_pipe.send(RcData(RcCommand.START_PROGRAM))
                 state = "TO_PREPICK"
                 print("state: TO_PREPICK")
@@ -288,7 +287,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             # check if robot arrived to prepick position
             curr_xyz_coords = np.array(pos[0:3])
             robot_dist = np.linalg.norm(prepick_xyz_coords-curr_xyz_coords)
-            if robot_dist > 5: # TODO check value
+            if robot_dist < 3: # TODO check value
                 state = "WAIT_FOR_PACKET"
                 print("state: WAIT_FOR_PACKET")
 
@@ -299,8 +298,8 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             # check encoder and activate robot 
             packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
             packet_pos_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
-            print("X distance")
-            print(pick_pos_x - packet_pos_x)
+            # print("X distance")
+            # print(pick_pos_x - packet_pos_x)
             # If packet is close enough continue picking operation
             if packet_pos_x > pick_pos_x - 280:
                 control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
@@ -318,6 +317,12 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         # Draw packet info
         for packet in registered_packets:
             if packet.disappeared == 0:
+                # Draw centroid estimated with encoder position
+                cv2.drawMarker(image_frame, 
+                            packet.getCentroidFromEncoder(encoder_pos), 
+                       (255, 255, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
+
+
                 # Draw packet ID and type
                 text_id = "ID {}, Type {}".format(packet.id, packet.type)
                 drawText(image_frame, text_id, (packet.centroid_px.x + 10, packet.centroid_px.y), text_size)
@@ -332,7 +337,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
                 packet_depth_mm = compute_mean_packet_z(packet, pack_depths[packet.type])
                 # Draw packet depth value in milimeters
-                text_centroid = "Z: {} (mm)".format(packet_depth_mm)
+                text_centroid = "Z: {:.2f} (mm)".format(packet_depth_mm)
                 drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(115 * text_size)), text_size)
 
         # Draw packet depth crop to separate frame
