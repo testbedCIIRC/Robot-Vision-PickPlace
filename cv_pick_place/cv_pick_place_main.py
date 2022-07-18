@@ -26,13 +26,14 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
+from robot_cell.detection.yolact_detector import YolactDetecor
 
 #DETECTOR_TYPE = 'deep_1'
 #DETECTOR_TYPE = 'deep_2'
 DETECTOR_TYPE = 'hsv'
 
 
-def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
+def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe, yolact_init={}):
     """
     Thread for pick and place with moving conveyor and point cloud operations.
     
@@ -50,8 +51,8 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         show_boot_screen('STARTING NEURAL NET...')
         pack_detect = PacketDetector(paths, files, check_point)
     elif DETECTOR_TYPE == 'deep_2':
-        # TODO Implement new deep detector
-        pass
+        show_boot_screen('STARTING NN - YOLACT')
+        pack_detect = YolactDetecor(yolact_init)
     elif DETECTOR_TYPE == 'hsv':
         pack_detect = ThresholdDetector(ignore_vertical_px = 133, ignore_horizontal_px = 50, max_ratio_error = 0.15,
                                         white_lower = [60, 0, 85], white_upper = [179, 255, 255],
@@ -62,6 +63,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     show_frame_data = False # Show frame data (robot pos, encoder vel, FPS ...)
     show_depth_map = False # Overlay colorized depth enable
     show_hsv_mask = False # Remove pixels not within HSV mask boundaries
+    show_segmentation = False # Segmentation mask visualization enable
 
     # Constants
     x_fixed = rob_dict['pick_pos_base'][0]['x']
@@ -156,10 +158,13 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         
         # Detect packets using neural network
         elif DETECTOR_TYPE == 'deep_2':
-            # TODO Implement new deep detector
-            detected_packets = []
-            pass
-        
+            image_frame, detected_packets = pack_detect.detect_packet(rgb_frame,
+                                                                      encoder_pos,
+                                                                      homography= homography,
+                                                                      bnd_box = show_bbox,
+                                                                      segment= show_segmentation,
+                                                                      image_frame=image_frame)
+                    
         # Detect packets using neural HSV thresholding
         elif DETECTOR_TYPE == 'hsv':
             image_frame, detected_packets = pack_detect.detect_packet_hsv(rgb_frame,
@@ -433,7 +438,7 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
 
                 control_pipe_1, control_pipe_2 = Pipe()
 
-                main_proc = Process(target = robot_prog, args = (r_control.rob_dict, paths, files, check_point, info_dict, encoder_pos, control_pipe_1))
+                main_proc = Process(target = robot_prog, args = (r_control.rob_dict, paths, files, check_point, info_dict, encoder_pos, control_pipe_1, yolact_params))
                 info_server_proc = Process(target = r_comm_info.robot_server, args = (info_dict, ))
                 encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (encoder_pos, ))
                 control_server_proc = Process(target = r_control.control_server, args = (control_pipe_2, ))
@@ -498,6 +503,16 @@ if __name__ == '__main__':
             'LABELMAP': os.path.join(paths['ANNOTATION_PATH'], 
                                         LABEL_MAP_NAME)
             }
+
+    # Yolact params
+    yolact_params = {
+        "save": False,
+        "show": False,
+        "save_path": os.path.join('yolact', 'predictions'),
+        "confidence_threshold": 0.5,
+        "task": 'packets',
+        "frame_num": 0
+    }
 
     # Define robot positions dictionaries from json file.
     file = open('robot_positions.json')

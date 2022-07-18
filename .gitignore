@@ -11,3 +11,10 @@ depth_image_crop.png
 # VZ local environment
 Tensorflow/ 
 TensorflowYOLACT
+cv_pick_place/yolact/test
+# This is weird but will work for specific file in directory that you want to ignore
+!cv_pick_place/yolact/weights
+cv_pick_place/yolact/weights/*
+!cv_pick_place/yolact/weights/readme.txt
+
+delete_this.py
