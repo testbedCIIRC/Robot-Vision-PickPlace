@@ -96,11 +96,12 @@ class RobotControl(RobotCommunication):
         print('[INFO]: Program aborted.')
         time.sleep(0.5)
         
-    def start_program(self):
+    def start_program(self, mode = False):
         """
         Start robot program.
 
         """
+        self.Pick_Place_Select.set_value(ua.DataValue(mode))
         self.Start_Prog.set_value(ua.DataValue(True))
         print('[INFO]: Program started.')
         time.sleep(0.5)
@@ -451,7 +452,7 @@ class RobotControl(RobotCommunication):
 
         # Enabling laser sensor to synchornize robot with moving packets.
         self.Laser_Enable.set_value(ua.DataValue(False))
-
+        self.Pick_Place_Select.set_value(ua.DataValue(False))
         time.sleep(0.5)
         while True:
             try:

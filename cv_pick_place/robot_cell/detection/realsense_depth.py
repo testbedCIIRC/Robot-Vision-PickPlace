@@ -46,7 +46,7 @@ class IntelConfig:
 
 
 class DepthCamera:
-    def __init__(self, config_path = None, recording_path = 'recording_2022_07_13.npy', recording_fps = 5):
+    def __init__(self, config_path = 'D435_camera_config_defaults.json', recording_path = 'recording_2022_07_13.npy', recording_fps = 5):
         # Check if any RealSense camera is connected
         ctx = rs.context()
         devices = ctx.query_devices()

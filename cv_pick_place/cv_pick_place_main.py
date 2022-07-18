@@ -267,7 +267,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                     }
                 control_pipe.send(RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict))
 
-                # Start robot program.   #! only once
+                # Start robot program.
                 control_pipe.send(RcData(RcCommand.START_PROGRAM))
                 state = "TO_PREPICK"
                 print("state: TO_PREPICK")
@@ -277,7 +277,6 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             # check if robot arrived to prepick position
             curr_xyz_coords = np.array(pos[0:3])
             robot_dist = np.linalg.norm(prepick_xyz_coords-curr_xyz_coords)
-            print(robot_dist)
             if robot_dist < 3: # TODO check value
                 state = "WAIT_FOR_PACKET"
                 print("state: WAIT_FOR_PACKET")
