@@ -371,6 +371,7 @@ class RobotDemos:
         depth_map = True
         f_data = False
         homography = None
+        frame_count = 1
         while True:
             # Start timer for FPS estimation
             start_time = time.time()
