@@ -49,6 +49,44 @@ def show_boot_screen(message, resolution = (960,1280)):
     cv2.waitKey(1)
 
 
+def compute_mean_packet_z(packet, pack_z_fixed):
+    """
+    Computes depth of packet based on average of stored depth frames.
+
+    Parameters:
+    packet (object): Final tracked packet object used for program start.
+
+    """
+    conv2cam_dist = 777.0 # mm
+    # range 25 - 13
+    depth_mean = packet.avg_depth_crop
+    d_rows, d_cols = depth_mean.shape  
+    
+    # If depth frames are present.
+    try:
+        if d_rows > 0:
+            # Get centroid from depth mean crop.
+            centroid_depth = depth_mean[d_rows // 2, d_cols // 2]
+
+            # Compute packet z position with respect to conveyor base.
+            pack_z = abs(conv2cam_dist - centroid_depth)
+
+            # Return pack_z if in acceptable range, set to default if not.
+            if pack_z < pack_z_fixed:
+                pack_z = pack_z_fixed
+            elif pack_z > pack_z_fixed + 20.0:
+                pack_z = pack_z_fixed + 20.0
+
+            return pack_z
+
+        # When depth frames unavailable.
+        else:
+            return pack_z_fixed
+    
+    except:
+        return pack_z_fixed
+
+
 def meanFilter(depth_frame):
     kernel = np.ones((10, 10), np.float32) / 25
     filtered_depth_frame = cv2.filter2D(depth_frame, -1, kernel)

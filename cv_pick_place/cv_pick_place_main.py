@@ -27,7 +27,7 @@ from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
 
-#DETECTOR_TYPE = 'deep_1'
+# DETECTOR_TYPE = 'deep_1'
 #DETECTOR_TYPE = 'deep_2'
 DETECTOR_TYPE = 'hsv'
 
@@ -81,6 +81,8 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     conv_right = False # Conveyor heading right enable
     homography = None # Homography matrix
     state = "READY" # Robot state variable
+
+    grip_time_offset = 900
 
     while True:
         # Start timer for FPS estimation
@@ -206,6 +208,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
         # ROBOT READY 
         if state == "READY" and is_rob_ready and pick_list and homography is not None:
+            encoder_pos = encoder_pos_m.value
+            if encoder_pos is None:
+                continue
             # Update pick list to current positions
             for packet in pick_list:
                 packet.centroid = packet.getCentroidFromEncoder(encoder_pos)
@@ -214,7 +219,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             print("DEBUG: Pick distances")
             print(pick_list_positions)
             # If item is too far remove it from list
-            is_valid_position = pick_list_positions < 1150   # TODO find position after which it does not pick up - depends on enc_vel and robot speed
+            is_valid_position = pick_list_positions < 1800 - grip_time_offset  # TODO find position after which it does not pick up - depends on enc_vel and robot speed
             pick_list = np.ndarray.tolist(np.asanyarray(pick_list)[is_valid_position])     
             pick_list_positions = pick_list_positions[is_valid_position]
             # Choose a item for picking
@@ -225,33 +230,40 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 print("INFO: Chose packet ID: {} to pick".format(str(packet.id)))
 
                 # Set positions and Start robot
-                packet_x,packet_y = packet_to_pick.getCentroidInWorldFrame(homography)
-                packet_x = x_fixed  # for testing # TODO find offset value from packet
+                packet_x,pick_pos_y = packet_to_pick.getCentroidInWorldFrame(homography)
+                # packet_x = x_fixed  # for testing # TODO find offset value from packet
+                pick_pos_x = packet_x + grip_time_offset
                 angle = packet.angle
                 gripper_rot = compute_gripper_rot(angle)
                 packet_type = packet.pack_type
 
                 # Set packet depth to fixed value by type
-                packet_z = pack_depths[packet_type]
+                pick_pos_z = compute_mean_packet_z(packet, pack_depths[packet.type]) - 5 
 
-                # Check if y is range of conveyor width and adjust accordingly.
-                if packet_y < 75.0:
-                    packet_y = 75.0
+                # Check if y is range of conveyor width and adjust accordingly
+                if pick_pos_y < 75.0:
+                    pick_pos_y = 75.0
 
-                elif packet_y > 470.0:
-                    packet_y = 470.0
-                # TODO clamp x position when it's variable
+                elif pick_pos_y > 470.0:
+                    pick_pos_y = 470.0
 
-                prepick_xyz_coords = np.array([packet_x, packet_y, rob_dict['pick_pos_base'][0]['z']])
+                # Check if x is range
+                if pick_pos_x < 600.0:
+                    pick_pos_x = 600.0
+
+                elif pick_pos_x > 1800.0:
+                    pick_pos_x = 1800.0
+
+                prepick_xyz_coords = np.array([pick_pos_x, pick_pos_y, rob_dict['pick_pos_base'][0]['z']])
 
                 # Change end points of robot.   
                 trajectory_dict = {
-                    'x': packet_x,
-                    'y': packet_y,
+                    'x': pick_pos_x,
+                    'y': pick_pos_y,
                     'rot': gripper_rot,
                     'packet_type': packet_type,
-                    'x_offset': pack_x_offsets[packet_type],
-                    'pack_z': packet_z
+                    'x_offset': 0,
+                    'pack_z': pick_pos_z
                     }
                 control_pipe.send(RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict))
 
@@ -265,20 +277,22 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             # check if robot arrived to prepick position
             curr_xyz_coords = np.array(pos[0:3])
             robot_dist = np.linalg.norm(prepick_xyz_coords-curr_xyz_coords)
-            if robot_dist > 10: # TODO check value
+            print(robot_dist)
+            if robot_dist < 3: # TODO check value
                 state = "WAIT_FOR_PACKET"
                 print("state: WAIT_FOR_PACKET")
 
         # WAIT FOR PACKET
         if state == "WAIT_FOR_PACKET":
             # TODO add return to ready if it misses packet
+            encoder_pos = encoder_pos_m.value
             # check encoder and activate robot 
             packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
-            p_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
-            print("X distance")
-            print(packet_x - p_x)
+            packet_pos_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
+            # print("X distance")
+            # print(pick_pos_x - packet_pos_x)
             # If packet is close enough continue picking operation
-            if p_x > packet_x - 70:
+            if packet_pos_x > pick_pos_x - 280:
                 control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 state = "PICKING"
                 print("state: PICKING")
@@ -291,19 +305,28 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         # Draw packet info
         for packet in registered_packets:
             if packet.disappeared == 0:
+                # Draw centroid estimated with encoder position
+                cv2.drawMarker(image_frame, 
+                            packet.getCentroidFromEncoder(encoder_pos), 
+                       (255, 255, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
+
+
                 # Draw packet ID and type
                 text_id = "ID {}, Type {}".format(packet.id, packet.type)
                 drawText(image_frame, text_id, (packet.centroid_px.x + 10, packet.centroid_px.y), text_size)
 
-                # Draw packet centroid in pixels
+                # Draw packet centroid value in pixels
                 text_centroid = "X: {}, Y: {} (px)".format(packet.centroid_px.x, packet.centroid_px.y)
                 drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(45 * text_size)), text_size)
-                cv2.circle(image_frame, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
 
-                # Draw packet centroid in milimeters
+                # Draw packet centroid value in milimeters
                 text_centroid = "X: {:.2f}, Y: {:.2f} (mm)".format(packet.centroid_mm.x, packet.centroid_mm.y)
                 drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(80 * text_size)), text_size)
-                cv2.circle(image_frame, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
+
+                packet_depth_mm = compute_mean_packet_z(packet, pack_depths[packet.type])
+                # Draw packet depth value in milimeters
+                text_centroid = "Z: {:.2f} (mm)".format(packet_depth_mm)
+                drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(115 * text_size)), text_size)
 
         # Draw packet depth crop to separate frame
         for packet in registered_packets:

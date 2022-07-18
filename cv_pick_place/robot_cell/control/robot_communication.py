@@ -191,8 +191,6 @@ class RobotCommunication:
         # Connect server and get nodes
         self.connect_OPCUA_server()
         self.get_nodes()
-        #Enabling laser sensor to synchornize robot with moving packets.
-        self.Laser_Enable.set_value(ua.DataValue(False))
         time.sleep(0.5)
         while True:
             try:
