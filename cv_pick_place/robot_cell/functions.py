@@ -57,6 +57,9 @@ def compute_mean_packet_z(packet, pack_z_fixed):
     packet (object): Final tracked packet object used for program start.
 
     """
+    if packet.avg_depth_crop is None:
+        print("[WARNING] Avg Depth frame is None")
+        return pack_z_fixed
     conv2cam_dist = 777.0 # mm
     # range 25 - 13
     depth_mean = packet.avg_depth_crop

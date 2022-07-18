@@ -65,6 +65,8 @@ class RobotCommunication:
             'ns=3;s="Encoder_1".ActualPosition')
         self.Laser_Enable = self.client.get_node(
             'ns=3;s="laser_field_enable"')
+        self.Pick_Place_Select = self.client.get_node(
+            'ns=3;s="pick_place_select"')
 
         self.Act_Pos_X = self.client.get_node(
             'ns=3;s="InstKukaControl"."instReadActualPos"."X"')
