@@ -28,21 +28,27 @@ from robot_cell.functions import *
 
 
 # DETECTOR_TYPE = 'deep_1'
-#DETECTOR_TYPE = 'deep_2'
+# DETECTOR_TYPE = 'deep_2'
 DETECTOR_TYPE = 'hsv'
 
 
 def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
     """
-    Thread for pick and place with moving conveyor and point cloud operations.
+    Process for pick and place with moving conveyor and point cloud operations.
     
     Parameters:
-    rc (object): RobotControl object for program execution.
-    server_in (object): Queue object containing data from the PLC server.
+    rob_dict (dict): RobotControl object for program execution
+    paths (dict): Deep detector parameter
+    files (dict): Deep detector parameter
+    check_point (string): Deep detector parameter
+    info_dict (multiprocessing.dcit): Dict from multiprocessing Manager for reading OPCUA info from another process
+    encoder_pos_m (multiprocessing.value): Value object from multiprocessing Manager for reading encoder value from another process
+    control_pipe (multiprocessing.pipe): Pipe object connected to another process for sending commands
     
     """
     # Inititalize objects
     apriltag = ProcessingApriltag()
+    apriltag.load_world_points('conveyor_points.json')
     pt = ItemTracker(max_disappeared_frames = 20, guard = 50, max_item_distance = 400)
     dc = DepthCamera(config_path = 'D435_camera_config.json')
 
@@ -64,6 +70,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     show_hsv_mask = False # Remove pixels not within HSV mask boundaries
 
     # Constants
+    max_frame_count = 500 # Number of frames between homography updates
     x_fixed = rob_dict['pick_pos_base'][0]['x']
     frames_lim = 10 # Max frames object must be tracked to start pick & place
     # Predefine packet z and x offsets with robot speed of 55%.
@@ -73,7 +80,6 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
     # Variables
     pick_list = [] # List for items ready to be picked
-    warn_count = 0 # Counter for markers out of frame or moving
     frame_count = 1 # Counter of frames for homography update
     text_size = 1
     gripper = False
@@ -103,10 +109,12 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         if encoder_pos is None:
             continue
 
-        # Get frames from realsense.
+        # Get frames from realsense
         success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
         if not success:
             continue
+
+        #rgb_frame = (rgb_frame * 0.1).astype(np.uint8)
 
         frame_height, frame_width, frame_channel_count = rgb_frame.shape
         text_size = (frame_height / 1000)
@@ -116,33 +124,29 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         if show_hsv_mask and DETECTOR_TYPE == 'hsv':
             image_frame = pack_detect.draw_hsv_mask(image_frame)
 
-        try:
-            # Try to detect tags in rgb frame.
-            image_frame = apriltag.detect_tags(rgb_frame, image_frame = image_frame)
+        # HOMOGRAPHY UPDATE
+        ###################
 
-            # Update homography on first frame of 500 frames.
-            if frame_count == 1:
-                homography = apriltag.compute_homog()
-                print('[INFO]: Homography matrix updated.')
+        # Update homography
+        if frame_count == 1:
+            apriltag.detect_tags(rgb_frame)
+            homography = apriltag.compute_homog()
 
-            # If recieving homography matrix as np array.
-            is_type_np = isinstance(homography, np.ndarray)
-            is_marker_detect = is_type_np or homography == None
+        image_frame = apriltag.draw_tags(image_frame)
 
+        # If homography has been detected
+        if isinstance(homography, np.ndarray):
+            # Increase counter for homography update
+            frame_count += 1
+            if frame_count >= max_frame_count:
+                frame_count = 1
+
+            # Set homography in HSV detector
             if DETECTOR_TYPE == 'hsv':
                 pack_detect.set_homography(homography)
 
-            # Reset not detected tags warning.
-            if is_marker_detect:
-                warn_count = 0
-        
-        # Triggered when no markers are in the frame.
-        except Exception as e:
-            warn_count += 1
-            # Print warning only once.
-            if warn_count == 1:
-                print("[INFO]: Markers out of frame or moving.")
-            pass
+        # PACKET DETECTION
+        ##################
         
         # Detect packets using neural network
         if DETECTOR_TYPE == 'deep_1':
@@ -169,6 +173,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                                                                           draw_box = show_bbox,
                                                                           image_frame = image_frame)
 
+        # PACKET TRACKING
+        #################
+
         # Update tracked packets from detected packets
         labeled_packets = pt.track_items(detected_packets)
         pt.update_item_database(labeled_packets)
@@ -183,6 +190,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
         # Update registered packet list with new packet info
         registered_packets = pt.item_database
+
+        # STATE MACHINE
+        ###############
 
         # When detected not empty, objects are being detected
         is_detect = len(detected_packets) != 0
@@ -301,6 +311,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 state = "READY"
                 print("state: READY")
 
+        # FRAME GRAPHICS
+        ################
+
         # Draw packet info
         for packet in registered_packets:
             if packet.disappeared == 0:
@@ -351,14 +364,12 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
         # Show frames on cv2 window
         cv2.imshow("Frame", image_frame)
-
-        # Increase counter for homography update
-        frame_count += 1
-        if frame_count == 500:
-            frame_count = 1
         
         # Keyboard inputs
         key = cv2.waitKey(1)
+
+        # KEYBOARD INPUTS
+        #################
 
         # Toggle gripper
         if key == ord('g'):

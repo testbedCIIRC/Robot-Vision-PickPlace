@@ -128,6 +128,7 @@ class RobotDemos:
             ct = CentroidTracker()    
             dc = DepthCamera()    
             apriltag = ProcessingApriltag()
+            apriltag.load_world_points('conveyor_points.json')
             pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
             homography = None
             while True:
@@ -138,20 +139,19 @@ class RobotDemos:
                 # rgb_frame = cv2.resize(rgb_frame, (640,480))
                 height, width, depth = rgb_frame.shape
                 
-                try:
-                    rgb_frame = apriltag.detect_tags(rgb_frame)
+                # Update homography
+                if frame_count == 1:
+                    apriltag.detect_tags(rgb_frame)
                     homography = apriltag.compute_homog()
-                    is_type_np = type(homography).__module__ == np.__name__
-                    is_marker_detect = is_type_np or homography == None
-                    if is_marker_detect:
-                        warn_count = 0
-                        # print(homography)         
-                except:
-                #Triggered when no markers are in the frame:
-                    warn_count += 1
-                    if warn_count == 1:
-                        print("[INFO]: Markers out of frame or moving.")
-                    pass
+
+                rgb_frame = apriltag.draw_tags(rgb_frame)
+
+                # If homography has been detected
+                if isinstance(homography, np.ndarray):
+                    # Increase counter for homography update
+                    frame_count += 1
+                    if frame_count >= 500:
+                        frame_count = 1
 
                 # rgb_frame = cv2.convertScaleAbs(rgb_frame, alpha=a, beta=b)
                 # print(a,b,d)
@@ -352,6 +352,7 @@ class RobotDemos:
 
         """
         apriltag = ProcessingApriltag()
+        apriltag.load_world_points('conveyor_points.json')
         ct = CentroidTracker()    
         dc = DepthCamera()    
         rc.show_boot_screen('STARTING NEURAL NET...')
@@ -370,6 +371,7 @@ class RobotDemos:
         depth_map = True
         f_data = False
         homography = None
+        frame_count = 1
         while True:
             # Start timer for FPS estimation
             start_time = time.time()
@@ -387,20 +389,19 @@ class RobotDemos:
             rgb_frame = rgb_frame[:,240:1680]
             height, width, depth = rgb_frame.shape
             
-            try:
-                rgb_frame = apriltag.detect_tags(rgb_frame)
+            # Update homography
+            if frame_count == 1:
+                apriltag.detect_tags(rgb_frame)
                 homography = apriltag.compute_homog()
-                is_type_np = type(homography).__module__ == np.__name__
-                is_marker_detect = is_type_np or homography == None
-                if is_marker_detect:
-                    warn_count = 0
-                    
-            except:
-            #Triggered when no markers are in the frame:
-                warn_count += 1
-                if warn_count == 1:
-                    print("[INFO]: Markers out of frame or moving.")
-                pass
+
+            rgb_frame = apriltag.draw_tags(rgb_frame)
+
+            # If homography has been detected
+            if isinstance(homography, np.ndarray):
+                # Increase counter for homography update
+                frame_count += 1
+                if frame_count >= 500:
+                    frame_count = 1
             
             depth_frame = depth_frame[90:400,97:507]
             depth_frame = cv2.resize(depth_frame, (width,height))
@@ -521,6 +522,7 @@ class RobotDemos:
         """
         # Inititalize objects.
         apriltag = ProcessingApriltag()
+        apriltag.load_world_points('conveyor_points.json')
         pt = PacketTracker(maxDisappeared=10)    
         dc = DepthCamera()
         rc.show_boot_screen('STARTING NEURAL NET...')
@@ -582,33 +584,21 @@ class RobotDemos:
             heatmap = colorized_depth
             heatmap = heatmap[90:400,97:507,:]
             heatmap = cv2.resize(heatmap, (width,height))
-
-            try:
-                # Try to detect tags in rgb frame.
-                rgb_frame = apriltag.detect_tags(rgb_frame)
-
-                # Update homography on first frame of 500 frames.
-                if frame_count == 1:
-                    homography = apriltag.compute_homog()
-                    print('[INFO]: Homography matrix updated.')
-
-                # If recieving homography matrix as np array.
-                is_type_np = type(homography).__module__ == np.__name__
-                is_marker_detect = is_type_np or homography == None
-
-                # Reset not detected tags warning.
-                if is_marker_detect:
-                    warn_count = 0
-                    
-            #Triggered when no markers are in the frame.
-            except Exception as e:
-                warn_count += 1
-                # Print warning only once.
-                if warn_count == 1:
-                    print(e)
-                    print("[INFO]: Markers out of frame or moving.")
-                pass
             
+            # Update homography
+            if frame_count == 1:
+                apriltag.detect_tags(rgb_frame)
+                homography = apriltag.compute_homog()
+
+            rgb_frame = apriltag.draw_tags(rgb_frame)
+
+            # If homography has been detected
+            if isinstance(homography, np.ndarray):
+                # Increase counter for homography update
+                frame_count += 1
+                if frame_count >= 500:
+                    frame_count = 1
+
             # Detect packets using neural network.
             img_detect, detected = pack_detect.deep_pack_obj_detector(
                                                                 rgb_frame, 
