@@ -277,7 +277,8 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             # check if robot arrived to prepick position
             curr_xyz_coords = np.array(pos[0:3])
             robot_dist = np.linalg.norm(prepick_xyz_coords-curr_xyz_coords)
-            if robot_dist > 5: # TODO check value
+            print(robot_dist)
+            if robot_dist < 3: # TODO check value
                 state = "WAIT_FOR_PACKET"
                 print("state: WAIT_FOR_PACKET")
 
@@ -288,8 +289,8 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             # check encoder and activate robot 
             packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
             packet_pos_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
-            print("X distance")
-            print(pick_pos_x - packet_pos_x)
+            # print("X distance")
+            # print(pick_pos_x - packet_pos_x)
             # If packet is close enough continue picking operation
             if packet_pos_x > pick_pos_x - 280:
                 control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
