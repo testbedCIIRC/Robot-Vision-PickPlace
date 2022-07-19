@@ -158,7 +158,7 @@ class RobotCommunication:
         self.Place_Done =  self.client.get_node(
             'ns=3;s="InstPickPlace"."instPlacePos"."Done"')
     
-    def get_actual_pos(self):
+    def get_robot_info(self):
         """
         Reads the actual position of the robot TCP with respect to the base.
     
@@ -166,21 +166,47 @@ class RobotCommunication:
         tuple: Actual pos. of robot TCP: x, y, z, a, b, c as float. Status, turn as int.
 
         """
-        x_pos = self.Act_Pos_X.get_value()
-        y_pos = self.Act_Pos_Y.get_value()
-        z_pos = self.Act_Pos_Z.get_value()
-        a_pos = self.Act_Pos_A.get_value()
-        b_pos = self.Act_Pos_B.get_value()
-        c_pos = self.Act_Pos_C.get_value()
-        status_pos = self.Act_Pos_Status.get_value()
-        turn_pos = self.Act_Pos_Turn.get_value()
-        x_pos = round(x_pos,2)
-        y_pos = round(y_pos,2)
-        z_pos = round(z_pos,2)
-        a_pos = round(a_pos,2)
-        b_pos = round(b_pos,2)
-        c_pos = round(c_pos,2)
-        return x_pos, y_pos, z_pos, a_pos, b_pos, c_pos, status_pos, turn_pos
+        # Define list of nodes
+        nodes = [
+            self.Act_Pos_X,
+            self.Act_Pos_Y,
+            self.Act_Pos_Z,
+            self.Act_Pos_A,
+            self.Act_Pos_B,
+            self.Act_Pos_C,
+            self.Act_Pos_Status,
+            self.Act_Pos_Turn,
+            self.Encoder_Vel,
+            self.Encoder_Pos,
+            self.Start_Prog,
+            self.Abort_Prog,
+            self.Rob_Stopped,
+            self.Stop_Active,
+            self.Prog_Done
+        ]
+
+        # Get values from defined nodes
+        # Values are ordered in the same way as the nodes
+        val = self.client.get_values(nodes)
+
+        # Assign values from returned list to variables
+        position = (round(val[0], 2),
+                    round(val[1], 2),
+                    round(val[2], 2),
+                    round(val[3], 2),
+                    round(val[4], 2),
+                    round(val[5], 2),
+                    val[6],
+                    val[7])
+        encoder_vel = round(val[8], 2)
+        encoder_pos = round(val[9], 2)
+        start = val[10]
+        abort = val[11]
+        rob_stopped = val[12]
+        stop_active = val[13]
+        prog_done = val[14]
+
+        return position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done
 
     def robot_server(self, info_dict):
         """
@@ -196,40 +222,15 @@ class RobotCommunication:
         time.sleep(0.5)
         while True:
             try:
-                nodes = []
-                nodes.append(self.Act_Pos_X)
-                nodes.append(self.Act_Pos_Y)
-                nodes.append(self.Act_Pos_Z)
-                nodes.append(self.Act_Pos_A)
-                nodes.append(self.Act_Pos_B)
-                nodes.append(self.Act_Pos_C)
-                nodes.append(self.Act_Pos_Status)
-                nodes.append(self.Act_Pos_Turn)
-                nodes.append(self.Encoder_Vel)
-                nodes.append(self.Encoder_Pos)
-                nodes.append(self.Start_Prog)
-                nodes.append(self.Abort_Prog)
-                nodes.append(self.Rob_Stopped)
-                nodes.append(self.Stop_Active)
-                nodes.append(self.Prog_Done)
-
-                val = self.client.get_values(nodes)
-
-                info_dict['pos'] = (round(val[0], 2),
-                                    round(val[1], 2),
-                                    round(val[2], 2),
-                                    round(val[3], 2),
-                                    round(val[4], 2),
-                                    round(val[5], 2),
-                                    val[6],
-                                    val[7])
-                info_dict['encoder_vel'] = round(val[8], 2)
-                info_dict['encoder_pos'] = round(val[9], 2)
-                info_dict['start'] = val[10]
-                info_dict['abort'] = val[11]
-                info_dict['rob_stopped'] = val[12]
-                info_dict['stop_active'] = val[13]
-                info_dict['prog_done'] = val[14]
+                position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done = self.get_robot_info()
+                info_dict['pos'] = position
+                info_dict['encoder_vel'] = encoder_vel
+                info_dict['encoder_pos'] = encoder_pos
+                info_dict['start'] = start
+                info_dict['abort'] = abort
+                info_dict['rob_stopped'] = rob_stopped
+                info_dict['stop_active'] = stop_active
+                info_dict['prog_done'] = prog_done
 
             except Exception as e:
                 print('[ERROR]', e)
