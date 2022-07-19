@@ -56,6 +56,8 @@ class RobotCommunication:
             'ns=3;s="pick_place_select"')
         self.Mult_packets = self.client.get_node(
             'ns=3;s="mult_packets"')
+        self.Robot_speed_override = self.client.get_node(
+            'ns=3;s="HMIKuka"."robot"."powerRobot"."status".override"."actualOverride"')
 
         self.Act_Pos_X = self.client.get_node(
             'ns=3;s="InstKukaControl"."instReadActualPos"."X"')
@@ -222,7 +224,8 @@ class RobotCommunication:
             self.Abort_Prog,
             self.Rob_Stopped,
             self.Stop_Active,
-            self.Prog_Done
+            self.Prog_Done,
+            self.Speed_Override
         ]
 
         # Get values from defined nodes
@@ -245,8 +248,9 @@ class RobotCommunication:
         rob_stopped = val[12]
         stop_active = val[13]
         prog_done = val[14]
+        speed_override = val[15]
 
-        return position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done
+        return position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done, speed_override
 
     def robot_server(self, info_dict):
         """
@@ -262,7 +266,7 @@ class RobotCommunication:
         time.sleep(0.5)
         while True:
             try:
-                position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done = self.get_robot_info()
+                position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done, speed_override = self.get_robot_info()
                 info_dict['pos'] = position
                 info_dict['encoder_vel'] = encoder_vel
                 info_dict['encoder_pos'] = encoder_pos
@@ -271,6 +275,7 @@ class RobotCommunication:
                 info_dict['rob_stopped'] = rob_stopped
                 info_dict['stop_active'] = stop_active
                 info_dict['prog_done'] = prog_done
+                info_dict['speed_override'] = speed_override
 
             except Exception as e:
                 print('[ERROR]', e)

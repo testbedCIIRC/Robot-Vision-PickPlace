@@ -89,7 +89,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     state = "READY" # Robot state variable
     mult_packets_set = False # Indicate if mult_packets tag was set this cycle
 
-    grip_time_offset = 900
+    grip_time_offset = 700
 
     while True:
         # Start timer for FPS estimation
@@ -102,6 +102,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             prog_done = info_dict['prog_done']
             encoder_vel = info_dict['encoder_vel']
             pos = info_dict['pos']
+            speed_override = info_dict['speed_override']
         except:
             continue
 
@@ -249,7 +250,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 packet_type = packet.pack_type
 
                 # Set packet depth to fixed value by type
-                pick_pos_z = compute_mean_packet_z(packet, pack_depths[packet.type]) - 5 
+                pick_pos_z = compute_mean_packet_z(packet, pack_depths[packet.type])
 
                 # Check if y is range of conveyor width and adjust accordingly
                 if pick_pos_y < 75.0:
@@ -266,7 +267,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                     pick_pos_x = 1800.0
 
                 prepick_xyz_coords = np.array([pick_pos_x, pick_pos_y, rob_dict['pick_pos_base'][0]['z']])
-
+                place_xyz_coords = np.array([rob_dict['place_pos'][packet_type]['x'],
+                                             rob_dict['place_pos'][packet_type]['y'],
+                                             rob_dict['place_pos'][packet_type]['z']])
                 # Change end points of robot.   
                 trajectory_dict = {
                     'x': pick_pos_x,
@@ -288,7 +291,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             # check if robot arrived to prepick position
             curr_xyz_coords = np.array(pos[0:3])
             robot_dist = np.linalg.norm(prepick_xyz_coords-curr_xyz_coords)
-            if robot_dist < 3: # TODO check value
+            if robot_dist < 3: 
                 state = "WAIT_FOR_PACKET"
                 print("state: WAIT_FOR_PACKET")
 
@@ -302,14 +305,19 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             # print("X distance")
             # print(pick_pos_x - packet_pos_x)
             # If packet is close enough continue picking operation
-            if packet_pos_x > pick_pos_x - 210:
+            if packet_pos_x > pick_pos_x - 170:
                 control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 state = "PICKING"
                 print("state: PICKING")
 
         if state == "PICKING":
+            curr_xyz_coords = np.array(pos[0:3])
+            # robot_dist = np.linalg.norm(place_xyz_coords-curr_xyz_coords)
             if not mult_packets_set:
-                control_pipe.send(RcData(RcCommand.MULT_PACKETS, len(pick_list)>0 or is_detect))
+                print("[DEBUG]: Pick list")
+                print(pick_list)
+                print(is_detect)
+                control_pipe.send(RcData(RcCommand.MULT_PACKETS, len(pick_list)>0))
                 mult_packets_set = True
             if is_rob_ready:
                 state = "READY"

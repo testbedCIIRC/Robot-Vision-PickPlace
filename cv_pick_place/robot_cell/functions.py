@@ -72,7 +72,7 @@ def compute_mean_packet_z(packet, pack_z_fixed):
             centroid_depth = depth_mean[d_rows // 2, d_cols // 2]
 
             # Compute packet z position with respect to conveyor base.
-            pack_z = abs(conv2cam_dist - centroid_depth)
+            pack_z = abs(conv2cam_dist - centroid_depth) - 8
 
             # Return pack_z if in acceptable range, set to default if not.
             if pack_z < pack_z_fixed:

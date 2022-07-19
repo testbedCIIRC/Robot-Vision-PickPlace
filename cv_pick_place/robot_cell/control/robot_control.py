@@ -244,57 +244,62 @@ class RobotControl(RobotCommunication):
         packet_type (int): The detected packet class.
 
         """
-        self.ShPrePick_Pos_X.set_value(ua.DataValue(ua.Variant(
-            x, ua.VariantType.Float)))
-        self.ShPrePick_Pos_Y.set_value(ua.DataValue(ua.Variant(
-            y, ua.VariantType.Float)))
-        self.ShPrePick_Pos_Z.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['pick_pos_base'][0]['z'], ua.VariantType.Float)))
-        self.ShPrePick_Pos_A.set_value(ua.DataValue(ua.Variant(
-            rot, ua.VariantType.Float)))
-        self.ShPrePick_Pos_B.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
-        self.ShPrePick_Pos_C.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['pick_pos_base'][0]['c'], ua.VariantType.Float)))
-        self.ShPrePick_Pos_Status.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['pick_pos_base'][0]['status'], ua.VariantType.Int16)))
-        self.ShPrePick_Pos_Turn.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
+        nodes = []
+        values = []
 
-        self.ShPick_Pos_X.set_value(ua.DataValue(ua.Variant(
-            x+x_offset, ua.VariantType.Float)))
-        self.ShPick_Pos_Y.set_value(ua.DataValue(ua.Variant(
-            y, ua.VariantType.Float)))
-        self.ShPick_Pos_Z.set_value(ua.DataValue(ua.Variant(
-            pack_z, ua.VariantType.Float)))
-        self.ShPick_Pos_A.set_value(ua.DataValue(ua.Variant(
-            rot, ua.VariantType.Float)))
-        self.ShPick_Pos_B.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
-        self.ShPick_Pos_C.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['pick_pos_base'][0]['c'], ua.VariantType.Float)))
-        self.ShPick_Pos_Status.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['pick_pos_base'][0]['status'], ua.VariantType.Int16)))
-        self.ShPick_Pos_Turn.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
+        nodes.append(self.ShPrePick_Pos_X)
+        values.append(ua.DataValue(ua.Variant(x, ua.VariantType.Float)))
+        nodes.append(self.ShPrePick_Pos_Y)
+        values.append(ua.DataValue(ua.Variant(y, ua.VariantType.Float)))
+        nodes.append(self.ShPrePick_Pos_Z)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['z'], ua.VariantType.Float)))
+        nodes.append(self.ShPrePick_Pos_A)
+        values.append(ua.DataValue(ua.Variant(rot, ua.VariantType.Float)))
+        nodes.append(self.ShPrePick_Pos_B)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
+        nodes.append(self.ShPrePick_Pos_C)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['c'], ua.VariantType.Float)))
+        nodes.append(self.ShPrePick_Pos_Status)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['status'], ua.VariantType.Int16)))
+        nodes.append(self.ShPrePick_Pos_Turn)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
 
-        self.ShPlace_Pos_X.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['place_pos'][packet_type]['x'], ua.VariantType.Float)))
-        self.ShPlace_Pos_Y.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['place_pos'][packet_type]['y'], ua.VariantType.Float)))
-        self.ShPlace_Pos_Z.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['place_pos'][packet_type]['z'], ua.VariantType.Float)))
-        self.ShPlace_Pos_A.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['place_pos'][packet_type]['a'], ua.VariantType.Float)))
-        self.ShPlace_Pos_B.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['place_pos'][packet_type]['b'], ua.VariantType.Float)))
-        self.ShPlace_Pos_C.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['place_pos'][packet_type]['c'], ua.VariantType.Float)))
-        self.ShPlace_Pos_Status.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['place_pos'][packet_type]['status'], ua.VariantType.Int16)))
-        self.ShPlace_Pos_Turn.set_value(ua.DataValue(ua.Variant(
-            self.rob_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
-    
+        nodes.append(self.ShPick_Pos_X)
+        values.append(ua.DataValue(ua.Variant(x + x_offset, ua.VariantType.Float)))
+        nodes.append(self.ShPick_Pos_Y)
+        values.append(ua.DataValue(ua.Variant(y, ua.VariantType.Float)))
+        nodes.append(self.ShPick_Pos_Z)
+        values.append(ua.DataValue(ua.Variant(pack_z, ua.VariantType.Float)))
+        nodes.append(self.ShPick_Pos_A)
+        values.append(ua.DataValue(ua.Variant(rot, ua.VariantType.Float)))
+        nodes.append(self.ShPick_Pos_B)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
+        nodes.append(self.ShPick_Pos_C)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['c'], ua.VariantType.Float)))
+        nodes.append(self.ShPick_Pos_Status)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['status'], ua.VariantType.Int16)))
+        nodes.append(self.ShPick_Pos_Turn)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
+
+        nodes.append(self.ShPlace_Pos_X)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['x'], ua.VariantType.Float)))
+        nodes.append(self.ShPlace_Pos_Y)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['y'], ua.VariantType.Float)))
+        nodes.append(self.ShPlace_Pos_Z)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['z'], ua.VariantType.Float)))
+        nodes.append(self.ShPlace_Pos_A)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['a'], ua.VariantType.Float)))
+        nodes.append(self.ShPlace_Pos_B)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['b'], ua.VariantType.Float)))
+        nodes.append(self.ShPlace_Pos_C)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['c'], ua.VariantType.Float)))
+        nodes.append(self.ShPlace_Pos_Status)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['status'], ua.VariantType.Int16)))
+        nodes.append(self.ShPlace_Pos_Turn)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
+
+        self.client.set_values(nodes, values)
+
         time.sleep(0.7)
 
     def compute_gripper_rot(self, angle):
