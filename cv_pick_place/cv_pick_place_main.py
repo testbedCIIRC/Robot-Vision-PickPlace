@@ -253,8 +253,8 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 # Set packet depth to fixed value by type
                 pick_pos_z = compute_mean_packet_z(packet, pack_depths[packet.type]) - 5 
 
-                # TODO VZ: SEM IMPLEMENTOVAT funkci TBD z classy gripper pose
-                output = gripper_pose.estimate_optimal_point_and_normal_from_images()
+                # TODO VZ: SEM IMPLEMENTOVAT funkci classy gripper pose
+                output = gripper_pose.estimate_from_packet(packet, pack_depths[packet.type])
 
                 # Check if y is range of conveyor width and adjust accordingly
                 if pick_pos_y < 75.0:

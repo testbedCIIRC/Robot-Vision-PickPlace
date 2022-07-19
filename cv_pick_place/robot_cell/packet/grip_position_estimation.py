@@ -2,6 +2,8 @@ import open3d as o3d
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import cv2
+from robot_cell.packet.packet_object import Packet
 
 
 class GripPositionEstimation():
@@ -11,15 +13,14 @@ class GripPositionEstimation():
         Initializes class for predicting optimal position for the gripper
         
         Parameters:
-        visualize: bool, if True, will visualize the results
-        verbose: bool, if True, will write some explanetions of whats happening
-        center_switch: str, "mass" or "height" - defines the center of the gripper
-        gripper_radius: float, radius of the gripper
-        gripper_ration: float, ratio of gripper radius for dettecting the gripper annulus
-        runs_max_number: int, maximal number of tries to estimate the optimal position
-        height_th: float, distance between camera and belt
-        num_bins: int, number of bins for height thresholding (20 is good enough, 10 works as well)
-
+        visualize (bool): if True will visualize the results
+        verbose (bool): if True  will write some explanetions of whats happening
+        center_switch (str): "mass" or "height" - defines the center of the gripper
+        gripper_radius (float): radius of the gripper
+        gripper_ration (float): ratio of gripper radius for dettecting the gripper annulus
+        runs_max_number (int): maximal number of tries to estimate the optimal position
+        height_th (float): distance between camera and belt
+        num_bins (int): number of bins for height thresholding (20 is good enough, 10 works as well)
         """
         self.visualization = visualize
         self.verbose = verbose
@@ -47,41 +48,72 @@ class GripPositionEstimation():
         self.spike_threshold = 0.04 # threshold for spike in the circlic neighborhood
 
 
-    def load_pcd_from_rgb_depth_jpeg(self, rgb_name: str, depth_name: str, path: str = ""):
+    def _load_pcd_from_rgb_depth_jpeg(self, rgb_name: str, depth_name: str,
+                                      path: str = "") -> o3d.geometry.PointCloud:
         """
         Loads open3d PointCloud from rgb image and depth image stored in path into self.pcd
         
         Parameters:
-        rgb_name: str, name of the rgb image(.jpg)
-        depth_name: str, name of the depth image(.png)
-        path: str, path to the images
+        rgb_name (str): name of the rgb image(.jpg)
+        depth_name (str): name of the depth image(.png)
+        path (str): path to the images
 
         Returns: 
         o3d.geometry.PointCloud: pointcloud
         """
-        
+
         rgb = o3d.io.read_image(os.path.join(path, rgb_name))
         depth = o3d.io.read_image(os.path.join(path, depth_name))
         rgbd= o3d.geometry.RGBDImage.create_from_color_and_depth(rgb, depth)
         pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, o3d.camera.PinholeCameraIntrinsic(
                 o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
-        # o3d.visualization.draw_geometries([self.pcd])
         pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+        o3d.visualization.draw_geometries([pcd])
+
+        d = cv2.imread(os.path.join(path, depth_name), cv2.IMREAD_GRAYSCALE)
+        self._load_pcd_from_depth_frame(depth_frame=d)
         return pcd
 
 
-    def pcd_down_sample(self, voxel_size: float = 0.01):
+    def _load_pcd_from_depth_frame(self, depth_frame:np.ndarray
+                                   ) -> o3d.geometry.PointCloud:
+        """
+        Loads open3d PointCloud from depthframe
+
+        Parameters:
+        depth_frame (np.ndarray): Depth values
+
+        Returns:
+        o3d.geometry.PointCloud: pointcloud
+        """
+        # depth = o3d.geometry.Image(np.ascontiguousarray(depth_frame).astype(np.float32))
+        vals, count = np.unique(depth_frame, return_counts=True)
+        print(vals)
+        print(count)
+        #TODO: Zde nějak zkontrolovat jak načíst tu knihovnu bez toho aniž bych to musel přeukládat
+        # [2 3]
+        # [23927 35121]
+        depth = o3d.geometry.Image(np.ascontiguousarray(depth_frame).astype(np.uint16))
+        print(type(depth))
+        pcd = o3d.geometry.PointCloud.create_from_depth_image(depth, o3d.camera.PinholeCameraIntrinsic(
+                o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
+        pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+        o3d.visualization.draw_geometries([pcd])
+        return pcd
+
+
+    def _pcd_down_sample(self, voxel_size: float = 0.01):
         """
         Downsample PointCloud with given voxel size
         
         Parameters:
-        voxel_size: float, voxel size for downsampling
+        voxel_size (float): voxel size for downsampling
         """
         pcd = self.pcd.voxel_down_sample(voxel_size=voxel_size)
         self.pcd = pcd
 
 
-    def get_points_and_estimete_normals(self):
+    def _get_points_and_estimete_normals(self):
         """
         Estimates normals from PointCloud and saves both points coordinates and their respective normals
 
@@ -94,7 +126,7 @@ class GripPositionEstimation():
         return np.asarray(self.pcd.points), np.asarray(self.pcd.normals)
 
 
-    def visualize_frame(self, packet_points: np.ndarray, center: np.ndarray, neighbourhood_points: np.ndarray, plane_c:np.ndarray):
+    def _visualize_frame(self, packet_points: np.ndarray, center: np.ndarray, neighbourhood_points: np.ndarray, plane_c:np.ndarray):
         """
         Visualize frame different colors for points of belt, packet points, center point, neighbourhood points and plane center from that poits
         """
@@ -112,7 +144,7 @@ class GripPositionEstimation():
         plt.show()
 
 
-    def visualize_histogram(self, n_bins:int):
+    def _visualize_histogram(self, n_bins:int):
         """
         Visualizes histogram with selected threshold
         """
@@ -129,12 +161,12 @@ class GripPositionEstimation():
         plt.show()
 
 
-    def hist_first_peak(self, th_count: int = 50) -> float:
+    def _hist_first_peak(self, th_count: int = 50) -> float:
         """
         Finds first peak in histogram. NOT SMART
         
         Parameters:
-        th_count: int, threshold value for finding the first peak with atleast 50 count
+        th_count (int):threshold value for finding the first peak with atleast 50 count
 
         Returns:
         float: Height threshold between belt and object
@@ -149,31 +181,31 @@ class GripPositionEstimation():
             old = h
 
 
-    def compute_histogram_threshold(self, values: np.ndarray, number_of_bins: int = 20):
+    def _compute_histogram_threshold(self, values: np.ndarray, number_of_bins: int = 20):
         """
         Finds height threshold via histogram
 
         Parameters:
-        values: np.ndarray, values to be binned
-        number_of_bins: int, number of bins to be used in histogram
+        values (np.ndarray): values to be binned
+        number_of_bins (int): number of bins to be used in histogram
 
         """
         # assert len(values.shape) == 1, "Values should be 1D"
 
         h = np.histogram(values, bins=number_of_bins)
         self.hist = h[0]
-        i = self.hist_first_peak()
+        i = self._hist_first_peak()
         self.th_idx = i + number_of_bins//10
         self.th_val = h[1][self.th_idx]
         # self.th_val = -0.76
 
 
-    def get_center_of_mass(self, points: np.ndarray) -> np.ndarray:
+    def _get_center_of_mass(self, points: np.ndarray) -> np.ndarray:
         """
         Get center of mass from points via approximation of mass with height (z axis)
 
         Parameters:
-        points: np.ndarray, 3D points for computation
+        points (np.ndarray): 3D points for computation
 
         Returns:
         tuple[np.ndarray, np.ndarray]: geometric center and center of mass
@@ -186,12 +218,12 @@ class GripPositionEstimation():
         return c_mass
 
 
-    def anuluss_mask(self, center: np.ndarray) -> np.ndarray:
+    def _anuluss_mask(self, center: np.ndarray) -> np.ndarray:
         """
         Returns mask of pointes which are in annulus
 
         Parameters:
-        center: np.ndarray, center point of the annulus, 
+        center (np.ndarray):center point of the annulus, 
         
         Returns:
         np.ndarray: binary mask
@@ -202,13 +234,13 @@ class GripPositionEstimation():
         return b*s
 
 
-    def circle_mask(self, center: np.ndarray, radius:float = 0.05) -> np.ndarray:
+    def _circle_mask(self, center: np.ndarray, radius:float = 0.05) -> np.ndarray:
         """
         Returns binary mask of points which are are closer to center than radius
 
         Parameters:
-        center: np.ndarray, shape (2,)
-        radius: float, radius of the circle
+        center (np.ndarray): shape (2,)
+        radius (float): radius of the circle
 
         Returns:
         np.ndarray: binary mask
@@ -217,12 +249,12 @@ class GripPositionEstimation():
         return l2 <= radius
 
 
-    def fit_plane(self, points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def _fit_plane(self, points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Fits plane to given points
         
         Parameters:
-        points: np.ndarray, points to be fitted to plane
+        points (np.ndarray): points to be fitted to plane
 
         Returns:
         tuple[np.ndarray, np.ndarray]: plane center and plane normal
@@ -235,14 +267,14 @@ class GripPositionEstimation():
         return c, np.linalg.svd(M)[0][:, -1]
 
 
-    def get_candidate_point(self, center: np.ndarray, filter_mask: np.ndarray, blacklist:np.ndarray) -> np.ndarray:
+    def _get_candidate_point(self, center: np.ndarray, filter_mask: np.ndarray, blacklist:np.ndarray) -> np.ndarray:
         """
         Selects point closest to center, which is not blacklisted
         
         Parameters:
-        center: np.ndarray, center of mass
-        filter_mask: np.ndarray, binary mask of fitered points (that makes the object)
-        blacklist: np.ndarray, binary mask of points that are not yet blacklisted
+        center (np.ndarray): center of mass
+        filter_mask (np.ndarray): binary mask of fitered points (that makes the object)
+        blacklist (np.ndarray): binary mask of points that are not yet blacklisted
         """
         candidate_mask = np.logical_and(filter_mask, blacklist)
         candidate_points = self.points[candidate_mask,:]
@@ -251,13 +283,13 @@ class GripPositionEstimation():
         return candidate_points[idx, :]
 
 
-    def check_point_validity(self, point: np.ndarray) -> bool:
+    def _check_point_validity(self, point: np.ndarray) -> bool:
         """
         Checks if point is valid. No height spike in circlic neighborhood,
         Check if part of the outer circle is not on the conveyer belt
         
         Parameters:
-        point: np.ndarray, point to be checked
+        point (np.ndarray): point to be checked
 
         Returns:
         bool: True if point is valid, False otherwise
@@ -295,23 +327,23 @@ class GripPositionEstimation():
         return valid
 
 
-    def expand_blacklist(self, point: np.ndarray, blacklist: np.ndarray, radius: float=0.01):
+    def _expand_blacklist(self, point: np.ndarray, blacklist: np.ndarray, radius: float=0.01):
         """
         Expands blacklist by points which are closer than radius to current point
 
         Parameters:
-        point: np.ndarray, center point
-        blacklist: np.ndarray, binary mask, True if it can be used, False if it is blacklisted
-        radius: float, threshold
+        point (np.ndarray): center point
+        blacklist (np.ndarray): binary mask, True if it can be used, False if it is blacklisted
+        radius (float): threshold
 
         Returns:
         np.ndarray: updated binary mask for blacklistx
         """
-        bl = np.logical_not(self.circle_mask(point, radius))
+        bl = np.logical_not(self._circle_mask(point, radius))
         return np.logical_and(blacklist, bl)   
 
 
-    def detect_point_from_pcd(self) -> tuple[np.ndarray, np.ndarray]:
+    def _detect_point_from_pcd(self) -> tuple[np.ndarray, np.ndarray]:
         """
         Detects points from point cloud. Firstly calculates center of mass, check its validity
         If its good returns it, if not blacklist neighborhood, and selects clossest point to center of mass.
@@ -320,12 +352,12 @@ class GripPositionEstimation():
         Returns:
         tuple[np.ndarray, np.ndarray]: plane center and plane normal (x,y,z)
         """
-        self.pcd_down_sample()
-        self.points, self.normals = self.get_points_and_estimete_normals()
+        self._pcd_down_sample()
+        self.points, self.normals = self._get_points_and_estimete_normals()
 
         # o3d.visualization.draw_geometries([self.pcd])
 
-        self.compute_histogram_threshold(self.points[:, 2], self.num_bins)
+        self._compute_histogram_threshold(self.points[:, 2], self.num_bins)
 
         if self.visualization:
             self.visualize_histogram(self.num_bins)
@@ -335,37 +367,37 @@ class GripPositionEstimation():
         blacklist = np.full((self.points.shape[0],), True)   
 
         if self.center_switch == 'mass':
-            center = self.get_center_of_mass(filtered_points)
+            center = self._get_center_of_mass(filtered_points)
         elif self.center_switch == 'height':
             center = self.points[np.argmax(filtered_points[:,2]),:]            
         
-        n_mask = self.anuluss_mask(center)
-        plane_c, plane_n = self.fit_plane(self.points[n_mask, :])
-        valid = self.check_point_validity(center)
+        n_mask = self._anuluss_mask(center)
+        plane_c, plane_n = self._fit_plane(self.points[n_mask, :])
+        valid = self._check_point_validity(center)
 
         # Returns original point as optimal if it is valid
         if valid:
             if self.verbose:
                 print("Picked original point as it is valid")
             if self.visualization:
-                self.visualize_frame(filtered_points, center, self.points[n_mask, :], plane_c)
+                self._visualize_frame(filtered_points, center, self.points[n_mask, :], plane_c)
             return center, plane_n
 
-        blacklist = self.expand_blacklist(center, blacklist)
+        blacklist = self._expand_blacklist(center, blacklist)
         while self.run_number < self.max_runs:
             # t1 = datetime.now()
-            c_point = self.get_candidate_point(center, packet_mask, blacklist)
-            valid = self.check_point_validity(c_point)
+            c_point = self._get_candidate_point(center, packet_mask, blacklist)
+            valid = self._check_point_validity(c_point)
             if not valid:
-                blacklist = self.expand_blacklist(center, blacklist)
+                blacklist = self._expand_blacklist(center, blacklist)
                 # t2 = datetime.now()
                 # print(str(t2-t1))
                 self.run_number += 1
                 continue
 
-            n_mask = self.anuluss_mask(c_point)
+            n_mask = self._anuluss_mask(c_point)
             neighbourhood_points = self.points[n_mask, :]
-            plane_c, plane_n = self.fit_plane(neighbourhood_points)
+            plane_c, plane_n = self._fit_plane(neighbourhood_points)
 
             if self.visualization:
                 self.visualize_frame(filtered_points, center, neighbourhood_points, plane_c)
@@ -378,13 +410,14 @@ class GripPositionEstimation():
         return None, None
 
 
-    def get_relative_coordinates(self, point: np.ndarray, anchor: np.ndarray) -> np.ndarray:
+    def _get_relative_coordinates(self, point: np.ndarray, anchor: np.ndarray
+                                  ) -> np.ndarray:
         """
         Returns relative coordinates of point from center of gripper
 
         Parameters:
-        point: np.ndarray, point to be transformed
-        anchor: np.ndarray, relative coordinates of anchor point(center) (px,py)
+        point (np.ndarray): point to be transformed
+        anchor (np.ndarray): relative coordinates of anchor point(center) (px,py)
 
         Returns: 
         np.ndarray: relative coordinates of point to anchor and its height(px,py,z)
@@ -398,30 +431,70 @@ class GripPositionEstimation():
         return np.hstack((point_anchor_rel, point[2]))
 
 
-    def estimate_optimal_point_and_normal_from_images(self, rgb_image_name: str, depth_image_name: str, path: str="",
-                                                         anchor: np.array=np.array([.5, .5])) -> tuple[np.ndarray, np.ndarray]:
+    def estimate_from_images(self, rgb_image_name: str, depth_image_name: str,
+                             path: str="", anchor: np.array=np.array([.5, .5])
+                             ) -> tuple[np.ndarray, np.ndarray]:
         """
         Estimates point and normal from given images
         (The idea is to call this function and it returns everything  needed)
 
         Parameters:
-        rgb_image_name: str, name of rgb image
-        depth_image_name: str, name of depth image
-        path: str, path to images
-        anchor: np.ndarray, relative coordinates of anchor point(center) (px,py)
+        rgb_image_name (str): name of rgb image
+        depth_image_name (str): name of depth image
+        path (str): path to images
+        anchor (np.ndarray): relative coordinates of anchor point(center) (px,py)
 
         Returns:
         tuple[np.ndarray, np.ndarray]: point coordinates and its normal
         """
        
-        self.pcd =  self.load_pcd_from_rgb_depth_jpeg(rgb_image_name, depth_image_name, path)
-        center, normal = self.detect_point_from_pcd()
+        self.pcd =  self._load_pcd_from_rgb_depth_jpeg(rgb_image_name, depth_image_name, path)
+        center, normal = self._detect_point_from_pcd()
         if center is None:
             print("Did not found optimal point")
             return center, normal
-        relative = self.get_relative_coordinates(center, anchor)
+        relative = self._get_relative_coordinates(center, anchor)
 
         return relative, normal
+
+    def estimate_from_depth_array(self, depth_array: np.ndarray, z_limit: float,
+                                  anchor: np.ndarray = np.array([.5, .5])
+                                  ) -> tuple[np.ndarray]:
+        """
+        Estimates optimal point from depth array
+
+        Parameters:
+        depth_array (np.ndarray): Depth values
+        z_limit (float): Limit value for safety reasons
+        anchor (np.ndarray): Relative coordinates of anchor point(center) (px,py)
+        
+        Returns:
+        tuple[np.ndarray]: Point and normal for picking
+        """
+        # TODO: Load value unto pointcloud
+        center, normal = self._detect_point_from_pcd()
+        relative = self._get_relative_coordinates(center, anchor)
+        return relative, normal
+
+    def estimate_from_packet(self, packet: Packet, z_lim:float):
+        """
+        Estimates optimal point of the packet
+
+        Parameters:
+        packet (Packet): Packet for the estimator
+        z_lim: Limit for the robot gripper for not coliding
+
+        Returns:
+        TBD
+        """
+        depth_frame = packet.avg_depth_crop
+        if depth_frame is not None:
+            estm = self.estimate_from_depth_array(depth_frame, z_lim)
+            # TODO: Recompute into coordinates normal given by packet
+            return estm
+        else:
+            print(f"[WARN]: Average depth frame is None")
+            return z_lim
 
 
 def main():
@@ -435,9 +508,9 @@ def main():
     gpe = GripPositionEstimation(visualize=True, verbose =True, center_switch="mass", gripper_radius=gripper_radius, gripper_ration=0.8)
 
     # Estimating point and normal from color and depth images
-    point, normal = gpe.estimate_optimal_point_and_normal_from_images("color_image_crop.jpg", "depth_image_crop.png",
-                                                                        path="data", anchor=np.array([.5, .5]))
-    point, normal = gpe.estimate_optimal_point_and_normal_from_images("rgb_image2.jpg", "depth_image2.png",
+    point, normal = gpe.estimate_from_images("color_image_crop.jpg", "depth_image_crop.png",
+                                                                        path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
+    point, normal = gpe.estimate_from_images("rgb_image2.jpg", "depth_image2.png",
                                                                         path="data", anchor=np.array([.5, .5]))
     if point is not None:
         print("picked_point\t", point)
@@ -447,6 +520,7 @@ def main():
     # gpe.estimate_optimal_point_and_normal_from_images("rgb_image1.jpg", "depth_image1.png", path="data")
     # print("picked_point", point)
     # print("picked_normal", normal, np.linalg.norm(normal))
+
 
 if __name__ == "__main__":
     main()
