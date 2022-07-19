@@ -87,6 +87,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     conv_right = False # Conveyor heading right enable
     homography = None # Homography matrix
     state = "READY" # Robot state variable
+    mult_packets_set = False # Indicate if mult_packets tag was set this cycle
 
     grip_time_offset = 900
 
@@ -275,10 +276,10 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                     'x_offset': 0,
                     'pack_z': pick_pos_z
                     }
-                control_pipe.send(RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict))
+                control_pipe.send(RcData(RcCommand.CHANGE_SHORT_TRAJECTORY, trajectory_dict))
 
                 # Start robot program.
-                control_pipe.send(RcData(RcCommand.START_PROGRAM))
+                control_pipe.send(RcData(RcCommand.START_PROGRAM, True))
                 state = "TO_PREPICK"
                 print("state: TO_PREPICK")
 
@@ -301,15 +302,19 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             # print("X distance")
             # print(pick_pos_x - packet_pos_x)
             # If packet is close enough continue picking operation
-            if packet_pos_x > pick_pos_x - 280:
+            if packet_pos_x > pick_pos_x - 210:
                 control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 state = "PICKING"
                 print("state: PICKING")
 
         if state == "PICKING":
+            if not mult_packets_set:
+                control_pipe.send(RcData(RcCommand.MULT_PACKETS, len(pick_list)>0 or is_detect))
+                mult_packets_set = True
             if is_rob_ready:
                 state = "READY"
                 print("state: READY")
+                mult_packets_set = False
 
         # FRAME GRAPHICS
         ################
@@ -445,7 +450,7 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
             'func':demos.main_pick_place},
         '3':{'dict':Pick_place_dict_conv_mov, 
             'func':demos.main_pick_place_conveyor_w_point_cloud},
-        '4':{'dict':Pick_place_dict_conv_mov, 
+        '4':{'dict':Short_pick_place_dict, 
             'func':main}
                 }
 
@@ -538,6 +543,7 @@ if __name__ == '__main__':
     Pick_place_dict_conv_mov_slow = robot_poses['Pick_place_dict_conv_mov_slow']
     Pick_place_dict_conv_mov = robot_poses['Pick_place_dict_conv_mov']
     Pick_place_dict = robot_poses['Pick_place_dict']
+    Short_pick_place_dict = robot_poses['Short_pick_place_dict']
     
     # Initialize robot demos and robot control objects.
     r_control = RobotControl(None)

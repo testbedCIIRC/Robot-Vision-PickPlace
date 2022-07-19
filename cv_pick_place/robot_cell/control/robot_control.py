@@ -29,6 +29,8 @@ class RcCommand(Enum):
     CLOSE_PROGRAM = 7
     START_PROGRAM = 8
     CHANGE_TRAJECTORY = 9
+    CHANGE_SHORT_TRAJECTORY = 10
+    MULT_PACKETS = 11
 
 
 class RcData():
@@ -147,6 +149,15 @@ class RobotControl(RobotCommunication):
         self.Conveyor_Right.set_value(ua.DataValue(False))
         self.Conveyor_Left.set_value(ua.DataValue(conv_left))
         time.sleep(0.4)
+    
+    def change_mult_packets(self, state):
+        """
+        Switch tag indicating multiple packets.
+
+        """
+        self.Mult_packets.set_value(ua.DataValue(state))
+        print('[INFO]: Multiple pakcets state is {}.'.format(state))
+        time.sleep(0.1)
 
     def change_trajectory(self, x, y, rot, packet_type, x_offset = 0.0, pack_z = 5.0):
         """
@@ -225,6 +236,70 @@ class RobotControl(RobotCommunication):
         self.Place_Pos_Status.set_value(ua.DataValue(ua.Variant(
             self.rob_dict['place_pos'][packet_type]['status'], ua.VariantType.Int16)))
         self.Place_Pos_Turn.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
+    
+        time.sleep(0.7)
+
+    def change_trajectory_short(self, x, y, rot, packet_type, x_offset = 0.0, pack_z = 5.0):
+        """
+        Updates the trajectory points for the robot program.
+    
+        Parameters:
+        x (float): The pick x coordinate of the packet.
+        y (float): The pick y coordinate of the packet.
+        rot (float): The gripper pick rotation.
+        packet_type (int): The detected packet class.
+
+        """
+        self.ShPrePick_Pos_X.set_value(ua.DataValue(ua.Variant(
+            x, ua.VariantType.Float)))
+        self.ShPrePick_Pos_Y.set_value(ua.DataValue(ua.Variant(
+            y, ua.VariantType.Float)))
+        self.ShPrePick_Pos_Z.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['pick_pos_base'][0]['z'], ua.VariantType.Float)))
+        self.ShPrePick_Pos_A.set_value(ua.DataValue(ua.Variant(
+            rot, ua.VariantType.Float)))
+        self.ShPrePick_Pos_B.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
+        self.ShPrePick_Pos_C.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['pick_pos_base'][0]['c'], ua.VariantType.Float)))
+        self.ShPrePick_Pos_Status.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['pick_pos_base'][0]['status'], ua.VariantType.Int16)))
+        self.ShPrePick_Pos_Turn.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
+
+        self.ShPick_Pos_X.set_value(ua.DataValue(ua.Variant(
+            x+x_offset, ua.VariantType.Float)))
+        self.ShPick_Pos_Y.set_value(ua.DataValue(ua.Variant(
+            y, ua.VariantType.Float)))
+        self.ShPick_Pos_Z.set_value(ua.DataValue(ua.Variant(
+            pack_z, ua.VariantType.Float)))
+        self.ShPick_Pos_A.set_value(ua.DataValue(ua.Variant(
+            rot, ua.VariantType.Float)))
+        self.ShPick_Pos_B.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
+        self.ShPick_Pos_C.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['pick_pos_base'][0]['c'], ua.VariantType.Float)))
+        self.ShPick_Pos_Status.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['pick_pos_base'][0]['status'], ua.VariantType.Int16)))
+        self.ShPick_Pos_Turn.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
+
+        self.ShPlace_Pos_X.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['place_pos'][packet_type]['x'], ua.VariantType.Float)))
+        self.ShPlace_Pos_Y.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['place_pos'][packet_type]['y'], ua.VariantType.Float)))
+        self.ShPlace_Pos_Z.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['place_pos'][packet_type]['z'], ua.VariantType.Float)))
+        self.ShPlace_Pos_A.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['place_pos'][packet_type]['a'], ua.VariantType.Float)))
+        self.ShPlace_Pos_B.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['place_pos'][packet_type]['b'], ua.VariantType.Float)))
+        self.ShPlace_Pos_C.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['place_pos'][packet_type]['c'], ua.VariantType.Float)))
+        self.ShPlace_Pos_Status.set_value(ua.DataValue(ua.Variant(
+            self.rob_dict['place_pos'][packet_type]['status'], ua.VariantType.Int16)))
+        self.ShPlace_Pos_Turn.set_value(ua.DataValue(ua.Variant(
             self.rob_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
     
         time.sleep(0.7)
@@ -482,7 +557,7 @@ class RobotControl(RobotCommunication):
                     self.close_program()
 
                 elif command == RcCommand.START_PROGRAM:
-                    self.start_program()
+                    self.start_program(data)
 
                 elif command == RcCommand.CHANGE_TRAJECTORY:
                     try:
@@ -494,7 +569,22 @@ class RobotControl(RobotCommunication):
                                                 pack_z=data['pack_z'])
                     except Exception as e:
                         print(e)
-                        print("ERROR")
+                        print("[ERROR]: Failed to change trajectory")
+
+                elif command == RcCommand.CHANGE_SHORT_TRAJECTORY:
+                    try:
+                        self.change_trajectory_short(data['x'], 
+                                                data['y'],
+                                                data['rot'],
+                                                data['packet_type'],
+                                                x_offset=data['x_offset'],
+                                                pack_z=data['pack_z'])
+                    except Exception as e:
+                        print(e)
+                        print("[ERROR]: Failed to change short trajectory")
+                
+                elif command == RcCommand.MULT_PACKETS:
+                    self.change_mult_packets(data)
 
                 else:
                     print('[WARNING]: Wrong command send to control server')
