@@ -26,6 +26,7 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
+from robot_cell.packet.grip_position_estimation import GripPositionEstimation
 
 # DETECTOR_TYPE = 'deep_1'
 # DETECTOR_TYPE = 'deep_2'
@@ -51,6 +52,8 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     apriltag.load_world_points('conveyor_points.json')
     pt = ItemTracker(max_disappeared_frames = 20, guard = 50, max_item_distance = 400)
     dc = DepthCamera(config_path = 'D435_camera_config.json')
+
+    gripper_pose = GripPositionEstimation()
 
     if DETECTOR_TYPE == 'deep_1':
         show_boot_screen('STARTING NEURAL NET...')
@@ -249,6 +252,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
                 # Set packet depth to fixed value by type
                 pick_pos_z = compute_mean_packet_z(packet, pack_depths[packet.type]) - 5 
+
+                # TODO VZ: SEM IMPLEMENTOVAT funkci TBD z classy gripper pose
+                output = gripper_pose.estimate_optimal_point_and_normal_from_images()
 
                 # Check if y is range of conveyor width and adjust accordingly
                 if pick_pos_y < 75.0:
