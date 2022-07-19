@@ -523,7 +523,7 @@ class RobotDemos:
         # Inititalize objects.
         apriltag = ProcessingApriltag()
         apriltag.load_world_points('conveyor_points.json')
-        pt = PacketTracker(maxDisappeared=10)    
+        pt = PacketTracker(maxDisappeared=10, guard=50)    
         dc = DepthCamera()
         rc.show_boot_screen('STARTING NEURAL NET...')
         pack_detect = PacketDetector(paths, files, check_point)
