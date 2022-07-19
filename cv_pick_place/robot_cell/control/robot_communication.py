@@ -196,17 +196,44 @@ class RobotCommunication:
         time.sleep(0.5)
         while True:
             try:
-                info_dict['pos'] = self.get_actual_pos()
-                info_dict['encoder_vel'] = round(self.Encoder_Vel.get_value(),2)
-                info_dict['encoder_pos'] = round(self.Encoder_Pos.get_value(),2)
-                info_dict['start'] = self.Start_Prog.get_value()
-                info_dict['abort'] = self.Abort_Prog.get_value()
-                info_dict['rob_stopped'] = self.Rob_Stopped.get_value()
-                info_dict['stop_active'] = self.Stop_Active.get_value()
-                info_dict['prog_done'] = self.Prog_Done.get_value()
-            except:
-                # Triggered when OPCUA server was disconnected
-                print('[INFO]: OPCUA disconnected.')
+                nodes = []
+                nodes.append(self.Act_Pos_X)
+                nodes.append(self.Act_Pos_Y)
+                nodes.append(self.Act_Pos_Z)
+                nodes.append(self.Act_Pos_A)
+                nodes.append(self.Act_Pos_B)
+                nodes.append(self.Act_Pos_C)
+                nodes.append(self.Act_Pos_Status)
+                nodes.append(self.Act_Pos_Turn)
+                nodes.append(self.Encoder_Vel)
+                nodes.append(self.Encoder_Pos)
+                nodes.append(self.Start_Prog)
+                nodes.append(self.Abort_Prog)
+                nodes.append(self.Rob_Stopped)
+                nodes.append(self.Stop_Active)
+                nodes.append(self.Prog_Done)
+
+                val = self.client.get_values(nodes)
+
+                info_dict['pos'] = (round(val[0], 2),
+                                    round(val[1], 2),
+                                    round(val[2], 2),
+                                    round(val[3], 2),
+                                    round(val[4], 2),
+                                    round(val[5], 2),
+                                    val[6],
+                                    val[7])
+                info_dict['encoder_vel'] = round(val[8], 2)
+                info_dict['encoder_pos'] = round(val[9], 2)
+                info_dict['start'] = val[10]
+                info_dict['abort'] = val[11]
+                info_dict['rob_stopped'] = val[12]
+                info_dict['stop_active'] = val[13]
+                info_dict['prog_done'] = val[14]
+
+            except Exception as e:
+                print('[ERROR]', e)
+                print('[INFO] OPCUA disconnected')
                 break
 
     def encoder_server(self, encoder_pos):
@@ -224,7 +251,7 @@ class RobotCommunication:
         while True:
             try:
                 encoder_pos.value = round(self.Encoder_Pos.get_value(), 2)
-            except:
-                # Triggered when OPCUA server was disconnected
-                print('[INFO]: OPCUA disconnected.')
+            except Exception as e:
+                print('[ERROR]', e)
+                print('[INFO] OPCUA disconnected')
                 break
