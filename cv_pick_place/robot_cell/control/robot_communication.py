@@ -147,10 +147,13 @@ class RobotCommunication:
     
     def get_robot_info(self):
         """
-        Reads the actual position of the robot TCP with respect to the base.
+        Reads periodically needed values from the PLC.
+        To add new nodes, append requied node to the end of 'nodes' list,
+        'val' list will then contain new value at the end corresponding to the values of the new node.
+        Acess new values with val[15] and so on.
     
         Returns:
-        tuple: Actual pos. of robot TCP: x, y, z, a, b, c as float. Status, turn as int.
+        tuple: Tuple of detected variables
 
         """
         # Define list of nodes
@@ -197,7 +200,9 @@ class RobotCommunication:
 
     def robot_server(self, info_dict):
         """
-        Thread to get values from PLC server.
+        Process to get values from PLC server.
+        Periodically reads robot info from PLC and writes it into 'info_dict',
+        which is dictionary read at the same time in the main process.
 
         Parameters:
         pipe (multiprocessing.Pipe): Sends data to another thread
@@ -226,7 +231,9 @@ class RobotCommunication:
 
     def encoder_server(self, encoder_pos):
         """
-        Thread to get encoder value from PLC server.
+        Process to get encoder value from PLC server.
+        Periodically reads encoder value from PLC and writes it into 'encoder_pos.value',
+        which is variable read at the same time in the main process.
 
         Parameters:
         pipe (multiprocessing.Pipe): Sends data to another thread

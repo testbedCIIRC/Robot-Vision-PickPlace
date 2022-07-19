@@ -39,12 +39,13 @@ class RobotControl(RobotCommunication):
         # Inherit RobotCommunication.
         super().__init__()
 
-    def show_boot_screen(self, message, resolution = (960,1280)):
+    def show_boot_screen(self, message, resolution = (540, 960)):
         """
         Opens main frame window with boot screen message.
 
         Parameters:
         message (str): Message to be displayed.
+        resolution (int, int): Resolution of thw window
 
         """
         boot_screen = np.zeros(resolution)
@@ -145,6 +146,8 @@ class RobotControl(RobotCommunication):
         y (float): The pick y coordinate of the packet.
         rot (float): The gripper pick rotation.
         packet_type (int): The detected packet class.
+        x_offset (float): Robot x position offset from current packet position.
+        pack_z (int): z coordinate of gripping position of packet.
 
         """
         nodes = []
@@ -246,7 +249,8 @@ class RobotControl(RobotCommunication):
     
         Parameters:
 
-        packet (object): Final tracked packet object used for program start.
+        packet (object): Packet object for which centroid depth should be found
+        pack_z_fixed (float): Contant depth value to fall back to
 
         """
         conv2cam_dist = 777.0 # mm
@@ -439,6 +443,22 @@ class RobotControl(RobotCommunication):
                 self.start_program()
 
     def control_server(self, pipe):
+        """
+        Process to set values on PLC server.
+        Periodically check for input commands from main process.
+
+        To add new command:
+        1. Add the command to Enum at top of the file
+        (example: NEW_COMMAND = 50)
+        2. Add new if section to the while loop
+        (example: elif command == RcCommand.NEW_COMMAND:)
+        3. Send command from the main process, with optional data argument
+        (example: control_pipe.send(RcData(RcCommand.NEW_COMMAND, data)))
+
+        Parameters:
+        pipe (multiprocessing.Pipe): Sends data to another thread
+
+        """
         # Connect server and get nodes
         self.connect_OPCUA_server()
         self.get_nodes()
