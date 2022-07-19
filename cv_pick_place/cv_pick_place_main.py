@@ -59,8 +59,6 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         # TODO Implement new deep detector
         pass
     elif DETECTOR_TYPE == 'hsv':
-        show_boot_screen('STARTING NEURAL NET...')
-        time.sleep(5)
         pack_detect = ThresholdDetector(ignore_vertical_px = 133, ignore_horizontal_px = 50, max_ratio_error = 0.15,
                                         white_lower = [60, 0, 85], white_upper = [179, 255, 255],
                                         brown_lower = [0, 33, 57], brown_upper = [60, 255, 178])
