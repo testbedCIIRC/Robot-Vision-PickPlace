@@ -32,18 +32,19 @@ def compute_gripper_rot(angle):
     return rot
 
 
-def show_boot_screen(message, resolution = (960,1280)):
+def show_boot_screen(message, resolution = (540, 960)):
     """
     Opens main frame window with boot screen message.
 
     Parameters:
     message (str): Message to be displayed.
+    resolution (int, int): Resolution of thw window
 
     """
     boot_screen = np.zeros(resolution)
     cv2.namedWindow('Frame')
     cv2.putText(boot_screen, message, 
-                (resolution[0] // 2 - 150, resolution[1] // 2),
+                ((resolution[1] // 2) - 150, resolution[0] // 2),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
     cv2.imshow("Frame", boot_screen)
     cv2.waitKey(1)
@@ -54,7 +55,9 @@ def compute_mean_packet_z(packet, pack_z_fixed):
     Computes depth of packet based on average of stored depth frames.
 
     Parameters:
-    packet (object): Final tracked packet object used for program start.
+
+    packet (object): Packet object for which centroid depth should be found
+    pack_z_fixed (float): Contant depth value to fall back to
 
     """
     if packet.avg_depth_crop is None:
