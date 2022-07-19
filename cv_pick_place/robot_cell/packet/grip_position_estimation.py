@@ -307,7 +307,7 @@ class GripPositionEstimation():
         valid_max = np.abs(self.points[max_point, 2] - point[2]) < self.spike_threshold
         valid_min = np.abs(self.points[min_point, 2] - point[2]) < self.spike_threshold
 
-        ann_mask = self.anuluss_mask(point)
+        ann_mask = self._anuluss_mask(point)
         ann_points = self.points[ann_mask, :]
         lowest_point = np.argmin(ann_points[:,2])
         # print(ann_points[lowest_point, 2])
@@ -360,7 +360,7 @@ class GripPositionEstimation():
         self._compute_histogram_threshold(self.points[:, 2], self.num_bins)
 
         if self.visualization:
-            self.visualize_histogram(self.num_bins)
+            self._visualize_histogram(self.num_bins)
 
         packet_mask = self.points[:, 2] >= self.th_val
         filtered_points = self.points[packet_mask, :]
@@ -510,8 +510,8 @@ def main():
     # Estimating point and normal from color and depth images
     point, normal = gpe.estimate_from_images("color_image_crop.jpg", "depth_image_crop.png",
                                                                         path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
-    point, normal = gpe.estimate_from_images("rgb_image2.jpg", "depth_image2.png",
-                                                                        path="data", anchor=np.array([.5, .5]))
+    # point, normal = gpe.estimate_from_images("rgb_image2.jpg", "depth_image2.png",
+    #                                                                     path="data", anchor=np.array([.5, .5]))
     if point is not None:
         print("picked_point\t", point)
         print("picked_normal\t", normal, np.linalg.norm(normal))
