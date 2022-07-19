@@ -1,4 +1,5 @@
 import os
+from platform import node
 import sys
 import cv2 
 import json
@@ -159,6 +160,8 @@ class RobotControl(RobotCommunication):
         packet_type (int): The detected packet class.
 
         """
+        start_time = time.time()
+
         self.Home_X.set_value(ua.DataValue(ua.Variant(
             self.rob_dict['home_pos'][0]['x'], ua.VariantType.Float)))
         self.Home_Y.set_value(ua.DataValue(ua.Variant(
@@ -227,6 +230,99 @@ class RobotControl(RobotCommunication):
         self.Place_Pos_Turn.set_value(ua.DataValue(ua.Variant(
             self.rob_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
     
+        end_time = time.time()
+        print("Slow Trajectory change:", end_time - start_time, "s")
+
+        time.sleep(0.7)
+
+    def quickly_change_trajectory(self, x, y, rot, packet_type, x_offset = 0.0, pack_z = 5.0):
+        """
+        Updates the trajectory points for the robot program.
+    
+        Parameters:
+        x (float): The pick x coordinate of the packet.
+        y (float): The pick y coordinate of the packet.
+        rot (float): The gripper pick rotation.
+        packet_type (int): The detected packet class.
+
+        """
+        start_time = time.time()
+
+        nodes = [
+            self.Home_X,
+            self.Home_Y,
+            self.Home_Z,
+            self.Home_A,
+            self.Home_B,
+            self.Home_C,
+            self.Home_Status,
+            self.Home_Turn,
+            self.PrePick_Pos_X,
+            self.PrePick_Pos_Y,
+            self.PrePick_Pos_Z,
+            self.PrePick_Pos_A,
+            self.PrePick_Pos_B,
+            self.PrePick_Pos_C,
+            self.PrePick_Pos_Status,
+            self.PrePick_Pos_Turn,
+            self.Pick_Pos_X,
+            self.Pick_Pos_Y,
+            self.Pick_Pos_Z,
+            self.Pick_Pos_A,
+            self.Pick_Pos_B,
+            self.Pick_Pos_C,
+            self.Pick_Pos_Status,
+            self.Pick_Pos_Turn,
+            self.Place_Pos_X,
+            self.Place_Pos_Y,
+            self.Place_Pos_Z,
+            self.Place_Pos_A,
+            self.Place_Pos_B,
+            self.Place_Pos_C,
+            self.Place_Pos_Status,
+            self.Place_Pos_Turn
+        ]
+
+        values = [
+            self.rob_dict['home_pos'][0]['x'],
+            self.rob_dict['home_pos'][0]['y'],
+            self.rob_dict['home_pos'][0]['z'],
+            self.rob_dict['home_pos'][0]['a'],
+            self.rob_dict['home_pos'][0]['b'],
+            self.rob_dict['home_pos'][0]['c'],
+            self.rob_dict['home_pos'][0]['status'],
+            self.rob_dict['home_pos'][0]['turn'],
+            x,
+            y,
+            self.rob_dict['pick_pos_base'][0]['z'],
+            rot,
+            self.rob_dict['pick_pos_base'][0]['b'],
+            self.rob_dict['pick_pos_base'][0]['c'],
+            self.rob_dict['pick_pos_base'][0]['status'],
+            self.rob_dict['pick_pos_base'][0]['turn'],
+            x+x_offset,
+            y,
+            pack_z,
+            rot,
+            self.rob_dict['pick_pos_base'][0]['b'],
+            self.rob_dict['pick_pos_base'][0]['c'],
+            self.rob_dict['pick_pos_base'][0]['status'],
+            self.rob_dict['pick_pos_base'][0]['turn'],
+            self.rob_dict['place_pos'][packet_type]['x'],
+            self.rob_dict['place_pos'][packet_type]['y'],
+            self.rob_dict['place_pos'][packet_type]['z'],
+            self.rob_dict['place_pos'][packet_type]['a'],
+            self.rob_dict['place_pos'][packet_type]['b'],
+            self.rob_dict['place_pos'][packet_type]['c'],
+            self.rob_dict['place_pos'][packet_type]['status'],
+            self.rob_dict['place_pos'][packet_type]['turn']
+        ]
+
+        self.client.set_values(nodes, values)
+    
+        end_time = time.time()
+        print("Slow Trajectory change:", end_time - start_time, "s")
+
         time.sleep(0.7)
 
     def compute_gripper_rot(self, angle):
@@ -486,7 +582,13 @@ class RobotControl(RobotCommunication):
 
                 elif command == RcCommand.CHANGE_TRAJECTORY:
                     try:
-                        self.change_trajectory(data['x'], 
+                        # self.change_trajectory(data['x'], 
+                        #                         data['y'],
+                        #                         data['rot'],
+                        #                         data['packet_type'],
+                        #                         x_offset=data['x_offset'],
+                        #                         pack_z=data['pack_z'])¸
+                        self.quickly_change_trajectory(data['x'], 
                                                 data['y'],
                                                 data['rot'],
                                                 data['packet_type'],
