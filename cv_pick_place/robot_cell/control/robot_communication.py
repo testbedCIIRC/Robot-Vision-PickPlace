@@ -54,8 +54,8 @@ class RobotCommunication:
             'ns=3;s="laser_field_enable"')
         self.Pick_Place_Select = self.client.get_node(
             'ns=3;s="pick_place_select"')
-        self.Mult_packets = self.client.get_node(
-            'ns=3;s="mult_packets"')
+        self.Go_to_home = self.client.get_node(
+            'ns=3;s="go_to_home"')
         self.Robot_speed_override = self.client.get_node(
             'ns=3;s="HMIKuka"."robot"."powerRobot"."status".override"."actualOverride"')
 
@@ -211,6 +211,23 @@ class RobotCommunication:
             'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Status"')
         self.ShPlace_Pos_Turn = self.client.get_node(
             'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Turn"')
+
+        self.ShHome_Pos_X = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."X"')
+        self.ShHome_Pos_Y = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Y"')
+        self.ShHome_Pos_Z = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Z"')
+        self.ShHome_Pos_A = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."A"')
+        self.ShHome_Pos_B = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."B"')
+        self.ShHome_Pos_C = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."C"')
+        self.ShHome_Pos_Status = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Status"')
+        self.ShHome_Pos_Turn = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Turn"')
 
         self.PrePick_Done =  self.client.get_node(
             'ns=3;s="InstPickPlace"."instPrePickPos"."Done"')

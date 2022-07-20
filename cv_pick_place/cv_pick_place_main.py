@@ -87,10 +87,15 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     conv_right = False # Conveyor heading right enable
     homography = None # Homography matrix
     state = "READY" # Robot state variable
-    mult_packets_set = False # Indicate if mult_packets tag was set this cycle
+    is_in_home_pos = False  # Indicate if robot is currently in home position
 
-    grip_time_offset = 350
+    grip_time_offset = 300
     MIN_PICK_DISTANCE = 600
+
+    control_pipe.send(RcData(RcCommand.SET_HOME_POS_SH))
+    home_xyz_coords = np.array([rob_dict['home_pos'][0]['x'],
+                                 rob_dict['home_pos'][0]['y'],
+                                 rob_dict['home_pos'][0]['z']])
 
     while True:
         # Start timer for FPS estimation
@@ -217,10 +222,10 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                         print("INFO: Add packet ID: {} to pick list".format(str(packet.id)))
                         # Add to pick list.
                         packet.in_pick_list = True
-                        pick_list.append(packet) # ? copy
+                        pick_list.append(packet)
 
         # ROBOT READY 
-        if state == "READY" and is_rob_ready and pick_list and homography is not None:
+        if state == "READY" and is_rob_ready and homography is not None:
             encoder_pos = encoder_pos_m.value
             if encoder_pos is None:
                 continue
@@ -229,10 +234,10 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 packet.centroid = packet.getCentroidFromEncoder(encoder_pos)
             # Get list of current world x coordinates
             pick_list_positions = np.array([packet.getCentroidInWorldFrame(homography)[0] for packet in pick_list])
-            print("DEBUG: Pick distances")
-            print(pick_list_positions)
+            # print("DEBUG: Pick distances")
+            # print(pick_list_positions)
             # If item is too far remove it from list
-            is_valid_position = pick_list_positions < 1800 - grip_time_offset  # TODO find position after which it does not pick up - depends on enc_vel and robot speed
+            is_valid_position = pick_list_positions < 1800 - grip_time_offset-200  # TODO find position after which it does not pick up - depends on enc_vel and robot speed
             pick_list = np.ndarray.tolist(np.asanyarray(pick_list)[is_valid_position])     
             pick_list_positions = pick_list_positions[is_valid_position]
             # Choose a item for picking
@@ -244,16 +249,14 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
                 # Set positions and Start robot
                 packet_x,pick_pos_y = packet_to_pick.getCentroidInWorldFrame(homography)
-                # packet_x = x_fixed  # for testing # TODO find offset value from packet
                 pick_pos_x = packet_x + grip_time_offset
                 angle = packet.angle
-                gripper_rot = compute_gripper_rot(angle)
+                gripper_rot = compute_gripper_rot(-angle)
                 packet_type = packet.pack_type
 
                 # Set packet depth to fixed value by type
                 pick_pos_z = compute_mean_packet_z(packet, pack_depths[packet.type])
                 pick_pos_z = offset_packet_depth_by_x(pick_pos_x, pick_pos_z)
-                # TODO change z value based on x position, becouse belt is slanted
                 # Check if y is range of conveyor width and adjust accordingly
                 if pick_pos_y < 75.0:
                     pick_pos_y = 75.0
@@ -268,7 +271,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 elif pick_pos_x > 1800.0:
                     pick_pos_x = 1800.0
 
-                prepick_xyz_coords = np.array([pick_pos_x, pick_pos_y, rob_dict['pick_pos_base'][0]['z']])
+                # prepick_xyz_coords = np.array([pick_pos_x, pick_pos_y, rob_dict['pick_pos_base'][0]['z']])
                 place_xyz_coords = np.array([rob_dict['place_pos'][packet_type]['x'],
                                              rob_dict['place_pos'][packet_type]['y'],
                                              rob_dict['place_pos'][packet_type]['z']])
@@ -282,49 +285,57 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                     'pack_z': pick_pos_z
                     }
                 control_pipe.send(RcData(RcCommand.CHANGE_SHORT_TRAJECTORY, trajectory_dict))
+                is_in_home_pos = False
 
                 # Start robot program.
                 control_pipe.send(RcData(RcCommand.START_PROGRAM, True))
-                state = "TO_PREPICK"
-                print("state: TO_PREPICK")
-
-        # TO PREPICK
-        if state == "TO_PREPICK":
-            # check if robot arrived to prepick position
-            curr_xyz_coords = np.array(pos[0:3])
-            robot_dist = np.linalg.norm(prepick_xyz_coords-curr_xyz_coords)
-            if robot_dist < 3000: 
-                state = "WAIT_FOR_PACKET"
-                print("state: WAIT_FOR_PACKET")
-
-        # WAIT FOR PACKET
-        if state == "WAIT_FOR_PACKET":
-            # TODO add return to ready if it misses packet
-            encoder_pos = encoder_pos_m.value
-            # check encoder and activate robot 
-            packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
-            packet_pos_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
-            # print("X distance")
-            # print(pick_pos_x - packet_pos_x)
-            # If packet is close enough continue picking operation
-            if packet_pos_x > pick_pos_x - 50:
-                control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 state = "PICKING"
-                print("state: PICKING")
+                print("[INFO]: state PICKING")
 
-        if state == "PICKING":
-            curr_xyz_coords = np.array(pos[0:3])
-            # robot_dist = np.linalg.norm(place_xyz_coords-curr_xyz_coords)
-            if not mult_packets_set:
-                print("[DEBUG]: Pick list")
-                print(pick_list)
-                print(is_detect)
-                control_pipe.send(RcData(RcCommand.MULT_PACKETS, len(pick_list)>0))
-                mult_packets_set = True
+            elif not is_in_home_pos:
+                print("[DEBUG]: Is robot ready = {}".format(is_rob_ready))
+                control_pipe.send(RcData(RcCommand.GO_TO_HOME))
+                state = "TO_HOME_POS"
+                print("[INFO]: state TO_HOME_POS")
+
+        # MOVING TO HOME POSITION
+        if state == "TO_HOME_POS":
             if is_rob_ready:
+                is_in_home_pos = True
                 state = "READY"
-                print("state: READY")
-                mult_packets_set = False
+                print("[INFO]: state READY")
+
+
+        # # TO PREPICK
+        # if state == "TO_PREPICK":
+        #     # check if robot arrived to prepick position
+        #     curr_xyz_coords = np.array(pos[0:3])
+        #     robot_dist = np.linalg.norm(prepick_xyz_coords-curr_xyz_coords)
+        #     if robot_dist < 3000: 
+        #         state = "WAIT_FOR_PACKET"
+        #         print("state: WAIT_FOR_PACKET")
+
+        # # WAIT FOR PACKET
+        # if state == "WAIT_FOR_PACKET":
+        #     # TODO add return to ready if it misses packet
+        #     encoder_pos = encoder_pos_m.value
+        #     # check encoder and activate robot 
+        #     packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
+        #     packet_pos_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
+        #     # print("X distance")
+        #     # print(pick_pos_x - packet_pos_x)
+        #     # If packet is close enough continue picking operation
+        #     if packet_pos_x > pick_pos_x - 50:
+        #         control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
+        #         state = "PICKING"
+        #         print("state: PICKING")
+
+        if state == "PICKING":  # TODO LP check this
+            curr_xyz_coords = np.array(pos[0:3])
+            robot_dist = np.linalg.norm(place_xyz_coords-curr_xyz_coords)
+            if is_rob_ready and robot_dist < 3:
+                state = "READY"
+                print("[INFO]: state READY")
 
         # FRAME GRAPHICS
         ################
@@ -431,7 +442,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
         # Print info
         if key == ord('i'):
-            print(is_rob_ready)
+            print("[INFO]: Is robot ready = {}".format(is_rob_ready))
 
         # End main
         if key == 27:

@@ -18,7 +18,8 @@ class RcCommand(Enum):
     START_PROGRAM = 8
     CHANGE_TRAJECTORY = 9
     CHANGE_SHORT_TRAJECTORY = 10
-    MULT_PACKETS = 11
+    GO_TO_HOME = 11
+    SET_HOME_POS_SH = 12
 
 
 class RcData():
@@ -139,14 +140,16 @@ class RobotControl(RobotCommunication):
         self.Conveyor_Left.set_value(ua.DataValue(conv_left))
         time.sleep(0.4)
     
-    def change_mult_packets(self, state):
+    def go_to_home(self):
         """
-        Switch tag indicating multiple packets.
+        Send robot to home position.
 
         """
-        self.Mult_packets.set_value(ua.DataValue(state))
-        print('[INFO]: Multiple pakcets state is {}.'.format(state))
-        time.sleep(0.1)
+        self.Go_to_home.set_value(ua.DataValue(True))
+        print('[INFO]: Sent robot to home pos.')
+        time.sleep(0.4)
+        self.Go_to_home.set_value(ua.DataValue(False))
+        time.sleep(0.4)
 
     def change_trajectory(self, x, y, rot, packet_type, x_offset = 0.0, pack_z = 5.0):
         """
@@ -257,7 +260,7 @@ class RobotControl(RobotCommunication):
         nodes.append(self.ShPrePick_Pos_Z)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['z'], ua.VariantType.Float)))
         nodes.append(self.ShPrePick_Pos_A)
-        values.append(ua.DataValue(ua.Variant(rot, ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['a'], ua.VariantType.Float)))
         nodes.append(self.ShPrePick_Pos_B)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
         nodes.append(self.ShPrePick_Pos_C)
@@ -274,7 +277,7 @@ class RobotControl(RobotCommunication):
         nodes.append(self.ShPick_Pos_Z)
         values.append(ua.DataValue(ua.Variant(pack_z, ua.VariantType.Float)))
         nodes.append(self.ShPick_Pos_A)
-        values.append(ua.DataValue(ua.Variant(rot, ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['a'], ua.VariantType.Float)))
         nodes.append(self.ShPick_Pos_B)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
         nodes.append(self.ShPick_Pos_C)
@@ -291,7 +294,7 @@ class RobotControl(RobotCommunication):
         nodes.append(self.ShPostPick_Pos_Z)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['z'], ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_A)
-        values.append(ua.DataValue(ua.Variant(rot, ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['a'], ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_B)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_C)
@@ -308,7 +311,7 @@ class RobotControl(RobotCommunication):
         nodes.append(self.ShPlace_Pos_Z)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['z'], ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_A)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['a'], ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(rot, ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_B)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['b'], ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_C)
@@ -317,6 +320,34 @@ class RobotControl(RobotCommunication):
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['status'], ua.VariantType.Int16)))
         nodes.append(self.ShPlace_Pos_Turn)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
+
+        self.client.set_values(nodes, values)
+
+        time.sleep(0.7)
+
+    def set_home_pos_short(self):
+        """
+        Set home position for short pick place to position in dictionary.
+        """
+        nodes = []
+        values = []
+
+        nodes.append(self.ShHome_Pos_X)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['x'], ua.VariantType.Float)))
+        nodes.append(self.ShHome_Pos_Y)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['y'], ua.VariantType.Float)))
+        nodes.append(self.ShHome_Pos_Z)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['z'], ua.VariantType.Float)))
+        nodes.append(self.ShHome_Pos_A)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['a'], ua.VariantType.Float)))
+        nodes.append(self.ShHome_Pos_B)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['b'], ua.VariantType.Float)))
+        nodes.append(self.ShHome_Pos_C)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['c'], ua.VariantType.Float)))
+        nodes.append(self.ShHome_Pos_Status)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['status'], ua.VariantType.Int16)))
+        nodes.append(self.ShHome_Pos_Turn)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['turn'], ua.VariantType.Int16)))
 
         self.client.set_values(nodes, values)
 
@@ -609,9 +640,12 @@ class RobotControl(RobotCommunication):
                                             data['packet_type'],
                                             x_offset=data['x_offset'],
                                             pack_z=data['pack_z'])
+                
+                elif command == RcCommand.SET_HOME_POS_SH:
+                    self.set_home_pos_short()
             
-                elif command == RcCommand.MULT_PACKETS:
-                    self.change_mult_packets(data)
+                elif command == RcCommand.GO_TO_HOME:
+                    self.go_to_home()
 
                 else:
                     print('[WARNING]: Wrong command send to control server')
