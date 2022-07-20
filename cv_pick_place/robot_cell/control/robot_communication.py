@@ -178,22 +178,39 @@ class RobotCommunication:
         self.ShPick_Pos_Turn = self.client.get_node(
             'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Turn"')
 
-        self.ShPlace_Pos_X = self.client.get_node(
+        self.ShPostPick_Pos_X = self.client.get_node(
             'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."X"')
-        self.ShPlace_Pos_Y = self.client.get_node(
+        self.ShPostPick_Pos_Y = self.client.get_node(
             'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Y"')
-        self.ShPlace_Pos_Z = self.client.get_node(
+        self.ShPostPick_Pos_Z = self.client.get_node(
             'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Z"')
-        self.ShPlace_Pos_A = self.client.get_node(
+        self.ShPostPick_Pos_A = self.client.get_node(
             'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."A"')
-        self.ShPlace_Pos_B = self.client.get_node(
+        self.ShPostPick_Pos_B = self.client.get_node(
             'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."B"')
-        self.ShPlace_Pos_C = self.client.get_node(
+        self.ShPostPick_Pos_C = self.client.get_node(
             'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."C"')
-        self.ShPlace_Pos_Status = self.client.get_node(
+        self.ShPostPick_Pos_Status = self.client.get_node(
             'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Status"')
-        self.ShPlace_Pos_Turn = self.client.get_node(
+        self.ShPostPick_Pos_Turn = self.client.get_node(
             'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Turn"')
+
+        self.ShPlace_Pos_X = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."X"')
+        self.ShPlace_Pos_Y = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Y"')
+        self.ShPlace_Pos_Z = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Z"')
+        self.ShPlace_Pos_A = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."A"')
+        self.ShPlace_Pos_B = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."B"')
+        self.ShPlace_Pos_C = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."C"')
+        self.ShPlace_Pos_Status = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Status"')
+        self.ShPlace_Pos_Turn = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Turn"')
 
         self.PrePick_Done =  self.client.get_node(
             'ns=3;s="InstPickPlace"."instPrePickPos"."Done"')
