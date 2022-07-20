@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import cv2
+from PIL import Image
+
 from robot_cell.packet.packet_object import Packet
 
 
@@ -48,7 +50,7 @@ class GripPositionEstimation():
         self.spike_threshold = 0.04 # threshold for spike in the circlic neighborhood
 
 
-    def _load_pcd_from_rgb_depth_jpeg(self, rgb_name: str, depth_name: str,
+    def _create_pcd_from_rgb_depth_frames(self, rgb_name: str, depth_name: str,
                                       path: str = "") -> o3d.geometry.PointCloud:
         """
         Loads open3d PointCloud from rgb image and depth image stored in path into self.pcd
@@ -68,14 +70,19 @@ class GripPositionEstimation():
         pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, o3d.camera.PinholeCameraIntrinsic(
                 o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
         pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-        o3d.visualization.draw_geometries([pcd])
-
-        d = cv2.imread(os.path.join(path, depth_name), cv2.IMREAD_GRAYSCALE)
-        self._load_pcd_from_depth_frame(depth_frame=d)
+        # o3d.visualization.draw_geometries([pcd])
+        
         return pcd
 
+    def _load_numpy_depth_array_from_png(self, depth_name:str) -> np.ndarray:
+        """
+        Load png image and converts it to the numpy ndarray
+        """
+        image = Image.open(depth_name)
+        return np.array(image)
 
-    def _load_pcd_from_depth_frame(self, depth_frame:np.ndarray
+
+    def _create_pcd_from_depth_array(self, depth_frame:np.ndarray
                                    ) -> o3d.geometry.PointCloud:
         """
         Loads open3d PointCloud from depthframe
@@ -86,15 +93,7 @@ class GripPositionEstimation():
         Returns:
         o3d.geometry.PointCloud: pointcloud
         """
-        # depth = o3d.geometry.Image(np.ascontiguousarray(depth_frame).astype(np.float32))
-        vals, count = np.unique(depth_frame, return_counts=True)
-        print(vals)
-        print(count)
-        #TODO: Zde nějak zkontrolovat jak načíst tu knihovnu bez toho aniž bych to musel přeukládat
-        # [2 3]
-        # [23927 35121]
         depth = o3d.geometry.Image(np.ascontiguousarray(depth_frame).astype(np.uint16))
-        print(type(depth))
         pcd = o3d.geometry.PointCloud.create_from_depth_image(depth, o3d.camera.PinholeCameraIntrinsic(
                 o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
         pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
@@ -448,10 +447,10 @@ class GripPositionEstimation():
         tuple[np.ndarray, np.ndarray]: point coordinates and its normal
         """
        
-        self.pcd =  self._load_pcd_from_rgb_depth_jpeg(rgb_image_name, depth_image_name, path)
+        self.pcd =  self._create_pcd_from_rgb_depth_frames(rgb_image_name, depth_image_name, path)
         center, normal = self._detect_point_from_pcd()
         if center is None:
-            print("Did not found optimal point")
+            print(f"[INFO]: Did not found optimal point")
             return center, normal
         relative = self._get_relative_coordinates(center, anchor)
 
@@ -472,6 +471,7 @@ class GripPositionEstimation():
         tuple[np.ndarray]: Point and normal for picking
         """
         # TODO: Load value unto pointcloud
+        self.pcd = self._create_pcd_from_depth_frame(depth_array)
         center, normal = self._detect_point_from_pcd()
         relative = self._get_relative_coordinates(center, anchor)
         return relative, normal
