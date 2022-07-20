@@ -75,7 +75,7 @@ def compute_mean_packet_z(packet, pack_z_fixed):
             centroid_depth = depth_mean[d_rows // 2, d_cols // 2]
 
             # Compute packet z position with respect to conveyor base.
-            pack_z = abs(conv2cam_dist - centroid_depth) - 8
+            pack_z = abs(conv2cam_dist - centroid_depth) - 11
 
             # Return pack_z if in acceptable range, set to default if not.
             if pack_z < pack_z_fixed:
@@ -91,6 +91,18 @@ def compute_mean_packet_z(packet, pack_z_fixed):
     
     except:
         return pack_z_fixed
+
+def offset_packet_depth_by_x(pick_pos_x, packet_z):
+    """
+    Change the z position for picking based on the position on the belt, because the conveyor belt is tilted.
+
+    Args:
+        pick_pos_x (int): X coordinate for picking in mm
+        packet_z (int): Callculated depth
+    """
+    offset = pick_pos_x*0.0045 - 1.37
+    return packet_z + offset
+
 
 
 def meanFilter(depth_frame):

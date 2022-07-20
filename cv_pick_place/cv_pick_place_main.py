@@ -251,7 +251,8 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
                 # Set packet depth to fixed value by type
                 pick_pos_z = compute_mean_packet_z(packet, pack_depths[packet.type])
-
+                pick_pos_z = offset_packet_depth_by_x(pick_pos_x, pick_pos_z)
+                # TODO change z value based on x position, becouse belt is slanted
                 # Check if y is range of conveyor width and adjust accordingly
                 if pick_pos_y < 75.0:
                     pick_pos_y = 75.0

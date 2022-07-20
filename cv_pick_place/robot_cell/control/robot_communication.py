@@ -228,7 +228,7 @@ class RobotCommunication:
             self.Rob_Stopped,
             self.Stop_Active,
             self.Prog_Done,
-            self.Speed_Override
+            self.Robot_speed_override
         ]
 
         # Get values from defined nodes
