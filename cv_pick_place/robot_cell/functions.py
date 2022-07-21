@@ -117,3 +117,15 @@ def colorizeDepthFrame(depth_frame):
     depth_frame_hist = clahe.apply(depth_frame.astype(np.uint8))
     colorized_depth_frame = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
     return colorized_depth_frame
+
+def get_gripper_offset(packetXY, robotXY):
+    # NOTE add enc velocity ?
+    K = 170
+    a = 0.6
+    robot_dist = np.linalg.norm(packetXY-robotXY)
+    print(robot_dist)
+    offset = int(K + a*robot_dist + np.sign(packetXY[0]-robotXY[0])*70)
+    print("[INFO]: Calculated offset {}".format(offset))
+    if offset > 500:
+        offset = 500
+    return offset
