@@ -17,6 +17,9 @@ class RcCommand(Enum):
     CLOSE_PROGRAM = 7
     START_PROGRAM = 8
     CHANGE_TRAJECTORY = 9
+    CHANGE_SHORT_TRAJECTORY = 10
+    GO_TO_HOME = 11
+    SET_HOME_POS_SH = 12
 
 
 class RcData():
@@ -136,6 +139,17 @@ class RobotControl(RobotCommunication):
         self.Conveyor_Right.set_value(ua.DataValue(False))
         self.Conveyor_Left.set_value(ua.DataValue(conv_left))
         time.sleep(0.4)
+    
+    def go_to_home(self):
+        """
+        Send robot to home position.
+
+        """
+        self.Go_to_home.set_value(ua.DataValue(True))
+        print('[INFO]: Sent robot to home pos.')
+        time.sleep(0.4)
+        self.Go_to_home.set_value(ua.DataValue(False))
+        time.sleep(0.4)
 
     def change_trajectory(self, x, y, rot, packet_type, x_offset = 0.0, pack_z = 5.0):
         """
@@ -220,6 +234,120 @@ class RobotControl(RobotCommunication):
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['status'], ua.VariantType.Int16)))
         nodes.append(self.Place_Pos_Turn)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
+
+        self.client.set_values(nodes, values)
+
+        time.sleep(0.7)
+
+    def change_trajectory_short(self, x, y, rot, packet_type, x_offset = 0.0, pack_z = 5.0):
+        """
+        Updates the trajectory points for the robot program.
+    
+        Parameters:
+        x (float): The pick x coordinate of the packet.
+        y (float): The pick y coordinate of the packet.
+        rot (float): The gripper pick rotation.
+        packet_type (int): The detected packet class.
+
+        """
+        nodes = []
+        values = []
+
+        nodes.append(self.ShPrePick_Pos_X)
+        values.append(ua.DataValue(ua.Variant(x, ua.VariantType.Float)))
+        nodes.append(self.ShPrePick_Pos_Y)
+        values.append(ua.DataValue(ua.Variant(y, ua.VariantType.Float)))
+        nodes.append(self.ShPrePick_Pos_Z)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['z'], ua.VariantType.Float)))
+        nodes.append(self.ShPrePick_Pos_A)
+        values.append(ua.DataValue(ua.Variant(rot, ua.VariantType.Float)))
+        nodes.append(self.ShPrePick_Pos_B)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
+        nodes.append(self.ShPrePick_Pos_C)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['c'], ua.VariantType.Float)))
+        nodes.append(self.ShPrePick_Pos_Status)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['status'], ua.VariantType.Int16)))
+        nodes.append(self.ShPrePick_Pos_Turn)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
+
+        nodes.append(self.ShPick_Pos_X)
+        values.append(ua.DataValue(ua.Variant(x + x_offset, ua.VariantType.Float)))
+        nodes.append(self.ShPick_Pos_Y)
+        values.append(ua.DataValue(ua.Variant(y, ua.VariantType.Float)))
+        nodes.append(self.ShPick_Pos_Z)
+        values.append(ua.DataValue(ua.Variant(pack_z, ua.VariantType.Float)))
+        nodes.append(self.ShPick_Pos_A)
+        values.append(ua.DataValue(ua.Variant(rot, ua.VariantType.Float)))
+        nodes.append(self.ShPick_Pos_B)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
+        nodes.append(self.ShPick_Pos_C)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['c'], ua.VariantType.Float)))
+        nodes.append(self.ShPick_Pos_Status)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['status'], ua.VariantType.Int16)))
+        nodes.append(self.ShPick_Pos_Turn)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
+
+        nodes.append(self.ShPostPick_Pos_X)
+        values.append(ua.DataValue(ua.Variant(x + 2*x_offset, ua.VariantType.Float)))
+        nodes.append(self.ShPostPick_Pos_Y)
+        values.append(ua.DataValue(ua.Variant(470, ua.VariantType.Float)))
+        nodes.append(self.ShPostPick_Pos_Z)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['z'], ua.VariantType.Float)))
+        nodes.append(self.ShPostPick_Pos_A)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['a'], ua.VariantType.Float)))
+        nodes.append(self.ShPostPick_Pos_B)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['b'], ua.VariantType.Float)))
+        nodes.append(self.ShPostPick_Pos_C)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['c'], ua.VariantType.Float)))
+        nodes.append(self.ShPostPick_Pos_Status)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['status'], ua.VariantType.Int16)))
+        nodes.append(self.ShPostPick_Pos_Turn)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
+
+        nodes.append(self.ShPlace_Pos_X)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['x'], ua.VariantType.Float)))
+        nodes.append(self.ShPlace_Pos_Y)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['y'], ua.VariantType.Float)))
+        nodes.append(self.ShPlace_Pos_Z)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['z'], ua.VariantType.Float)))
+        nodes.append(self.ShPlace_Pos_A)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['a'], ua.VariantType.Float)))
+        nodes.append(self.ShPlace_Pos_B)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['b'], ua.VariantType.Float)))
+        nodes.append(self.ShPlace_Pos_C)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['c'], ua.VariantType.Float)))
+        nodes.append(self.ShPlace_Pos_Status)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['status'], ua.VariantType.Int16)))
+        nodes.append(self.ShPlace_Pos_Turn)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
+
+        self.client.set_values(nodes, values)
+
+        time.sleep(0.7)
+
+    def set_home_pos_short(self):
+        """
+        Set home position for short pick place to position in dictionary.
+        """
+        nodes = []
+        values = []
+
+        nodes.append(self.ShHome_Pos_X)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['x'], ua.VariantType.Float)))
+        nodes.append(self.ShHome_Pos_Y)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['y'], ua.VariantType.Float)))
+        nodes.append(self.ShHome_Pos_Z)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['z'], ua.VariantType.Float)))
+        nodes.append(self.ShHome_Pos_A)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['a'], ua.VariantType.Float)))
+        nodes.append(self.ShHome_Pos_B)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['b'], ua.VariantType.Float)))
+        nodes.append(self.ShHome_Pos_C)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['c'], ua.VariantType.Float)))
+        nodes.append(self.ShHome_Pos_Status)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['status'], ua.VariantType.Int16)))
+        nodes.append(self.ShHome_Pos_Turn)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['turn'], ua.VariantType.Int16)))
 
         self.client.set_values(nodes, values)
 
@@ -495,16 +623,30 @@ class RobotControl(RobotCommunication):
                     self.close_program()
 
                 elif command == RcCommand.START_PROGRAM:
-                    self.start_program()
+                    self.start_program(data)
 
                 elif command == RcCommand.CHANGE_TRAJECTORY:
                     self.change_trajectory(data['x'], 
-                                           data['y'],
-                                           data['rot'],
-                                           data['packet_type'],
-                                           x_offset=data['x_offset'],
-                                           pack_z=data['pack_z'])
+                                            data['y'],
+                                            data['rot'],
+                                            data['packet_type'],
+                                            x_offset=data['x_offset'],
+                                            pack_z=data['pack_z'])
+
+                elif command == RcCommand.CHANGE_SHORT_TRAJECTORY:
+                    self.change_trajectory_short(data['x'], 
+                                            data['y'],
+                                            data['rot'],
+                                            data['packet_type'],
+                                            x_offset=data['x_offset'],
+                                            pack_z=data['pack_z'])
                 
+                elif command == RcCommand.SET_HOME_POS_SH:
+                    self.set_home_pos_short()
+            
+                elif command == RcCommand.GO_TO_HOME:
+                    self.go_to_home()
+
                 else:
                     print('[WARNING]: Wrong command send to control server')
 

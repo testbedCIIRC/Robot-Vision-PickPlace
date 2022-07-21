@@ -54,6 +54,10 @@ class RobotCommunication:
             'ns=3;s="laser_field_enable"')
         self.Pick_Place_Select = self.client.get_node(
             'ns=3;s="pick_place_select"')
+        self.Go_to_home = self.client.get_node(
+            'ns=3;s="go_to_home"')
+        self.Robot_speed_override = self.client.get_node(
+            'ns=3;s="HMIKuka"."robot"."powerRobot"."status".override"."actualOverride"')
 
         self.Act_Pos_X = self.client.get_node(
             'ns=3;s="InstKukaControl"."instReadActualPos"."X"')
@@ -140,10 +144,99 @@ class RobotCommunication:
         self.Place_Pos_Turn = self.client.get_node(
             'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."Turn"')
 
+        self.ShPrePick_Pos_X = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."X"')
+        self.ShPrePick_Pos_Y = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Y"')
+        self.ShPrePick_Pos_Z = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Z"')
+        self.ShPrePick_Pos_A = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."A"')
+        self.ShPrePick_Pos_B = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."B"')
+        self.ShPrePick_Pos_C = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."C"')
+        self.ShPrePick_Pos_Status = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Status"')
+        self.ShPrePick_Pos_Turn = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Turn"')
+
+        self.ShPick_Pos_X = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."X"')
+        self.ShPick_Pos_Y = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Y"')
+        self.ShPick_Pos_Z = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Z"')
+        self.ShPick_Pos_A = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."A"')
+        self.ShPick_Pos_B = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."B"')
+        self.ShPick_Pos_C = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."C"')
+        self.ShPick_Pos_Status = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Status"')
+        self.ShPick_Pos_Turn = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Turn"')
+
+        self.ShPostPick_Pos_X = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."X"')
+        self.ShPostPick_Pos_Y = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Y"')
+        self.ShPostPick_Pos_Z = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Z"')
+        self.ShPostPick_Pos_A = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."A"')
+        self.ShPostPick_Pos_B = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."B"')
+        self.ShPostPick_Pos_C = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."C"')
+        self.ShPostPick_Pos_Status = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Status"')
+        self.ShPostPick_Pos_Turn = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Turn"')
+
+        self.ShPlace_Pos_X = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."X"')
+        self.ShPlace_Pos_Y = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Y"')
+        self.ShPlace_Pos_Z = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Z"')
+        self.ShPlace_Pos_A = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."A"')
+        self.ShPlace_Pos_B = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."B"')
+        self.ShPlace_Pos_C = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."C"')
+        self.ShPlace_Pos_Status = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Status"')
+        self.ShPlace_Pos_Turn = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Turn"')
+
+        self.ShHome_Pos_X = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."X"')
+        self.ShHome_Pos_Y = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Y"')
+        self.ShHome_Pos_Z = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Z"')
+        self.ShHome_Pos_A = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."A"')
+        self.ShHome_Pos_B = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."B"')
+        self.ShHome_Pos_C = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."C"')
+        self.ShHome_Pos_Status = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Status"')
+        self.ShHome_Pos_Turn = self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Turn"')
+
         self.PrePick_Done =  self.client.get_node(
             'ns=3;s="InstPickPlace"."instPrePickPos"."Done"')
         self.Place_Done =  self.client.get_node(
             'ns=3;s="InstPickPlace"."instPlacePos"."Done"')
+        self.ShPlace_Done =  self.client.get_node(
+            'ns=3;s="shPlace_done"')
+        self.ShPick_Done =  self.client.get_node(
+            'ns=3;s="shPick_done"')
     
     def get_robot_info(self):
         """
@@ -172,7 +265,10 @@ class RobotCommunication:
             self.Abort_Prog,
             self.Rob_Stopped,
             self.Stop_Active,
-            self.Prog_Done
+            self.Prog_Done,
+            self.Robot_speed_override,
+            self.ShPlace_Done,
+            self.ShPick_Done
         ]
 
         # Get values from defined nodes
@@ -195,8 +291,11 @@ class RobotCommunication:
         rob_stopped = val[12]
         stop_active = val[13]
         prog_done = val[14]
+        speed_override = val[15]
+        shPlace_done = val[16]
+        shPick_done = val[17]
 
-        return position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done
+        return position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done, speed_override, shPlace_done, shPick_done
 
     def robot_server(self, info_dict):
         """
@@ -214,7 +313,7 @@ class RobotCommunication:
         time.sleep(0.5)
         while True:
             try:
-                position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done = self.get_robot_info()
+                position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done, speed_override, shPlace_done, shPick_done = self.get_robot_info()
                 info_dict['pos'] = position
                 info_dict['encoder_vel'] = encoder_vel
                 info_dict['encoder_pos'] = encoder_pos
@@ -223,6 +322,10 @@ class RobotCommunication:
                 info_dict['rob_stopped'] = rob_stopped
                 info_dict['stop_active'] = stop_active
                 info_dict['prog_done'] = prog_done
+                info_dict['speed_override'] = speed_override
+                info_dict['shPlace_done'] = shPlace_done
+                info_dict['shPick_done'] = shPick_done
+                
 
             except Exception as e:
                 print('[ERROR]', e)
