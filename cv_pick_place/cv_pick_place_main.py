@@ -269,6 +269,11 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
                 elif pick_pos_x > 1800.0:
                     pick_pos_x = 1800.0
+                
+                # FIXME: Maybe smarter way for cliping, replacemnt of previos 12 rows
+                # x_min, x_max, y_min, y_max = 600.0, 1800.0, 75.0, 470.0
+                # pack_x = np.clip(pack_x, x_min, x_max)
+                # pack_y = np.clip(pack_y, y_min, y_max)
 
                 prepick_xyz_coords = np.array([pick_pos_x, pick_pos_y, rob_dict['pick_pos_base'][0]['z']])
 
