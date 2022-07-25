@@ -110,7 +110,7 @@ class GripPositionEstimation():
         pcd = o3d.geometry.PointCloud.create_from_depth_image(depth, o3d.camera.PinholeCameraIntrinsic(
                 o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
         pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-        # o3d.visualization.draw_geometries([pcd])
+        o3d.visualization.draw_geometries([pcd])
         return pcd
 
 
@@ -593,11 +593,12 @@ class GripPositionEstimation():
         point_exists = False
 
         if depth_exist:
+            # NOTE: JUST FOR SAVING THE TEST IMG
+            print(f"[INFO]: SAVING the image")
+            np.save("depth_array.npy", depth_frame)
             # Estimates 
             point_relative, normal = self.estimate_from_depth_array(depth_frame)
             point_exists = point_relative is not None
-            # NOTE: JUST FOR SAVING THE TEST IMG
-            cv2.imwrite("depth_image_new.png", depth_frame)
 
             if point_exists:
                 dx, dy, z = point_relative
@@ -631,8 +632,8 @@ def main():
     gripper_radius = triangle_edge/np.sqrt(3)
 
     # Creating new class with given params
-    gpe = GripPositionEstimation(visualize=True, verbose =True, center_switch="mass", gripper_radius=gripper_radius, gripper_ration=0.8, runs_max_number=100)
-    depth_array = gpe._load_numpy_depth_array_from_png(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_image2.png"))
+    gpe = GripPositionEstimation(visualize=True, verbose =True, center_switch="mass", gripper_radius=gripper_radius, gripper_ration=0.8)
+    depth_array = gpe._load_numpy_depth_array_from_png(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_image_new.png"))
     gpe.estimate_from_depth_array(depth_array)
 
     # # Estimating point and normal from color and depth images
