@@ -239,7 +239,7 @@ class RobotControl(RobotCommunication):
 
         time.sleep(0.7)
 
-    def change_trajectory_short(self, x, y, rot, packet_type, x_offset = 0.0, pack_z = 5.0):
+    def change_trajectory_short(self, x, y, rot, packet_type, x_offset = 0.0, pack_z = 5.0, post_pick_y_offset = 470):
         """
         Updates the trajectory points for the robot program.
     
@@ -290,7 +290,7 @@ class RobotControl(RobotCommunication):
         nodes.append(self.ShPostPick_Pos_X)
         values.append(ua.DataValue(ua.Variant(x + 2*x_offset, ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_Y)
-        values.append(ua.DataValue(ua.Variant(470, ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(post_pick_y_offset, ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_Z)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['z'], ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_A)
