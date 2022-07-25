@@ -55,7 +55,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
     gripper_pose_estimator = GripPositionEstimation(
         visualize=True, verbose=True, center_switch="mass",
-        gripper_radius=0.8, max_num_tries = 100, height_th= -0.76, num_bins=20,
+        gripper_radius=0.08, max_num_tries = 100, height_th= -0.76, num_bins=20,
         black_list_radius = 0.01
     )
 
