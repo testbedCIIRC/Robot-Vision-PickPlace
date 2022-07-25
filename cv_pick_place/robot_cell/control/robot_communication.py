@@ -233,11 +233,6 @@ class RobotCommunication:
             'ns=3;s="InstPickPlace"."instPrePickPos"."Done"')
         self.Place_Done =  self.client.get_node(
             'ns=3;s="InstPickPlace"."instPlacePos"."Done"')
-        self.ShPlace_Done =  self.client.get_node(
-            'ns=3;s="shPlace_done"')
-        self.ShPick_Done =  self.client.get_node(
-            'ns=3;s="shPick_done"')
-    
     def get_robot_info(self):
         """
         Reads periodically needed values from the PLC.
@@ -266,9 +261,7 @@ class RobotCommunication:
             self.Rob_Stopped,
             self.Stop_Active,
             self.Prog_Done,
-            self.Robot_speed_override,
-            self.ShPlace_Done,
-            self.ShPick_Done
+            self.Robot_speed_override
         ]
 
         # Get values from defined nodes
@@ -292,10 +285,8 @@ class RobotCommunication:
         stop_active = val[13]
         prog_done = val[14]
         speed_override = val[15]
-        shPlace_done = val[16]
-        shPick_done = val[17]
 
-        return position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done, speed_override, shPlace_done, shPick_done
+        return position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done, speed_override 
 
     def robot_server(self, info_dict):
         """
@@ -313,7 +304,7 @@ class RobotCommunication:
         time.sleep(0.5)
         while True:
             try:
-                position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done, speed_override, shPlace_done, shPick_done = self.get_robot_info()
+                position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done, speed_override  = self.get_robot_info()
                 info_dict['pos'] = position
                 info_dict['encoder_vel'] = encoder_vel
                 info_dict['encoder_pos'] = encoder_pos
@@ -323,8 +314,6 @@ class RobotCommunication:
                 info_dict['stop_active'] = stop_active
                 info_dict['prog_done'] = prog_done
                 info_dict['speed_override'] = speed_override
-                info_dict['shPlace_done'] = shPlace_done
-                info_dict['shPick_done'] = shPick_done
                 
 
             except Exception as e:
