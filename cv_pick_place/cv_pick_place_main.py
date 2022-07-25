@@ -54,7 +54,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     dc = DepthCamera(config_path = 'D435_camera_config.json')
 
     gripper_pose_estimator = GripPositionEstimation(
-        visualize=False, verbose=True, center_switch="mass",
+        visualize=True, verbose=True, center_switch="mass",
         gripper_radius=0.8, max_num_tries = 100, height_th= -0.76, num_bins=20,
         black_list_radius = 0.01
     )
@@ -601,11 +601,10 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
         # TODO: Implement behaviour in the future 
         # Either continue with centroid or skip packet IDK, TBD
         pass
-    
 
     # Set packet depth to fixed value by type
-    pick_pos_z = compute_mean_packet_z(packet_to_pick, pack_depths[packet_to_pick.type])
-    pick_pos_z = offset_packet_depth_by_x(pick_pos_x, pick_pos_z)
+    # pick_pos_z = compute_mean_packet_z(packet_to_pick, pack_depths[packet_to_pick.type])
+    pick_pos_z = offset_packet_depth_by_x(pick_pos_x, pick_pos_z) + 30
 
     # Check if y is range of conveyor width and adjust accordingly
     pick_pos_y = np.clip(pick_pos_y, 75.0, 470.0)
@@ -621,7 +620,10 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
         'rot': gripper_rot,
         'packet_type': packet_type,
         'x_offset': 140,
-        'pack_z': pick_pos_z
+        'pack_z': pick_pos_z,
+        'a': a_a,
+        'b': a_b,
+        'c': a_c
         }
 
     return trajectory_dict, prepick_xyz_coords

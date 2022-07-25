@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from PIL import Image
+import cv2
 
 from robot_cell.packet.packet_object import Packet
 
@@ -11,7 +12,7 @@ M2MM = 1000.0
 class GripPositionEstimation():
     def __init__(self, visualize: bool = False, verbose: bool = False,
                  center_switch: str = "mass", gripper_radius: float = 0.05,
-                 gripper_ration: float = 0.8, runs_max_number: int = 100,
+                 gripper_ration: float = 0.8, max_num_tries: int = 100,
                  height_th: float = -0.76, num_bins: int = 20,
                  black_list_radius:float=0.01):
         """
@@ -24,7 +25,7 @@ class GripPositionEstimation():
         center_switch (str): "mass" or "height" - defines the center of the gripper
         gripper_radius (float): radius of the gripper in meters
         gripper_ration (float): ratio of gripper radius for dettecting the gripper annulus
-        runs_max_number (int): maximal number of tries to estimate the optimal position
+        max_num_tries (int): maximal number of tries to estimate the optimal position
         height_th (float): distance between camera and belt
         num_bins (int): number of bins for height thresholding (20 is good enough, 10 works as well)
         black_list_radius (float): Distance for blacklisting points
@@ -51,7 +52,7 @@ class GripPositionEstimation():
         self.num_bins = num_bins
 
         
-        self.max_runs = runs_max_number # Max number for tries for the estimation of best pose
+        self.max_runs = max_num_tries # Max number for tries for the estimation of best pose
         self.run_number = 0 # current run
         self.spike_threshold = 0.04 # threshold for spike in the circlic neighborhood
 
@@ -76,7 +77,7 @@ class GripPositionEstimation():
         pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, o3d.camera.PinholeCameraIntrinsic(
                 o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
         pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-        # o3d.visualization.draw_geometries([pcd])
+        o3d.visualization.draw_geometries([pcd])
 
         return pcd
 
@@ -383,7 +384,8 @@ class GripPositionEstimation():
         """
         self._pcd_down_sample()
         self.points, self.normals = self._get_points_and_estimete_normals()
-
+        vals, count  = np.unique(self.points[:,2], return_counts=True)
+        print(vals, count)
         # o3d.visualization.draw_geometries([self.pcd])
 
         self._compute_histogram_threshold(self.points[:, 2], self.num_bins)
@@ -398,10 +400,19 @@ class GripPositionEstimation():
         if self.center_switch == 'mass':
             center = self._get_center_of_mass(filtered_points)
         elif self.center_switch == 'height':
-            center = self.points[np.argmax(filtered_points[:,2]),:]            
-        
+            center = self.points[np.argmax(filtered_points[:,2]),:]    
+
         n_mask = self._anuluss_mask(center)
         plane_c, plane_n = self._fit_plane(self.points[n_mask, :])
+        viz_dict = {
+                    "Height filtered points": filtered_points,
+                    "anuluss": self.points[n_mask,:],
+                    "center point " + self.center_switch: center,
+                }
+                
+        self._visualize_frame(viz_dict)
+        
+
         valid = self._check_point_validity(center)
         
         # Returns original point as optimal if it is valid
@@ -583,9 +594,11 @@ class GripPositionEstimation():
 
         if depth_exist:
             # Estimates 
-            point_relative, normal = self.estimate_from_depth_array(depth_frame) # It could return None, None
+            point_relative, normal = self.estimate_from_depth_array(depth_frame)
             point_exists = point_relative is not None
-        
+            # NOTE: JUST FOR SAVING THE TEST IMG
+            cv2.imwrite("depth_image_new.png", depth_frame)
+
             if point_exists:
                 dx, dy, z = point_relative
                 shift_x, shift_y =  dx*packet.width_bnd_mm, dy*packet.height_bnd_mm
