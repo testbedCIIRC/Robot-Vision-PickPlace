@@ -24,6 +24,12 @@ class FakeClient:
         node = FakeNode()
         return node
 
+    def get_values(self, nodes):
+        val = []
+        for node in nodes:
+            val.append(0)
+        return val
+
     def disconnect(self):
         pass
 

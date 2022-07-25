@@ -32,18 +32,19 @@ def compute_gripper_rot(angle):
     return rot
 
 
-def show_boot_screen(message, resolution = (960,1280)):
+def show_boot_screen(message, resolution = (540, 960)):
     """
     Opens main frame window with boot screen message.
 
     Parameters:
     message (str): Message to be displayed.
+    resolution (int, int): Resolution of thw window
 
     """
     boot_screen = np.zeros(resolution)
     cv2.namedWindow('Frame')
     cv2.putText(boot_screen, message, 
-                (resolution[0] // 2 - 150, resolution[1] // 2),
+                ((resolution[1] // 2) - 150, resolution[0] // 2),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
     cv2.imshow("Frame", boot_screen)
     cv2.waitKey(1)
@@ -54,7 +55,9 @@ def compute_mean_packet_z(packet, pack_z_fixed):
     Computes depth of packet based on average of stored depth frames.
 
     Parameters:
-    packet (object): Final tracked packet object used for program start.
+
+    packet (object): Packet object for which centroid depth should be found
+    pack_z_fixed (float): Contant depth value to fall back to
 
     """
     if packet.avg_depth_crop is None:
@@ -72,7 +75,8 @@ def compute_mean_packet_z(packet, pack_z_fixed):
             centroid_depth = depth_mean[d_rows // 2, d_cols // 2]
 
             # Compute packet z position with respect to conveyor base.
-            pack_z = abs(conv2cam_dist - centroid_depth)
+            pack_z = abs(conv2cam_dist - centroid_depth) - 13
+            # print("[DEBUG]: Pick depth before offset {:.2f}".format(pack_z))
 
             # Return pack_z if in acceptable range, set to default if not.
             if pack_z < pack_z_fixed:
@@ -89,6 +93,18 @@ def compute_mean_packet_z(packet, pack_z_fixed):
     except:
         return pack_z_fixed
 
+def offset_packet_depth_by_x(pick_pos_x, packet_z):
+    """
+    Change the z position for picking based on the position on the belt, because the conveyor belt is tilted.
+
+    Args:
+        pick_pos_x (int): X coordinate for picking in mm
+        packet_z (int): Callculated depth
+    """
+    offset = pick_pos_x*0.0042 - 1.37
+    return packet_z + offset
+
+
 
 def meanFilter(depth_frame):
     kernel = np.ones((10, 10), np.float32) / 25
@@ -101,3 +117,15 @@ def colorizeDepthFrame(depth_frame):
     depth_frame_hist = clahe.apply(depth_frame.astype(np.uint8))
     colorized_depth_frame = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
     return colorized_depth_frame
+
+def get_gripper_offset(packetXY, robotXY):
+    # NOTE add enc velocity ?
+    K = 170
+    a = 0.6
+    robot_dist = np.linalg.norm(packetXY-robotXY)
+    print(robot_dist)
+    offset = int(K + a*robot_dist + np.sign(packetXY[0]-robotXY[0])*70)
+    print("[INFO]: Calculated offset {}".format(offset))
+    if offset > 500:
+        offset = 500
+    return offset
