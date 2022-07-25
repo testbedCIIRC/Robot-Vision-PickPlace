@@ -31,7 +31,7 @@ from robot_cell.packet.grip_position_estimation import GripPositionEstimation
 # DETECTOR_TYPE = 'deep_1'
 # DETECTOR_TYPE = 'deep_2'
 DETECTOR_TYPE = 'hsv'
-
+MAX_Z = 500
 
 def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
     """
@@ -53,7 +53,11 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     pt = ItemTracker(max_disappeared_frames = 20, guard = 50, max_item_distance = 400)
     dc = DepthCamera(config_path = 'D435_camera_config.json')
 
-    gripper_pose = GripPositionEstimation()
+    gripper_pose_estimator = GripPositionEstimation(
+        visualize=False, verbose=True, center_switch="mass",
+        gripper_radius=0.8, max_num_tries = 100, height_th= -0.76, num_bins=20,
+        black_list_radius = 0.01
+    )
 
     if DETECTOR_TYPE == 'deep_1':
         show_boot_screen('STARTING NEURAL NET...')
@@ -252,9 +256,19 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
                 # Set packet depth to fixed value by type
                 pick_pos_z = compute_mean_packet_z(packet, pack_depths[packet.type]) - 5 
+                
+                # NOTE: Here is prediction of position by the gripper pose estimation
+                # Limiting the height for packet pick positions
+                height_lims = (pack_depths[packet.type], MAX_Z)
+                dx, dy, pick_pos_z, a_a, a_b, a_c = gripper_pose_estimator.estimate_from_packet(packet, height_lims)
+                if dx is not None:
+                    pick_pos_x += dx
+                    pick_pos_y += dy
+                else: 
+                    # TODO: Implement behaviour in the future 
+                    # Either continue with centroid or skip packet IDK, TBD
+                    pass
 
-                # TODO VZ: SEM IMPLEMENTOVAT funkci classy gripper pose
-                output = gripper_pose.estimate_from_packet(packet, pack_depths[packet.type])
 
                 # Check if y is range of conveyor width and adjust accordingly
                 if pick_pos_y < 75.0:
@@ -270,10 +284,6 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 elif pick_pos_x > 1800.0:
                     pick_pos_x = 1800.0
                 
-                # FIXME: Maybe smarter way for cliping, replacemnt of previos 12 rows
-                # x_min, x_max, y_min, y_max = 600.0, 1800.0, 75.0, 470.0
-                # pack_x = np.clip(pack_x, x_min, x_max)
-                # pack_y = np.clip(pack_y, y_min, y_max)
 
                 prepick_xyz_coords = np.array([pick_pos_x, pick_pos_y, rob_dict['pick_pos_base'][0]['z']])
 

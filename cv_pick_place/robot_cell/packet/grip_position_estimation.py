@@ -1,31 +1,33 @@
-from tkinter.messagebox import NO
 import open3d as o3d
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import cv2
 from PIL import Image
 
 from robot_cell.packet.packet_object import Packet
 
+M2MM = 1000.0
 
 class GripPositionEstimation():
     def __init__(self, visualize: bool = False, verbose: bool = False,
                  center_switch: str = "mass", gripper_radius: float = 0.05,
                  gripper_ration: float = 0.8, runs_max_number: int = 100,
-                  height_th: float = -0.76, num_bins: int = 20):
+                 height_th: float = -0.76, num_bins: int = 20,
+                 black_list_radius:float=0.01):
         """
         Initializes class for predicting optimal position for the gripper
-        
+        Every unit is in meters 
+
         Parameters:
         visualize (bool): if True will visualize the results
         verbose (bool): if True  will write some explanetions of whats happening
         center_switch (str): "mass" or "height" - defines the center of the gripper
-        gripper_radius (float): radius of the gripper
+        gripper_radius (float): radius of the gripper in meters
         gripper_ration (float): ratio of gripper radius for dettecting the gripper annulus
         runs_max_number (int): maximal number of tries to estimate the optimal position
         height_th (float): distance between camera and belt
         num_bins (int): number of bins for height thresholding (20 is good enough, 10 works as well)
+        black_list_radius (float): Distance for blacklisting points
         """
         self.visualization = visualize
         self.verbose = verbose
@@ -35,7 +37,8 @@ class GripPositionEstimation():
         self.gripper_radius = gripper_radius
         # assert gripper_ration > 0, "gripper_ration must be positive"
         self.gripper_ratio = gripper_ration # Ration for computing gripper annulus
-        
+        self.blacklist_radius = black_list_radius
+
         # Pointcloud
         self.pcd = None 
         self.points = None
@@ -75,16 +78,12 @@ class GripPositionEstimation():
         pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
         # o3d.visualization.draw_geometries([pcd])
 
-        # FIXME: Remove  later Was here for visualization
-        # d = self._load_numpy_depth_array_from_png(os.path.join(path, depth_name)) 
-        # p = self._create_pcd_from_depth_array(d)
         return pcd
 
 
     def _load_numpy_depth_array_from_png(self, depth_name:str) -> np.ndarray:
         """
         Load png image and converts it to the numpy ndarray
-        # NOTE: wont be propably used in the end just for testing
         Parameters:
         depth_name (str): Path to the png. file with depth
 
@@ -139,18 +138,19 @@ class GripPositionEstimation():
         return np.asarray(self.pcd.points), np.asarray(self.pcd.normals)
 
 
-    def _visualize_frame(self,points_dict:dict
-                         ) -> None:
+    def _visualize_frame(self,points_dict:dict, title:str=f"Points 2D") -> None:
         """
         Visualize points in 2D, firstly all points secondly all sets points from
         points_dict, Uses key as legend and plots the numpy array values,
 
         Parameters:
         points_dict (dict): Dictionary with keys used as legend and values numpy:ndarrays
+        title (str): Title of the plot
         """
         plt.figure(2)
         plt.scatter(self.points[:, 0], self.points[:, 1])
         legend = ('All points',)
+        
         for key, vals in points_dict.items():
             if len(vals.shape) == 2:
                 plt.scatter(vals[:, 0], vals[:, 1])
@@ -159,13 +159,16 @@ class GripPositionEstimation():
             legend += (key,)
 
         plt.legend(legend)
-        plt.title("Points 2D")
+        plt.title(title)
         plt.show()
 
 
     def _visualize_histogram(self, n_bins:int) -> None:
         """
         Visualizes histogram with selected threshold
+
+        Parameters:
+        n_bins (int): Number of bins for histogram
         """
         
         fig, ax = plt.subplots()
@@ -174,6 +177,7 @@ class GripPositionEstimation():
             patches[i].set_facecolor('#1f77b4')
         for i in range(self.th_idx, len(patches)):
             patches[i].set_facecolor('#ff7f0e')
+
         plt.title('Depth histogram')
         plt.xlabel('z [m]')
         plt.ylabel('count [-]')
@@ -217,7 +221,7 @@ class GripPositionEstimation():
         self.hist = h[0]
         i = self._hist_first_peak()
         self.th_idx = i + number_of_bins//10
-        # self.th_val = -0.76 Some constant used for the 
+        # self.th_val = -0.76 Some constant used as dist from conv to camera
         self.th_val = h[1][self.th_idx]
 
 
@@ -289,21 +293,19 @@ class GripPositionEstimation():
         return c, np.linalg.svd(M)[0][:, -1]
 
 
-    def _get_candidate_point(self, center: np.ndarray, filter_mask: np.ndarray,
-                             blacklist:np.ndarray) -> np.ndarray:
+    def _get_candidate_point(self, center: np.ndarray, allowed:np.ndarray) -> np.ndarray:
         """
         Selects point closest to center, which is not blacklisted
         
         Parameters:
         center (np.ndarray): center of mass
-        filter_mask (np.ndarray): binary mask of fitered points (that makes the object)
-        blacklist (np.ndarray): binary mask of points that are not yet blacklisted
+        allowed (np.ndarray): binary mask of allowed points
         """
-        candidate_mask = np.logical_and(filter_mask, blacklist)
-        candidate_points = self.points[candidate_mask,:]
-        l2 = np.linalg.norm(self.points[candidate_mask,:2] - center[:2], axis=1)
+        candidate_points = self.points[allowed, :]
+        l2 = np.linalg.norm(self.points[allowed, :2] - center[:2], axis=1)
         idx = np.argmin(l2)
-        return candidate_points[idx, :]
+        candidate = candidate_points[idx, :]
+        return candidate
 
 
     def _check_point_validity(self, point: np.ndarray) -> bool:
@@ -338,7 +340,6 @@ class GripPositionEstimation():
         valid_conv = ann_points[lowest_point, 2] > self.th_val   
 
         valid = valid_max and valid_min and valid_conv
-        #BUG: Somwhere always tries the same Point with dept_image2.png Something wrong with blacklisting
         if self.verbose:
             print(f"[INFO]: Point {point} is valid: {valid}")
             if not valid_max:
@@ -347,12 +348,11 @@ class GripPositionEstimation():
                 print(f"\tReason - Spike:\tPoint {self.points[min_point, :]} difference in height is: {np.abs(self.points[min_point,2] - point[2])} spike threshold: {self.spike_threshold}")            
             if not valid_conv:
                 print(f"\tReason - Belt:\t Part of circle with point as center is on conveyer belt, i.e. point :{ann_points[lowest_point, :]} Height threshold: {self.th_val}")
-
         return valid
 
 
-    def _expand_blacklist(self, point: np.ndarray, blacklist: np.ndarray,
-                          radius: float=0.01) -> np.ndarray:
+    def _expand_blacklist(self, point: np.ndarray, blacklist: np.ndarray
+                          ) -> np.ndarray:
         """
         Expands blacklist by points which are closer than radius to the given
         point
@@ -365,8 +365,10 @@ class GripPositionEstimation():
         Returns:
         np.ndarray: updated binary mask for blacklist
         """
-        bl = np.logical_not(self._circle_mask(point, radius))
-        return np.logical_and(blacklist, bl)   
+        circle_mask = self._circle_mask(point, self.blacklist_radius)
+        bl = np.logical_not(circle_mask)
+        combined = np.logical_and(blacklist, bl)        
+        return combined
 
 
     def _detect_point_from_pcd(self) -> tuple[np.ndarray, np.ndarray]:
@@ -401,7 +403,7 @@ class GripPositionEstimation():
         n_mask = self._anuluss_mask(center)
         plane_c, plane_n = self._fit_plane(self.points[n_mask, :])
         valid = self._check_point_validity(center)
-
+        
         # Returns original point as optimal if it is valid
         if valid:
             if self.verbose:
@@ -411,20 +413,23 @@ class GripPositionEstimation():
                     "Height filtered points": filtered_points,
                     "Neighborhood": self.points[n_mask, :],
                     "center point " + self.center_switch: center,
-                    "center plane": plane_c,
+                    "center plane": plane_c
                 }
                 self._visualize_frame(viz_dict)
             return center, plane_n
 
         blacklist = self._expand_blacklist(center, blacklist)
         while self.run_number < self.max_runs:
-            # t1 = datetime.now()
-            c_point = self._get_candidate_point(center, packet_mask, blacklist)
+            allowed_mask = np.logical_and(packet_mask, blacklist)
+            searched = not np.any(allowed_mask)
+            if searched:
+                break
+
+            c_point = self._get_candidate_point(center, allowed_mask)
             valid = self._check_point_validity(c_point)
+
             if not valid:
-                blacklist = self._expand_blacklist(center, blacklist)
-                # t2 = datetime.now()
-                # print(str(t2-t1))
+                blacklist = self._expand_blacklist(c_point, blacklist)
                 self.run_number += 1
                 continue
 
@@ -443,9 +448,12 @@ class GripPositionEstimation():
 
             return center, plane_n
 
-        # Maybe replace with some warning
         if self.verbose:
-            print(f"[WARN]: Could not find the valid point in given number of tries: {self.max_runs}. Returning None")
+            print(f"[WARN]: Could not find the valid point, retrurning None. Reason: ")
+            if searched:
+                print(f"\tAll points were checked, did not found the optimal")
+            else:
+                print(f"\tExceded given number of tries: {self.max_runs}")
         return None, None
 
 
@@ -474,7 +482,7 @@ class GripPositionEstimation():
                        rotation_matrix: np.ndarray=np.array([[-1.0, 0.0, 0.0],
                                                              [0.0, -1.0, 0.0],
                                                              [0.0, 0.0, 1.0]])
-                        ) -> np.ndarray[float]:
+                        ) -> np.ndarray:
         """
         Changes vector for approach by the gripper and converts it into angles
         for the gripper
@@ -514,23 +522,9 @@ class GripPositionEstimation():
         Returns:
         tuple[np.ndarray, np.ndarray]: point coordinates and its normal
         """
-        # FIXME: Remove just testing wheter both methods are the same
-        # print(type(os.path.join(path, depth_image_name)))
-        # d_frame = self._load_numpy_depth_array_from_png(os.path.join(path, depth_image_name))
-        # pcd_f = self._create_pcd_from_depth_array(d_frame)
-        # pcd_f = pcd_f.voxel_down_sample(voxel_size=0.01)
-        # pcd_f.estimate_normals()
-        # p_f, n_f = np.asarray(pcd_f.points), np.asarray(pcd_f.normals)
-        
-        self.pcd =  self._create_pcd_from_rgb_depth_frames(rgb_image_name, depth_image_name, path)
-        # self.pcd = self.pcd.voxel_down_sample(voxel_size=0.01)
-        # self.pcd.estimate_normals()
-        # p_i, n_i = np.asarray(self.pcd.points), np.asarray(self.pcd.normals)
-        # print(p_f.shape, n_f.shape)
-        # print(p_i.shape, n_i.shape)
-        # print((p_f-p_i).sum()) # Yeah its 0.0- meaning it should be same
-        # return None, None
+        self.pcd = self._create_pcd_from_rgb_depth_frames(rgb_image_name, depth_image_name, path)
         center, normal = self._detect_point_from_pcd()
+
         if center is None:
             print(f"[INFO]: Did not found optimal point")
             return center, normal
@@ -560,75 +554,60 @@ class GripPositionEstimation():
         relative = self._get_relative_coordinates(center, anchor)
         return relative, normal
 
-    def estimate_from_packet(self, packet: Packet, z_lim:float,
+    def estimate_from_packet(self, packet: Packet, z_lim:tuple,
                              conv2cam_dist: float = 777.0, 
-                             coord_limit:tuple[float]= (600, 1800, 75, 470)):        
+                             blacklist_radius:float= 0.01):        
         """
         Estimates optimal point of the packet
 
         Parameters:
         packet (Packet): Packet for the estimator
-        z_lim (float): Limit for the robot gripper for not coliding
+        z_lim (tuple): Limit for the robot gripper for not coliding (z_min, z_max)
         conv2cam_dist (float): Distance from conveyer to camera in mm
-        coord_limit (tupple[float]): 
+        black_list_radius(float): Radius for blacklisting
 
         Returns:
-        TBD, Maybe dict as it is in main
-        trajectory_dict = {
-                    'x': pick_pos_x,
-                    'y': pick_pos_y,
-                    'rot': gripper_rot,
-                    'packet_type': packet_type,
-                    'x_offset': 0,
-                    'pack_z': pick_pos_z
-                    }
-        Maybe named tupple 
-        robot_coords = namedtuple('Coords', 'x y z a b c')
+        tuple(float): shift_in_x, shift_in_y, height_from_z,
+                      rotation_a, rotation_b, rotation_c
         """
+        self.blacklist_radius = blacklist_radius
+        z_min, z_max = z_lim
         depth_frame = packet.avg_depth_crop
-        pack_x, pack_y = packet.centroid_mm
-        pack_z = z_lim
+
+        pack_z = z_min
+        shift_x, shift_y = None, None 
         ax, ay, az = None, None, None
-        if depth_frame is not None:
-            point_relative, normal = self.estimate_from_depth_array(depth_frame)
-            # TODO: Recompute into coordinates normal given by packet
-            dx, dy, z = point_relative
 
-            # p_px, p_py = packet.centroid_px
-            p_mx, p_my = packet.centroid_mm
+        depth_exist = depth_frame is not None
+        point_exists = False
 
-            pack_x, pack_y = p_mx + dx*packet.width_bnd_mm, p_my + dy*packet.height_bnd_mm
-            # Converts m to mm and shifts by the conv2cam_dist
-            pack_z = abs(z - conv2cam_dist) * 1000.0 + conv2cam_dist
-            
-            # Rotation between the bases of the pcd and the gripper
-            R = np.array([[-1.0, 0.0, 0.0],
-                          [0.0, -1.0, 0.0],
-                          [0.0, 0.0, 1.0]])
-            
-            ax, ay, az = self._vector2angles(normal, R)
-            
-        else:
-            print(f"[WARN]: Average depth frame is None. Returning centroid and limit depth")
-            
-
-
-        # NOTE: Sanizizes coordinates into permateble ones
-        # Dont know wheater it should be here
-        x_min, x_max, y_min, y_max = coord_limit
-        pack_x = np.clip(pack_x, x_min, x_max)
-        pack_y = np.clip(pack_y, y_min, y_max)
+        if depth_exist:
+            # Estimates 
+            point_relative, normal = self.estimate_from_depth_array(depth_frame) # It could return None, None
+            point_exists = point_relative is not None
         
-        # Create output
-        trajectory_dict = {
-                    'x': pack_x,
-                    'y': pack_y,
-                    'rot': 0, # TODO Might be all repleced by angles for the robot
-                    'packet_type': packet.pack_type,
-                    'x_offset': 0,
-                    'pack_z': pack_z
-                    }
-        return trajectory_dict
+            if point_exists:
+                dx, dy, z = point_relative
+                shift_x, shift_y =  dx*packet.width_bnd_mm, dy*packet.height_bnd_mm
+                # changes the z value to be positive ,converts m to mm and shifts by the conv2cam_dist
+                pack_z = abs(-1.0 * M2MM * z - conv2cam_dist)
+                pack_z = np.clip(pack_z, z_min, z_max)
+
+                # Rotation between the bases of the pcd and the gripper
+                # 180 degreese around z axis(just in basic)
+                R = np.array([[-1.0, 0.0, 0.0],
+                                [0.0, -1.0, 0.0],
+                                [0.0, 0.0, 1.0]])
+                
+                ax, ay, az = self._vector2angles(normal, R)
+
+        if self.verbose :
+            print(f"[INFO]: Optimal point found:{depth_exist and  point_exists}")
+            if not depth_exist:
+                print(f"\tReason - Average depth frame is None. Returns None")
+            if not point_exists:
+                print(f"\tReason - Valid point was not found. Returns None")
+        return shift_x, shift_y, pack_z, ax, ay, az         
 
 
 def main():
@@ -639,12 +618,14 @@ def main():
     gripper_radius = triangle_edge/np.sqrt(3)
 
     # Creating new class with given params
-    gpe = GripPositionEstimation(visualize=True, verbose =True, center_switch="mass", gripper_radius=gripper_radius, gripper_ration=0.8)
-    depth_array = gpe._load_numpy_depth_array_from_png(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_image_crop.png"))
+    gpe = GripPositionEstimation(visualize=True, verbose =True, center_switch="mass", gripper_radius=gripper_radius, gripper_ration=0.8, runs_max_number=100)
+    depth_array = gpe._load_numpy_depth_array_from_png(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_image2.png"))
     gpe.estimate_from_depth_array(depth_array)
+
     # # Estimating point and normal from color and depth images
-    # point, normal = gpe.estimate_from_images("color_image_crop.jpg", "depth_image_crop.png",
-    #                                                                     path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
+    # point, normal = gpe.estimate_from_images("color_image_crop_test.jpg", "depth_image_crop.png",
+    #                                                                      path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
+    
     # # point, normal = gpe.estimate_from_images("rgb_image2.jpg", "depth_image2.png",
     # #                                                                     path="data", anchor=np.array([.5, .5]))
     # if point is not None:
