@@ -230,6 +230,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 print("INFO: Chose packet ID: {} to pick".format(str(packet.id)))
 
                 trajectory_dict, prepick_xyz_coords = get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, pack_depths, MIN_PICK_DISTANCE)
+                print("[DEBUG]: Depth = {}".format(trajectory_dict['pack_z']))
                 # Set trajectory
                 control_pipe.send(RcData(RcCommand.CHANGE_SHORT_TRAJECTORY, trajectory_dict))
                 # Start robot program.

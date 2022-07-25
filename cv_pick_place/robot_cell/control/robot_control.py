@@ -252,13 +252,14 @@ class RobotControl(RobotCommunication):
         """
         nodes = []
         values = []
+        Z_OFFSET = 50.0
 
         nodes.append(self.ShPrePick_Pos_X)
         values.append(ua.DataValue(ua.Variant(x, ua.VariantType.Float)))
         nodes.append(self.ShPrePick_Pos_Y)
         values.append(ua.DataValue(ua.Variant(y, ua.VariantType.Float)))
         nodes.append(self.ShPrePick_Pos_Z)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['z'], ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(pack_z + Z_OFFSET, ua.VariantType.Float)))
         nodes.append(self.ShPrePick_Pos_A)
         values.append(ua.DataValue(ua.Variant(rot, ua.VariantType.Float)))
         nodes.append(self.ShPrePick_Pos_B)
@@ -292,7 +293,7 @@ class RobotControl(RobotCommunication):
         nodes.append(self.ShPostPick_Pos_Y)
         values.append(ua.DataValue(ua.Variant(post_pick_y_offset, ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_Z)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['z'], ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(pack_z + Z_OFFSET, ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_A)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['a'], ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_B)
@@ -309,7 +310,7 @@ class RobotControl(RobotCommunication):
         nodes.append(self.ShPlace_Pos_Y)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['y'], ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_Z)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['z'], ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(pack_z + Z_OFFSET, ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_A)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['a'], ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_B)
