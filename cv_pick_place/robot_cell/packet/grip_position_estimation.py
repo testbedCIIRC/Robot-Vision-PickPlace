@@ -4,17 +4,18 @@ import matplotlib.pyplot as plt
 import os
 from PIL import Image
 import cv2
+from scipy import signal
 
 from robot_cell.packet.packet_object import Packet
 
 M2MM = 1000.0
 
 class GripPositionEstimation():
-    def __init__(self, visualize: bool = False, verbose: bool = False,
+    def __init__(self, visualize: bool = False, verbose: bool = False, 
                  center_switch: str = "mass", gripper_radius: float = 0.05,
                  gripper_ration: float = 0.8, max_num_tries: int = 100,
                  height_th: float = -0.76, num_bins: int = 20,
-                 black_list_radius:float=0.01):
+                 black_list_radius:float=0.01, save_depth_array:bool = False):
         """
         Initializes class for predicting optimal position for the gripper
         Every unit is in meters 
@@ -32,6 +33,7 @@ class GripPositionEstimation():
         """
         self.visualization = visualize
         self.verbose = verbose
+        self.save_depth = save_depth_array
         # assert center_switch in ["mass", "height"], "center_switch must be 'mass' or 'height'"
         self.center_switch = center_switch
         # assert gripper_radius > 0, "gripper_radius must be positive"
@@ -77,7 +79,7 @@ class GripPositionEstimation():
         pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, o3d.camera.PinholeCameraIntrinsic(
                 o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
         pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-        o3d.visualization.draw_geometries([pcd])
+        # o3d.visualization.draw_geometries([pcd])
 
         return pcd
 
@@ -109,8 +111,9 @@ class GripPositionEstimation():
         depth = o3d.geometry.Image(np.ascontiguousarray(depth_frame).astype(np.uint16))
         pcd = o3d.geometry.PointCloud.create_from_depth_image(depth, o3d.camera.PinholeCameraIntrinsic(
                 o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
+        # o3d.visualization.draw_geometries([pcd])
         pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-        o3d.visualization.draw_geometries([pcd])
+        # o3d.visualization.draw_geometries([pcd])
         return pcd
 
 
@@ -136,6 +139,8 @@ class GripPositionEstimation():
         self.pcd.estimate_normals()
         self.pcd_center = self.pcd.get_center()
         self.max_bound = self.pcd.get_max_bound()
+        self.min_bound = self.pcd.get_min_bound()
+        self.deltas = self.max_bound - self.min_bound
         return np.asarray(self.pcd.points), np.asarray(self.pcd.normals)
 
 
@@ -185,25 +190,46 @@ class GripPositionEstimation():
         plt.show()
 
 
-    def _hist_first_peak(self, th_count: int = 50) -> float:
+    def _hist_first_peak(self, th_count: int = 50) -> int:
         """
         Finds first peak in histogram. NOT SMART
         
         Parameters:
-        th_count (int):threshold value for finding the first peak with 
+        th_count (int): threshold value for finding the first peak with 
         atleast 50 count
 
         Returns:
         float: Height threshold between belt and object
         """
         # assert len(self.hist.shape) == 1, "only 1D histogram"
-        old = -np.inf
+        old = - np.inf
         s = 0
         for e, h in enumerate(self.hist):
             s += h
             if h < old and s > th_count:
                 return e
             old = h
+
+    def _histogram_peaks(self, num_total: int = 50) -> int:
+        """
+        Finds first peak in histogram
+        
+        Parameters:
+        th_count (int): threshold value for finding the first peak with 
+        atleast 50 count
+
+        Returns:
+        int: Height threshold between belt and object
+        """
+        peaks, _ = signal.find_peaks(self.hist[0])
+        old = self.hist[0][peaks[0]]
+        best_idx = peaks[0]
+        best_val = 0
+        for peak in peaks: 
+            if 1.0+0.2 > old/self.hist[0][peak] > 1.0-0.2:
+                best_idx = peak
+                old = self.hist[0][peak]    
+        return best_idx
 
 
     def _compute_histogram_threshold(self, values: np.ndarray,
@@ -217,10 +243,10 @@ class GripPositionEstimation():
 
         """
         # assert len(values.shape) == 1, "Values should be 1D"
-
         h = np.histogram(values, bins=number_of_bins)
-        self.hist = h[0]
-        i = self._hist_first_peak()
+        self.hist = h
+        # i = self._hist_first_peak()
+        i = self._histogram_peaks(values.shape[0])
         self.th_idx = i + number_of_bins//10
         # self.th_val = -0.76 Some constant used as dist from conv to camera
         self.th_val = h[1][self.th_idx]
@@ -326,6 +352,8 @@ class GripPositionEstimation():
 
         # If no points are in given l2 distatnce
         if not np.any(mask_inner):
+            if self.verbose:
+                print(f"[INFO]: No points in inner radius of gripper")
             return False
 
         max_point = np.argmax(self.points[mask_inner, 2])
@@ -333,12 +361,16 @@ class GripPositionEstimation():
         valid_max = np.abs(self.points[max_point, 2] - point[2]) < self.spike_threshold
         valid_min = np.abs(self.points[min_point, 2] - point[2]) < self.spike_threshold
 
-        ann_mask = self._anuluss_mask(point)
-        ann_points = self.points[ann_mask, :]
-        lowest_point = np.argmin(ann_points[:,2])
+        anls_mask = self._anuluss_mask(point)
+        if not np.any(anls_mask):
+            if self.vervose:
+                print(f"[INFO]: No points in anullus of the gripper")
+            return False
+        anls_points = self.points[anls_mask, :]
+        lowest_point = np.argmin(anls_points[:,2])
         # print(ann_points[lowest_point, 2])
 
-        valid_conv = ann_points[lowest_point, 2] > self.th_val   
+        valid_conv = anls_points[lowest_point, 2] > self.th_val   
 
         valid = valid_max and valid_min and valid_conv
         if self.verbose:
@@ -348,7 +380,7 @@ class GripPositionEstimation():
             if not valid_min:
                 print(f"\tReason - Spike:\tPoint {self.points[min_point, :]} difference in height is: {np.abs(self.points[min_point,2] - point[2])} spike threshold: {self.spike_threshold}")            
             if not valid_conv:
-                print(f"\tReason - Belt:\t Part of circle with point as center is on conveyer belt, i.e. point :{ann_points[lowest_point, :]} Height threshold: {self.th_val}")
+                print(f"\tReason - Belt:\t Part of circle with point as center is on conveyer belt, i.e. point :{anls_points[lowest_point, :]} Height threshold: {self.th_val}")
         return valid
 
 
@@ -382,10 +414,10 @@ class GripPositionEstimation():
         Returns:
         tuple[np.ndarray, np.ndarray]: plane center and plane normal (x,y,z)
         """
+        
         self._pcd_down_sample()
         self.points, self.normals = self._get_points_and_estimete_normals()
-        vals, count  = np.unique(self.points[:,2], return_counts=True)
-        print(vals, count)
+        
         # o3d.visualization.draw_geometries([self.pcd])
 
         self._compute_histogram_threshold(self.points[:, 2], self.num_bins)
@@ -403,15 +435,7 @@ class GripPositionEstimation():
             center = self.points[np.argmax(filtered_points[:,2]),:]    
 
         n_mask = self._anuluss_mask(center)
-        plane_c, plane_n = self._fit_plane(self.points[n_mask, :])
-        viz_dict = {
-                    "Height filtered points": filtered_points,
-                    "anuluss": self.points[n_mask,:],
-                    "center point " + self.center_switch: center,
-                }
-                
-        self._visualize_frame(viz_dict)
-        
+        plane_c, plane_n = self._fit_plane(self.points[n_mask, :])        
 
         valid = self._check_point_validity(center)
         
@@ -433,6 +457,8 @@ class GripPositionEstimation():
         while self.run_number < self.max_runs:
             allowed_mask = np.logical_and(packet_mask, blacklist)
             searched = not np.any(allowed_mask)
+
+            # All posible points were searched found no optimal point
             if searched:
                 break
 
@@ -500,10 +526,10 @@ class GripPositionEstimation():
 
         Parameters:
         vector (np.ndarray): vector to be converted, expects unit vector
-        rotation_matrix (np.ndarrray): Rotation matrix between bases
+        rotation_matrix (np.ndarrray): Rotation matrix between bases of pcd and gripper
 
         Returns
-        tuple[float]: Angles ax, ay, az in degrees
+        tuple[float]: Angles ax, ay, az in degrees[°]
         """
         # Opposite direction for gripper aproach
         normal_o = -1.0 * vector
@@ -593,9 +619,10 @@ class GripPositionEstimation():
         point_exists = False
 
         if depth_exist:
-            # NOTE: JUST FOR SAVING THE TEST IMG
-            print(f"[INFO]: SAVING the image")
-            np.save("depth_array.npy", depth_frame)
+            if self.save_depth:
+                # NOTE: JUST FOR SAVING THE TEST IMG
+                print(f"[INFO]: SAVING the depth array of packet {packet.id}")
+                np.save("depth_array"+ str(packet.id)+".npy", depth_frame)
             # Estimates 
             point_relative, normal = self.estimate_from_depth_array(depth_frame)
             point_exists = point_relative is not None
@@ -633,15 +660,40 @@ def main():
 
     # Creating new class with given params
     gpe = GripPositionEstimation(visualize=True, verbose =True, center_switch="mass", gripper_radius=gripper_radius, gripper_ration=0.8)
-    depth_array = gpe._load_numpy_depth_array_from_png(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_image_new.png"))
-    gpe.estimate_from_depth_array(depth_array)
+    #depth_array = gpe._load_numpy_depth_array_from_png(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_image_new.png"))
+    depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array.npy"))
+    point_relative, normal = gpe.estimate_from_depth_array(depth_array)
+    point_exists = point_relative is not None
+    conv2cam_dist = 777.0
+    z_min = 5
+    z_max = 500
+    d = gpe.deltas
+    print("max_b\t", gpe.max_bound)
+    print("min_b\t", gpe.min_bound)
+    print("deltas", gpe.deltas)
+    if point_exists:
+        dx, dy, z = point_relative
+        shift_x, shift_y =  dx*d[0], dy*d[1]
+        # changes the z value to be positive ,converts m to mm and shifts by the conv2cam_dist
+        pack_z = abs(-1.0 * M2MM * z - conv2cam_dist)
+        print(pack_z)
+        pack_z = np.clip(pack_z, z_min, z_max)
 
+        # Rotation between the bases of the pcd and the gripper
+        # 180 degreese around z axis(just in basic)
+        R = np.array([[-1.0, 0.0, 0.0],
+                        [0.0, -1.0, 0.0],
+                        [0.0, 0.0, 1.0]])
+        
+        ax, ay, az = gpe._vector2angles(normal, R)
+    print(f"[INFO]: Estimeted optimal point:\n\t\tx, y shifts: {dx:.4f}, {dy:.4f},\
+            \n\t\tz position: {pack_z:.2f}\n\t\tangles: {ax:.2f}, {ay:.2f}, {az:.2f}")
     # # Estimating point and normal from color and depth images
-    # point, normal = gpe.estimate_from_images("color_image_crop_test.jpg", "depth_image_crop.png",
-    #                                                                      path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
+    point, normal = gpe.estimate_from_images("color_image_crop_test.jpg", "depth_image_crop.png",
+                                                                          path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
     
-    # # point, normal = gpe.estimate_from_images("rgb_image2.jpg", "depth_image2.png",
-    # #                                                                     path="data", anchor=np.array([.5, .5]))
+    point, normal = gpe.estimate_from_images("rgb_image2.jpg", "depth_image2.png",
+                                                                        path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
     # if point is not None:
     #     print(f"[INFO]: Picked_point\t{point}\t picked_normal\t {normal} norm = {np.linalg.norm(normal)}")
 

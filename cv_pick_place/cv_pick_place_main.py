@@ -594,6 +594,8 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
     # Limiting the height for packet pick positions
     height_lims = (pack_depths[packet_to_pick.type], MAX_Z)
     dx, dy, pick_pos_z, a_a, a_b, a_c = gripper_pose_estimator.estimate_from_packet(packet_to_pick, height_lims)
+    print(f"[INFO]: Estimeted optimal point:\n\t\tx, y shifts: {dx}, {dy},\
+            \n\t\tz position: {pick_pos_z}\n\t\tangles: {a_a}, {a_b}, {a_c}")
     if dx is not None:
         pick_pos_x += dx
         pick_pos_y += dy
