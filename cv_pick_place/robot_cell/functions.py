@@ -75,7 +75,7 @@ def compute_mean_packet_z(packet, pack_z_fixed):
             centroid_depth = depth_mean[d_rows // 2, d_cols // 2]
 
             # Compute packet z position with respect to conveyor base.
-            pack_z = abs(conv2cam_dist - centroid_depth) - 13
+            pack_z = abs(conv2cam_dist - centroid_depth) - 10
             # print("[DEBUG]: Pick depth before offset {:.2f}".format(pack_z))
 
             # Return pack_z if in acceptable range, set to default if not.
@@ -101,9 +101,8 @@ def offset_packet_depth_by_x(pick_pos_x, packet_z):
         pick_pos_x (int): X coordinate for picking in mm
         packet_z (int): Callculated depth
     """
-    offset = pick_pos_x*0.0042 - 1.37
+    offset = 6e-6*(pick_pos_x*pick_pos_x)  - 0.0107*pick_pos_x + 4.2933
     return packet_z + offset
-
 
 
 def meanFilter(depth_frame):
