@@ -292,7 +292,7 @@ class RobotControl(RobotCommunication):
         values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['turn'], ua.VariantType.Int16)))
 
         nodes.append(self.ShPostPick_Pos_X)
-        values.append(ua.DataValue(ua.Variant(x + 2*x_offset, ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(x + 1.5*x_offset, ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_Y)
         values.append(ua.DataValue(ua.Variant(post_pick_y_offset, ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_Z)

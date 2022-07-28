@@ -76,6 +76,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     # Index corresponds to type of packet.
     PACK_DEPTHS = [10.0, 3.0, 5.0, 5.0] # List of z positions at pick
     MIN_PICK_DISTANCE = 600  # Minimal x position in mm for packet picking
+    MAX_PICK_DISTANCE = 1900 # Maximal x position in mm for packet picking
     Z_OFFSET = 50.0 # Z height offset from pick height for all positions except for pick position
     X_PICK_OFFSET = 190 # X offset between prepick and pick position
 
@@ -223,7 +224,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
 
         # robot is ready to recieve commands
         if state == "READY" and is_rob_ready and homography is not None:
-            pick_list, pick_list_positions = prep_pick_list(pick_list, encoder_pos_m, homography, grip_time_offset, X_PICK_OFFSET)
+            pick_list, pick_list_positions = prep_pick_list(pick_list, encoder_pos_m, homography, grip_time_offset, X_PICK_OFFSET, MAX_PICK_DISTANCE)
             # Choose a item for picking
             if pick_list and pick_list_positions.max() > MIN_PICK_DISTANCE:
                 # Chose farthest item on belt
@@ -232,7 +233,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 print("[INFO]: Chose packet ID: {} to pick".format(str(packet.id)))
 
                 trajectory_dict, prepick_xyz_coords = get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, 
-                                                                         PACK_DEPTHS, MIN_PICK_DISTANCE, Z_OFFSET, X_PICK_OFFSET)
+                                                                         PACK_DEPTHS, MIN_PICK_DISTANCE, MAX_PICK_DISTANCE, Z_OFFSET, X_PICK_OFFSET)
                 print("[DEBUG]: Depth = {}".format(trajectory_dict['pack_z']))
                 # Set trajectory
                 control_pipe.send(RcData(RcCommand.CHANGE_SHORT_TRAJECTORY, trajectory_dict))
@@ -271,7 +272,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
             packet_pos_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
             # If packet is close enough continue picking operation
-            if packet_pos_x > trajectory_dict['x'] - 50:
+            if packet_pos_x > trajectory_dict['x'] - 25:
                 control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 state = "PLACING"
                 print("[INFO]: state PLACING")
@@ -527,7 +528,7 @@ if __name__ == '__main__':
     # Start program mode selection.
     program_mode(demos, r_control, r_comm_info, r_comm_encoder)
 
-def prep_pick_list(pick_list, encoder_pos_m, homography, grip_time_offset, X_PICK_OFFSET):
+def prep_pick_list(pick_list, encoder_pos_m, homography, grip_time_offset, X_PICK_OFFSET, MAX_PICK_DISTANCE):
     """
     Prepare the list for choosing a packet by updating packet positions
     and removing packets which are too far.
@@ -538,6 +539,7 @@ def prep_pick_list(pick_list, encoder_pos_m, homography, grip_time_offset, X_PIC
         homography (numpy.ndarray): Homography matrix
         grip_time_offset (int): x position offset in mm for prepick position
         X_PICK_OFFSET (int): X offset between prepick and pick position
+        MAX_PICK_DISTANCE (int): Maximal x position in mm for packet picking
     Returns:
         pick_list: (list): Updated pick list
         pick_list_positions (list[int]): List of current position of packets
@@ -551,13 +553,13 @@ def prep_pick_list(pick_list, encoder_pos_m, homography, grip_time_offset, X_PIC
     # Get list of current world x coordinates
     pick_list_positions = np.array([packet.getCentroidInWorldFrame(homography)[0] for packet in pick_list])
     # If item is too far remove it from list
-    is_valid_position = pick_list_positions < 1800 - grip_time_offset - 2*X_PICK_OFFSET  # TODO find position after which it does not pick up - depends on enc_vel and robot speed
+    is_valid_position = pick_list_positions < MAX_PICK_DISTANCE - grip_time_offset - 1.5*X_PICK_OFFSET  # TODO find position after which it does not pick up - depends on enc_vel and robot speed
     pick_list = np.ndarray.tolist(np.asanyarray(pick_list)[is_valid_position])     
     pick_list_positions = pick_list_positions[is_valid_position]
     return pick_list, pick_list_positions
 
 
-def get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, PACK_DEPTHS, MIN_PICK_DISTANCE, Z_OFFSET, X_PICK_OFFSET):
+def get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, PACK_DEPTHS, MIN_PICK_DISTANCE, MAX_PICK_DISTANCE, Z_OFFSET, X_PICK_OFFSET):
     """
     Get dictionary of parameters for changing trajectory
 
@@ -568,6 +570,7 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, P
         grip_time_offset (int): x position offset in mm for prepick position
         PACK_DEPTHS (list[int]): Default z values for picking, by packet type
         MIN_PICK_DISTANCE (int): Minimal x position for picking
+        MAX_PICK_DISTANCE (int): Maximal x position in mm for packet picking
         Z_OFFSET (float) : Z height offset from pick height for all positions except for pick position
         X_PICK_OFFSET (int): X offset between prepick and pick position
 
@@ -592,10 +595,11 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, P
     pick_pos_z = compute_mean_packet_z(packet_to_pick, PACK_DEPTHS[packet_to_pick.type])
     pick_pos_z = offset_packet_depth_by_x(pick_pos_x, pick_pos_z)
 
+
     # Check if y is range of conveyor width and adjust accordingly
     pick_pos_y = np.clip(pick_pos_y, 75.0, 470.0)
     # Check if x is range
-    pick_pos_x = np.clip(pick_pos_x, MIN_PICK_DISTANCE, 1800.0)
+    pick_pos_x = np.clip(pick_pos_x, MIN_PICK_DISTANCE, MAX_PICK_DISTANCE - 1.5*X_PICK_OFFSET)
 
     prepick_xyz_coords = np.array([pick_pos_x, pick_pos_y, pick_pos_z + Z_OFFSET])
 
