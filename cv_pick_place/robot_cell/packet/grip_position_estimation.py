@@ -228,13 +228,24 @@ class GripPositionEstimation():
         best_idx = peaks[0]
         print(peaks)
         s = 0
+        count_th = 0.1 *num_total
+        print(f"count threshold {count_th}")
+        peak_found = False
         for peak in peaks: 
             s = np.sum(self.hist[0][:peak+1])
-            print(s)
-            if 1.0+0.2 > old/self.hist[0][peak] > 1.0-0.2 and s > 0.2 * num_total:
-                best_idx = peak
-                old = self.hist[0][peak]    
-        print(best_idx)
+            if  s < count_th:
+                continue
+            else:
+                if not peak_found: 
+                    old = self.hist[0][peak]
+                    peak_found = True
+                print(f"sum till peak {peak}: {s}")
+                print(old/self.hist[0][peak] )
+                
+                if 1.0 + 0.2 > old/self.hist[0][peak] > 1.0-0.2:
+                    best_idx = peak
+                    old = self.hist[0][peak]    
+        print(f" SELECTED {best_idx}")
         return best_idx
 
 
@@ -725,8 +736,8 @@ def main():
     #depth_array = gpe._load_numpy_depth_array_from_png(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_image_new.png"))
     depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array.npy"))
     point_relative, normal = gpe.estimate_from_depth_array(depth_array)
-    depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array00.npy"))
-    point_relative, normal = gpe.estimate_from_depth_array(depth_array)
+    # depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array00.npy"))
+    # point_relative, normal = gpe.estimate_from_depth_array(depth_array)
     depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array0.npy"))
     point_relative, normal = gpe.estimate_from_depth_array(depth_array)
 
