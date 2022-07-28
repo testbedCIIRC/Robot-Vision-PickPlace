@@ -222,14 +222,11 @@ class GripPositionEstimation():
         Returns:
         int: Height threshold between belt and object
         """
-        print(num_total)
         peaks, _ = signal.find_peaks(self.hist[0])
         old = self.hist[0][peaks[0]]
         best_idx = peaks[0]
-        print(peaks)
         s = 0
         count_th = 0.1 *num_total
-        print(f"count threshold {count_th}")
         peak_found = False
         for peak in peaks: 
             s = np.sum(self.hist[0][:peak+1])
@@ -239,13 +236,10 @@ class GripPositionEstimation():
                 if not peak_found: 
                     old = self.hist[0][peak]
                     peak_found = True
-                print(f"sum till peak {peak}: {s}")
-                print(old/self.hist[0][peak] )
                 
                 if 1.0 + 0.2 > old/self.hist[0][peak] > 1.0-0.2:
                     best_idx = peak
                     old = self.hist[0][peak]    
-        print(f" SELECTED {best_idx}")
         return best_idx
 
 
@@ -264,7 +258,7 @@ class GripPositionEstimation():
         self.hist = h
         # i = self._hist_first_peak()
         i = self._histogram_peaks(values.shape[0])
-        self.th_idx = i + number_of_bins//10
+        self.th_idx = i + number_of_bins//10 + 1
         # self.th_val = -0.76 Some constant used as dist from conv to camera
         self.th_val = h[1][self.th_idx]
 

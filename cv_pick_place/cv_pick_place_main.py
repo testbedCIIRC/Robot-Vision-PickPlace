@@ -34,7 +34,7 @@ DETECTOR_TYPE = 'hsv'
 
 # CONSTANTS
 MAX_Z = 500
-MIN_Y = 75.0
+MIN_Y = 45.0
 MAX_Y = 470.0
 
 def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
@@ -58,7 +58,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     dc = DepthCamera(config_path = 'D435_camera_config.json')
 
     gripper_pose_estimator = GripPositionEstimation(
-        visualize=True, verbose=True, center_switch="mass",
+        visualize=False, verbose=True, center_switch="mass",
         gripper_radius=0.08, max_num_tries = 100, height_th= -0.76, num_bins=20,
         black_list_radius = 0.01, save_depth_array=True
     )
@@ -597,7 +597,7 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
     # NOTE: Here is prediction of position by the gripper pose estimation
     # Limiting the height for packet pick positions
     z_lims = (pack_depths[packet_to_pick.type], MAX_Z)
-    packet_coords = (pick_pos_x. pick_pos_y)
+    packet_coords = (pick_pos_x, pick_pos_y)
     y_lims = (MIN_Y, MAX_Y)
     dx, dy, pick_pos_z, a_a, a_b, a_c = gripper_pose_estimator.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
     print(f"[INFO]: Estimeted optimal point:\n\t\tx, y shifts: {dx}, {dy},\
