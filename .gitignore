@@ -13,3 +13,4 @@ Tensorflow/
 TensorflowYOLACT
 delete.py
 delete.ipynb
+depth_array*.npy
