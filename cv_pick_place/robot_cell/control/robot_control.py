@@ -239,7 +239,7 @@ class RobotControl(RobotCommunication):
 
         time.sleep(0.7)
 
-    def change_trajectory_short(self, x, y, rot, packet_type, x_offset = 0.0, pack_z = 5.0, post_pick_y_offset = 470):
+    def change_trajectory_short(self, x, y, rot, packet_type, x_offset = 0.0, pack_z = 5.0, post_pick_y_offset = 470, z_offset = 50.0):
         """
         Updates the trajectory points for the robot program.
     
@@ -248,18 +248,21 @@ class RobotControl(RobotCommunication):
         y (float): The pick y coordinate of the packet.
         rot (float): The gripper pick rotation.
         packet_type (int): The detected packet class.
-
+        x_offset (float): X offset between prepick and pick position
+        pack_z (float): Pick height 
+        post_pick_y_offset (float): Y position for post pick position
+        z_offset (float): Z height offset from pick height for all position except for pick position
         """
         nodes = []
         values = []
-        Z_OFFSET = 50.0
+
 
         nodes.append(self.ShPrePick_Pos_X)
         values.append(ua.DataValue(ua.Variant(x, ua.VariantType.Float)))
         nodes.append(self.ShPrePick_Pos_Y)
         values.append(ua.DataValue(ua.Variant(y, ua.VariantType.Float)))
         nodes.append(self.ShPrePick_Pos_Z)
-        values.append(ua.DataValue(ua.Variant(pack_z + Z_OFFSET, ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(pack_z + z_offset, ua.VariantType.Float)))
         nodes.append(self.ShPrePick_Pos_A)
         values.append(ua.DataValue(ua.Variant(rot, ua.VariantType.Float)))
         nodes.append(self.ShPrePick_Pos_B)
@@ -293,7 +296,7 @@ class RobotControl(RobotCommunication):
         nodes.append(self.ShPostPick_Pos_Y)
         values.append(ua.DataValue(ua.Variant(post_pick_y_offset, ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_Z)
-        values.append(ua.DataValue(ua.Variant(pack_z + Z_OFFSET, ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(pack_z + z_offset, ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_A)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['pick_pos_base'][0]['a'], ua.VariantType.Float)))
         nodes.append(self.ShPostPick_Pos_B)
@@ -310,7 +313,7 @@ class RobotControl(RobotCommunication):
         nodes.append(self.ShPlace_Pos_Y)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['y'], ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_Z)
-        values.append(ua.DataValue(ua.Variant(pack_z + Z_OFFSET, ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(pack_z + z_offset, ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_A)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['a'], ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_B)
@@ -640,7 +643,8 @@ class RobotControl(RobotCommunication):
                                             data['rot'],
                                             data['packet_type'],
                                             x_offset=data['x_offset'],
-                                            pack_z=data['pack_z'])
+                                            pack_z=data['pack_z'],
+                                            z_offset=data['z_offset'])
                 
                 elif command == RcCommand.SET_HOME_POS_SH:
                     self.set_home_pos_short()

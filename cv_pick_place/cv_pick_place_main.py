@@ -268,7 +268,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
             packet_pos_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
             # If packet is close enough continue picking operation
-            if packet_pos_x > trajectory_dict['x']:
+            if packet_pos_x > trajectory_dict['x'] - 50:
                 control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 state = "PLACING"
                 print("[INFO]: state PLACING")
@@ -286,8 +286,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         for packet in registered_packets:
             if packet.disappeared == 0:
                 # Draw centroid estimated with encoder position
-                cv2.drawMarker(image_frame, 
-                            packet.getCentroidFromEncoder(encoder_pos), 
+                cv2.drawMarker(image_frame, packet.getCentroidFromEncoder(encoder_pos), 
                        (255, 255, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
 
 
@@ -570,6 +569,7 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, p
         trajectory_dict (dict): Dictionary of parameters for changing trajectory 
         prepick_xyz_coords (np.array): Array of [x, y, z] coordinates of prepick position
     """
+    Z_OFFSET = 50.0
     # Set positions and Start robot
     packet_x,pick_pos_y = packet_to_pick.getCentroidInWorldFrame(homography)
     pick_pos_x = packet_x + grip_time_offset
@@ -591,7 +591,7 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, p
     # Check if x is range
     pick_pos_x = np.clip(pick_pos_x, MIN_PICK_DISTANCE, 1800.0)
 
-    prepick_xyz_coords = np.array([pick_pos_x, pick_pos_y, rob_dict['pick_pos_base'][0]['z']])
+    prepick_xyz_coords = np.array([pick_pos_x, pick_pos_y, pick_pos_z + Z_OFFSET])
 
     # Change end points of robot.   
     trajectory_dict = {
@@ -600,7 +600,8 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, p
         'rot': gripper_rot,
         'packet_type': packet_type,
         'x_offset': 190,
-        'pack_z': pick_pos_z
+        'pack_z': pick_pos_z,
+        'z_offset': Z_OFFSET
         }
 
     return trajectory_dict, prepick_xyz_coords
