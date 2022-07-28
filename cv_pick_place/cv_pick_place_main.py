@@ -640,6 +640,6 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
         'packet_type': packet_type,
         'x_offset': 140,
         'pack_z': pick_pos_z,
-        }
+    }
 
     return trajectory_dict, prepick_xyz_coords
