@@ -243,7 +243,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 packet_to_pick = pick_list.pop(pick_ID)
                 print("[INFO]: Chose packet ID: {} to pick".format(str(packet.id)))
 
-                trajectory_dict, prepick_xyz_coords = get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, 
+                trajectory_dict, prepick_xyz_coords = get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estimator, grip_time_offset, 
                                                                          PACK_DEPTHS, MIN_PICK_DISTANCE, MAX_PICK_DISTANCE, Z_OFFSET, X_PICK_OFFSET)
                 print("[DEBUG]: Depth = {}".format(trajectory_dict['pack_z']))
                 # Set trajectory
@@ -633,17 +633,6 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
     prepick_xyz_coords = np.array([pick_pos_x, pick_pos_y, pick_pos_z + Z_OFFSET])
 
     # Change end points of robot.   
-    # trajectory_dict = {
-    #     'x': pick_pos_x,
-    #     'y': pick_pos_y,
-    #     'rot': gripper_rot,
-    #     'packet_type': packet_type,
-    #     'x_offset': 140,
-    #     'pack_z': pick_pos_z,
-    #     'a': a_a,
-    #     'b': a_b,
-    #     'c': a_c
-    #     }
     trajectory_dict = {
         'x': pick_pos_x,
         'y': pick_pos_y,
@@ -651,6 +640,18 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
         'packet_type': packet_type,
         'x_offset': 140,
         'pack_z': pick_pos_z,
-    }
+        'a': 90.0,
+        'b': 0.0,
+        'c': 180.0,
+        'z_offset': 50.0
+        }
+    # trajectory_dict = {
+    #     'x': pick_pos_x,
+    #     'y': pick_pos_y,
+    #     'rot': gripper_rot,
+    #     'packet_type': packet_type,
+    #     'x_offset': 140,
+    #     'pack_z': pick_pos_z,
+    # }
 
     return trajectory_dict, prepick_xyz_coords

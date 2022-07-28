@@ -381,7 +381,7 @@ class GripPositionEstimation():
         # l2 (Euclidian) distance
         l2 = np.linalg.norm(self.points[:,:]-point[:], axis=1)
         mask_inner = l2 < self.gripper_radius * self.gripper_ratio
-
+        # TODO: BETTER CHECK FOR DISTANCE SPIKES
         # If no points are in given l2 distatnce
         if not np.any(mask_inner):
             if self.verbose:
@@ -450,7 +450,7 @@ class GripPositionEstimation():
         self._pcd_down_sample()
         self.points, self.normals = self._get_points_and_estimete_normals()
         
-        o3d.visualization.draw_geometries([self.pcd])
+        # o3d.visualization.draw_geometries([self.pcd])
 
         self._compute_histogram_threshold(self.points[:, 2], self.num_bins)
 
@@ -698,9 +698,11 @@ class GripPositionEstimation():
                 dx, dy, z = point_relative
                 shift_x, shift_y =  dx * mm_height, dy * mm_width
                 # Changes the z value to be positive ,converts m to mm and shifts by the conv2cam_dist
-                pack_z = abs(-1.0 * M2MM * z - conv2cam_dist)
+                print(f"[DEL]: {z} oroginal height")
+                pack_z = abs(-1.0 * M2MM * z + self.th_val*M2MM )
+                print(f"[DEL]: {pack_z} Pre clipping")
                 pack_z = np.clip(pack_z, z_min, z_max)
-
+                print(f"[DEL]: {pack_z} After clipping")
                 # Rotation Matrix between the bases of the pcd and the gripper
                 # 180 degreese around z axis(just in basic)
                 R = np.array([[-1.0, 0.0, 0.0],
