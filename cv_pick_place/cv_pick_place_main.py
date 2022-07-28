@@ -599,7 +599,7 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, p
         'y': pick_pos_y,
         'rot': gripper_rot,
         'packet_type': packet_type,
-        'x_offset': 140,
+        'x_offset': 190,
         'pack_z': pick_pos_z
         }
 
