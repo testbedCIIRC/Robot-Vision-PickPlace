@@ -251,7 +251,7 @@ class RobotControl(RobotCommunication):
         x_offset (float): X offset between prepick and pick position
         pack_z (float): Pick height 
         post_pick_y_offset (float): Y position for post pick position
-        z_offset (float): Z height offset from pick height for all position except for pick position
+        z_offset (float): Z height offset from pick height for all positions except for pick position
         """
         nodes = []
         values = []
