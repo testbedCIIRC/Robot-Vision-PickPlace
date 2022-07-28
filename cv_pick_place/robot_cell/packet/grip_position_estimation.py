@@ -1,3 +1,4 @@
+from dis import dis
 import open3d as o3d
 import numpy as np
 import matplotlib.pyplot as plt
@@ -260,17 +261,34 @@ class GripPositionEstimation():
         points (np.ndarray): 3D points for computation
 
         Returns:
-        tuple[np.ndarray, np.ndarray]: geometric center and center of mass
+        np.ndarray: center of mass
         """
         c_mass = np.average(points[:, :2], axis=0, weights=points[:, 2]-np.min(points[:, 2]))
         dists = np.linalg.norm(points[:, :2] - c_mass, axis=1)
         idx = np.argmin(dists)
+        normal = self.normals[idx, :]
         c_mass = np.hstack((c_mass, self.points[idx, 2]))
 
-        return c_mass
+        return c_mass, normal
 
+    def _project_points2plane(self, center: np.ndarray, normal:np.ndarray
+                              ) -> np.ndarray:
+        """
+        Projects points into the plane given by center and normal(unit normal)
 
-    def _anuluss_mask(self, center: np.ndarray) -> np.ndarray:
+        Parameters:
+        center (np.ndarray): center, origin of the plane, point on the plane
+        normal (np.ndarray): normal of the plane
+
+        Returns:
+        np.ndarray: Points projected into the plane
+        """
+        dp = self.points - center
+        dists = np.dot(dp, normal).reshape((-1,1))
+        projected = self.points - dists*normal
+        return projected 
+
+    def _anuluss_mask(self, center: np.ndarray, normal:np.ndarray) -> np.ndarray:
         """
         Returns mask of pointes which are in annulus
 
@@ -280,7 +298,8 @@ class GripPositionEstimation():
         Returns:
         np.ndarray: binary mask
         """
-        l2 = np.linalg.norm(self.points-center, axis=1)
+        projected = self._project_points2plane(center, normal)
+        l2 = np.linalg.norm(projected-center, axis=1)
         s = l2 >= self.gripper_radius*self.gripper_ratio
         b = l2 <= self.gripper_radius
         return b*s
@@ -323,19 +342,22 @@ class GripPositionEstimation():
     def _get_candidate_point(self, center: np.ndarray, allowed:np.ndarray) -> np.ndarray:
         """
         Selects point closest to center, which is not blacklisted
-        
+        FIXME: fix docstring add 
         Parameters:
         center (np.ndarray): center of mass
         allowed (np.ndarray): binary mask of allowed points
         """
         candidate_points = self.points[allowed, :]
+        candidate_normals = self.normals[allowed, :]
         l2 = np.linalg.norm(self.points[allowed, :2] - center[:2], axis=1)
         idx = np.argmin(l2)
-        candidate = candidate_points[idx, :]
-        return candidate
+        candidate_point = candidate_points[idx, :]
+        candidate_normals = candidate_normals[idx, :]
+        return candidate_point, candidate_normals
 
 
-    def _check_point_validity(self, point: np.ndarray) -> bool:
+    def _check_point_validity(self, point: np.ndarray, normal: np.ndarray
+                              ) -> bool:
         """
         Checks if point is valid. No height spike in circlic neighborhood,
         Check if part of the outer circle is not on the conveyer belt
@@ -361,10 +383,10 @@ class GripPositionEstimation():
         valid_max = np.abs(self.points[max_point, 2] - point[2]) < self.spike_threshold
         valid_min = np.abs(self.points[min_point, 2] - point[2]) < self.spike_threshold
 
-        anls_mask = self._anuluss_mask(point)
+        anls_mask = self._anuluss_mask(point, normal)
         if not np.any(anls_mask):
             if self.vervose:
-                print(f"[INFO]: No points in anullus of the gripper")
+                print(f"[INFO]: No points in anulus around the gripper")
             return False
         anls_points = self.points[anls_mask, :]
         lowest_point = np.argmin(anls_points[:,2])
@@ -430,14 +452,15 @@ class GripPositionEstimation():
         blacklist = np.full((self.points.shape[0],), True)   
 
         if self.center_switch == 'mass':
-            center = self._get_center_of_mass(filtered_points)
+            center, normal = self._get_center_of_mass(filtered_points)
         elif self.center_switch == 'height':
-            center = self.points[np.argmax(filtered_points[:,2]),:]    
+            idx = np.argmax(filtered_points[:,2])
+            center, normal = self.points[idx], self.normal[idx]  
 
-        n_mask = self._anuluss_mask(center)
+        n_mask = self._anuluss_mask(center, normal)
         plane_c, plane_n = self._fit_plane(self.points[n_mask, :])        
 
-        valid = self._check_point_validity(center)
+        valid = self._check_point_validity(center, plane_n)
         
         # Returns original point as optimal if it is valid
         if valid:
@@ -462,15 +485,15 @@ class GripPositionEstimation():
             if searched:
                 break
 
-            c_point = self._get_candidate_point(center, allowed_mask)
-            valid = self._check_point_validity(c_point)
+            c_point, c_normal = self._get_candidate_point(center, allowed_mask)
+            valid = self._check_point_validity(c_point, c_normal)
 
             if not valid:
                 blacklist = self._expand_blacklist(c_point, blacklist)
                 self.run_number += 1
                 continue
 
-            n_mask = self._anuluss_mask(c_point)
+            n_mask = self._anuluss_mask(c_point, c_normal)
             neighbourhood_points = self.points[n_mask, :]
             plane_c, plane_n = self._fit_plane(neighbourhood_points)
 
@@ -689,11 +712,18 @@ def main():
     print(f"[INFO]: Estimeted optimal point:\n\t\tx, y shifts: {dx:.4f}, {dy:.4f},\
             \n\t\tz position: {pack_z:.2f}\n\t\tangles: {ax:.2f}, {ay:.2f}, {az:.2f}")
     # # Estimating point and normal from color and depth images
-    point, normal = gpe.estimate_from_images("color_image_crop_test.jpg", "depth_image_crop.png",
-                                                                          path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
+    point, normal = gpe.estimate_from_images("color_image_crop.jpg", "depth_image_crop.png",
+                                             path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
     
     point, normal = gpe.estimate_from_images("rgb_image2.jpg", "depth_image2.png",
-                                                                        path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
+                                             path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
+    
+    point, normal = gpe.estimate_from_images("rgb_image1.jpg", "depth_image1.png",
+                                              path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
+    
+    point, normal = gpe.estimate_from_images("rgb_image3.jpg", "depth_image3.png",
+                                             path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
+    
     # if point is not None:
     #     print(f"[INFO]: Picked_point\t{point}\t picked_normal\t {normal} norm = {np.linalg.norm(normal)}")
 

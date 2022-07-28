@@ -56,7 +56,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     gripper_pose_estimator = GripPositionEstimation(
         visualize=True, verbose=True, center_switch="mass",
         gripper_radius=0.08, max_num_tries = 100, height_th= -0.76, num_bins=20,
-        black_list_radius = 0.01
+        black_list_radius = 0.01, save_depth_array=True
     )
 
     if DETECTOR_TYPE == 'deep_1':
@@ -616,6 +616,17 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
     prepick_xyz_coords = np.array([pick_pos_x, pick_pos_y, rob_dict['pick_pos_base'][0]['z']])
 
     # Change end points of robot.   
+    # trajectory_dict = {
+    #     'x': pick_pos_x,
+    #     'y': pick_pos_y,
+    #     'rot': gripper_rot,
+    #     'packet_type': packet_type,
+    #     'x_offset': 140,
+    #     'pack_z': pick_pos_z,
+    #     'a': a_a,
+    #     'b': a_b,
+    #     'c': a_c
+    #     }
     trajectory_dict = {
         'x': pick_pos_x,
         'y': pick_pos_y,
@@ -623,9 +634,6 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
         'packet_type': packet_type,
         'x_offset': 140,
         'pack_z': pick_pos_z,
-        'a': a_a,
-        'b': a_b,
-        'c': a_c
         }
 
     return trajectory_dict, prepick_xyz_coords
