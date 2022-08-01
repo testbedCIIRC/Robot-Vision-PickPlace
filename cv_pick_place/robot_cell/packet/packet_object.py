@@ -60,6 +60,9 @@ class Packet:
         # Height of horizontally aligned bounding box in milimeters
         self.height_bnd_mm = None
 
+        # Binary mask for the depth detection
+        self.mask = None
+
         # Ammount of extra pixels around each depth crop
         self.crop_border_px = crop_border_px
         # Number of averaged depth crops
@@ -240,6 +243,28 @@ class Packet:
         # OBSOLETE PARAMS
         self.width = width
         self.height = height
+
+    def set_mask(self, mask) -> None:
+        """
+        Sets the inner rectangle(params mask of the packet)
+
+        Parameters: 
+        mask (tuple):  center(x, y), (width, height), angle of rotation
+
+        """
+        if not isinstance(mask, np.ndarray):  
+            print(f"[WARN]: Tried to crop packet mask of type {type(mask)} (Not a np.ndarray)")
+            return 
+        
+        # Update the mask
+        if self.mask is None:
+            self.mask = mask
+        else:
+            if mask.shape != self.mask.shape:
+                print(f"[WARN]: Tried to average two uncompatible sizes")
+                return
+            # NOTE: JUST FOR TESTING THE COMBINING OF THE MASks
+            self.mask = np.logical_and(mask, self.mask)
 
     def add_angle_to_average(self, angle: float) -> None:
         """

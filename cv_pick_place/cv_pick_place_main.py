@@ -184,7 +184,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         
         # Detect packets using neural HSV thresholding
         elif DETECTOR_TYPE == 'hsv':
-            image_frame, detected_packets = pack_detect.detect_packet_hsv(rgb_frame,
+            image_frame, detected_packets, mask = pack_detect.detect_packet_hsv(rgb_frame,
                                                                           encoder_pos,
                                                                           draw_box = show_bbox,
                                                                           image_frame = image_frame)
@@ -202,7 +202,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 # Check if packet is far enough from edge
                 if item.centroid[0] - item.width / 2 > item.crop_border_px and item.centroid[0] + item.width / 2 < (frame_width - item.crop_border_px):
                     depth_crop = item.get_crop_from_frame(depth_frame)
+                    mask_crop = item.get_corp_from_frame(mask)
                     item.add_depth_crop_to_average(depth_crop)
+                    item.set_mask(mask_crop)
 
         # Update registered packet list with new packet info
         registered_packets = pt.item_database
@@ -611,7 +613,7 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
     y_lims = (MIN_Y, MAX_Y)
     dx, dy, pick_pos_z, a_a, a_b, a_c = gripper_pose_estimator.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
     print(f"[INFO]: Estimeted optimal point:\n\t\tx, y shifts: {dx}, {dy},\
-            \n\t\tz position: {pick_pos_z}\n\t\tangles: {a_a}, {a_b}, {a_c}")
+            \n\t\tz position: {pick_pos_z}\n\t\t angles: {a_a}, {a_b}, {a_c}")
     if dx is not None:
         pick_pos_x += dx
         pick_pos_y += dy

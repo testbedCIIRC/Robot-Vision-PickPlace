@@ -110,6 +110,7 @@ class ThresholdDetector:
         white_contour_list, _ = cv2.findContours(white_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         brown_contour_list, _ = cv2.findContours(brown_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+        combined_mask = np.logical_or(white_mask, brown_mask)
         # Detect WHITE packets from white binary mask contours
         for contour in white_contour_list:
             area_cm2 = abs(cv2.contourArea(contour) * self.homography_determinant)
@@ -126,7 +127,6 @@ class ThresholdDetector:
             
             # Get detected packet parameters
             packet = self.get_packet_from_contour(contour, object_type, encoder_position)
-            
             # Check for squareness
             side_ratio = packet.width / packet.height
             if not (1 + self.max_ratio_error) > side_ratio > (1 - self.max_ratio_error):
@@ -166,7 +166,7 @@ class ThresholdDetector:
 
             self.detected_objects.append(packet)
 
-        return image_frame, self.detected_objects
+        return image_frame, self.detected_objects, combined_mask
 
     def draw_hsv_mask(self, image_frame):
         frame_height = image_frame.shape[0]
