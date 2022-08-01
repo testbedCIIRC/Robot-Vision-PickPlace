@@ -452,13 +452,17 @@ class GripPositionEstimation():
         self.points, self.normals = self._get_points_and_estimete_normals()
         
         o3d.visualization.draw_geometries([self.pcd])
+        if self.mask_threshold is None:
+            print(f"[INFO]: Mask not provided continue from depth histogeram")
+            self._compute_histogram_threshold(self.points[:, 2], self.num_bins)
 
-        self._compute_histogram_threshold(self.points[:, 2], self.num_bins)
+            if self.visualization:
+                self._visualize_histogram(self.num_bins)
+        else: 
+            # Converst the threshold value from mask into pcd units
+            self.mask_threshold /= -M2MM
 
-        if self.visualization:
-            self._visualize_histogram(self.num_bins)
-
-        packet_mask = self.points[:, 2] >= -0.776
+        packet_mask = self.points[:, 2] >= self.mask_threshold
         filtered_points = self.points[packet_mask, :]
         blacklist = np.full((self.points.shape[0],), True)   
         
@@ -626,9 +630,7 @@ class GripPositionEstimation():
         tuple[np.ndarray]: Point and normal for picking
         """
         # Sets everything outside of mask as lower
-        print(depth_array.min(), depth_array.max())
         if packet_mask is not None:
-            print(packet_mask.shape, depth_array.shape)
             belt = np.logical_not(packet_mask) * depth_array
             # FIXME: Might ignore 0 as depth value 
             # Selects lowest value as the threshold for the 
@@ -636,7 +638,6 @@ class GripPositionEstimation():
             print(f"[INFO]: Selected depth threshold from mask: {self.mask_threshold}")
             depth_array[np.logical_not(packet_mask)] = self.mask_threshold
 
-        print(depth_array.min(), depth_array.max())
         # Creates PCD with threshold based on 
         self.pcd = self._create_pcd_from_depth_array(depth_array)
         center, normal = self._detect_point_from_pcd()
