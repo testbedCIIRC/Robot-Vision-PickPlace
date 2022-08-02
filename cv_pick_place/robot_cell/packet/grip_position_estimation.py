@@ -114,7 +114,8 @@ class GripPositionEstimation():
                 o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
         # o3d.visualization.draw_geometries([pcd])
         pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-        o3d.visualization.draw_geometries([pcd])
+        if self.visualization:
+            o3d.visualization.draw_geometries([pcd])
         return pcd
 
 
@@ -453,8 +454,8 @@ class GripPositionEstimation():
         
         self._pcd_down_sample()
         self.points, self.normals = self._get_points_and_estimete_normals()
-        
-        o3d.visualization.draw_geometries([self.pcd])
+        if self.visualization:
+            o3d.visualization.draw_geometries([self.pcd])
         if self.mask_threshold is None:
             print(f"[INFO]: Mask not provided continue from depth histogeram")
             self._compute_histogram_threshold(self.points[:, 2], self.num_bins)
@@ -464,6 +465,7 @@ class GripPositionEstimation():
         else: 
             # Converst the threshold value from mask into pcd units
             self.mask_threshold /= -M2MM
+            self.th_val = self.mask_threshold
 
         packet_mask = self.points[:, 2] >= self.mask_threshold
         filtered_points = self.points[packet_mask, :]
@@ -578,15 +580,14 @@ class GripPositionEstimation():
         Returns
         tuple[float]: Angles ax, ay, az in degrees[°]
         """
-        # Opposite direction for gripper aproach
-        normal_o = -1.0 * vector
         # Transform between bases of depth image and gripper
-        g_normal = rotation_matrix @ normal_o
-
+        g_normal = rotation_matrix @ vector
+        print(f"Rotated normal:\t\t {g_normal} in gripper base")
         # Converts vector to base angles
         ax = np.arctan2(np.linalg.norm(g_normal[1:]), g_normal[0]) # a = ...
         ay = np.arctan2(np.linalg.norm(g_normal[0::2]), g_normal[1]) # b = ...
         az = np.arctan2(np.linalg.norm(g_normal[:2]), g_normal[2]) # c = ...
+        
         angles = np.array([ax, ay, az])
         return np.rad2deg(angles)
 
@@ -750,8 +751,8 @@ class GripPositionEstimation():
                 R = np.array([[-1.0, 0.0, 0.0],
                               [0.0, -1.0, 0.0],
                               [0.0, 0.0, 1.0]])
-                
-                ax, ay, az = self._vector2angles(normal, R)
+                normal_o = -1 * normal
+                ax, ay, az = self._vector2angles(normal_o, R)
 
         if self.verbose :
             print(f"[INFO]: Optimal point found:{depth_exist and  point_exists}")
@@ -771,12 +772,22 @@ def main():
     gripper_radius = triangle_edge/np.sqrt(3)
 
     # Creating new class with given params
-    gpe = GripPositionEstimation(visualize=True, verbose =True, center_switch="mass", gripper_radius=gripper_radius, gripper_ration=0.8)
-    # depth_array = gpe._load_numpy_depth_array_from_png(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_image_new.png"))
+    gpe = GripPositionEstimation(visualize=False, verbose =True, center_switch="mass", gripper_radius=gripper_radius, gripper_ration=0.8)
+    depth_array = gpe._load_numpy_depth_array_from_png(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_image_new.png"))
     depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array1_postcrop.npy"))
     mask = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array1_postcrop_mask.npy"))
     mask = np.logical_not(mask)
     point_relative, normal = gpe.estimate_from_depth_array(depth_array, mask)
+    # normal = np.array([0, 0, 1])
+    print(f"Estimated normal:\t {normal} in packet base")
+    aproach_vect = normal * -1
+    print(f"Gripper aproach vector:\t {aproach_vect} in packet base")
+    
+    R = np.array([[-1.0, 0.0, 0.0],
+                [0.0, -1.0, 0.0],
+                [0.0, 0.0, 1.0]])
+    a, b, c = gpe._vector2angles(aproach_vect, R)
+    print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}")
     # depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array00.npy"))
     # point_relative, normal = gpe.estimate_from_depth_array(depth_array)
     # depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array0.npy"))

@@ -612,8 +612,8 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
     packet_coords = (pick_pos_x, pick_pos_y)
     y_lims = (MIN_Y, MAX_Y)
     dx, dy, pick_pos_z, a_a, a_b, a_c = gripper_pose_estimator.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
-    print(f"[INFO]: Estimeted optimal point:\n\t\tx, y shifts: {dx}, {dy},\
-            \n\t\tz position: {pick_pos_z}\n\t\t angles: {a_a}, {a_b}, {a_c}")
+    print(f"[INFO]: Estimeted optimal point:\n\t\tx, y shifts: {dx:.2f}, {dy:.2f},\
+            \n\t\tz position: {pick_pos_z:.2f}\n\t\t angles: {a_a:.2f}, {a_b:.2f}, {a_c:.2f}")
     if dx is not None:
         pick_pos_x += dx
         pick_pos_y += dy
