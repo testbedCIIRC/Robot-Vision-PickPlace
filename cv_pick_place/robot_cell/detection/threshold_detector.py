@@ -54,7 +54,7 @@ class ThresholdDetector:
                         xmin = x, xmax = x + h, 
                         width = w, height = h, 
                         encoder_position = encoder_pos)
-
+        
         packet.set_type(type)
         packet.set_centroid(centroid[0], centroid[1], self.homography_matrix, encoder_pos)
         packet.set_bounding_size(w, h, self.homography_matrix)
@@ -88,14 +88,16 @@ class ThresholdDetector:
         
         if self.homography_determinant is None:
             print("[WARINING] ObjectDetector: No homography matrix set")
-            return image_frame, self.detected_objects
+            return image_frame, self.detected_objects, None
 
         if image_frame is None or not image_frame.shape == rgb_frame.shape:
             image_frame = rgb_frame.copy()
         
         frame_height = rgb_frame.shape[0]
         frame_width = rgb_frame.shape[1]
-        
+
+        mask = np.zeros((frame_height, frame_width))
+
         # Get binary mask
         hsv_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2HSV)
         
@@ -110,7 +112,6 @@ class ThresholdDetector:
         white_contour_list, _ = cv2.findContours(white_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         brown_contour_list, _ = cv2.findContours(brown_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        combined_mask = np.logical_or(white_mask, brown_mask)
         # Detect WHITE packets from white binary mask contours
         for contour in white_contour_list:
             area_cm2 = abs(cv2.contourArea(contour) * self.homography_determinant)
@@ -127,6 +128,7 @@ class ThresholdDetector:
             
             # Get detected packet parameters
             packet = self.get_packet_from_contour(contour, object_type, encoder_position)
+            
             # Check for squareness
             side_ratio = packet.width / packet.height
             if not (1 + self.max_ratio_error) > side_ratio > (1 - self.max_ratio_error):
@@ -137,7 +139,8 @@ class ThresholdDetector:
                 continue
 
             image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box)
-            
+            mask = cv2.drawContours(mask, [contour], -1, (1),thickness=cv2.FILLED)
+
             self.detected_objects.append(packet)
 
         # Detect BROWN packets from brown binary mask contours
@@ -163,10 +166,12 @@ class ThresholdDetector:
                 continue
             
             image_frame = self.draw_packet_info(image_frame, packet, encoder_position, draw_box)
+            mask = cv2.drawContours(mask, [contour], -1, (1),thickness=cv2.FILLED)
 
             self.detected_objects.append(packet)
 
-        return image_frame, self.detected_objects, combined_mask
+        bin_mask = mask.astype(bool)
+        return image_frame, self.detected_objects, bin_mask
 
     def draw_hsv_mask(self, image_frame):
         frame_height = image_frame.shape[0]

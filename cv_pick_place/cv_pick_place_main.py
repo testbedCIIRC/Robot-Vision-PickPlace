@@ -202,7 +202,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 # Check if packet is far enough from edge
                 if item.centroid[0] - item.width / 2 > item.crop_border_px and item.centroid[0] + item.width / 2 < (frame_width - item.crop_border_px):
                     depth_crop = item.get_crop_from_frame(depth_frame)
-                    mask_crop = item.get_corp_from_frame(mask)
+                    mask_crop = item.get_crop_from_frame(mask)
                     item.add_depth_crop_to_average(depth_crop)
                     item.set_mask(mask_crop)
 
