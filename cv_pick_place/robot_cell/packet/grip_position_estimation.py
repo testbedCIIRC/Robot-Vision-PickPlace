@@ -363,9 +363,8 @@ class GripPositionEstimation():
         l2 = np.linalg.norm(self.points[allowed, :2] - center[:2], axis=1)
         idx = np.argmin(l2)
         candidate_point = candidate_points[idx, :]
-        candidate_normals = candidate_normals[idx, :]
-        return candidate_point, candidate_normals
-
+        candidate_normal = candidate_normals[idx, :]
+        return candidate_point, candidate_normal
 
     def _check_point_validity(self, point: np.ndarray, normal: np.ndarray
                               ) -> bool:
@@ -406,7 +405,6 @@ class GripPositionEstimation():
         # Checking if part of the gripper could get to the conv belt
         anls_points = self.points[anls_mask, :]
         lowest_point_idx = np.argmin(anls_points[:, 2])
-        # BUG: Here should be something based on the threshold of the belt not this stupid value th val
         valid_conv = anls_points[lowest_point_idx, 2] > self.th_val   
 
         validity = valid_max and valid_min and valid_conv
@@ -563,6 +561,31 @@ class GripPositionEstimation():
 
         return np.hstack((point_anchor_rel, point[2]))
 
+    def _rot_matrix2RPY(self, matrix:np.ndarray) -> np.ndarray:
+        """
+        Convers rotation matrix to roll, pitch, yaw angles 
+
+        Parameters: 
+        matrix (np.ndarray): rotation matrix to be converted
+
+        Returns:
+        np.ndarray: angles(roll, pitch, yaw) in degrees
+        """
+        norm = np.linalg.norm(matrix[2,1:])
+        pitch_1 = np.arctan2(-matrix[2,0], norm)
+        pitch_2 = np.arctan2(-matrix[2,0], -norm)
+        cp_1 = np.cos(pitch_1)
+        cp_2 = np.cos(pitch_2)
+        roll_1 = np.arctan2(matrix[1,0]/cp_1, matrix[0,0]/cp_1)
+        roll_2 = np.arctan2(matrix[1,0]/cp_2, matrix[0,0]/cp_2)
+        yaw_1 = np.arctan2(matrix[2,1]/cp_1, matrix[2,2]/cp_1)
+        yaw_2 = np.arctan2(matrix[2,1]/cp_2, matrix[2,2]/cp_2)
+        roll_3  = np.arctan2(matrix[2,1], matrix[2,2])
+        yaw_3 = np.arctan2(matrix[1,0], matrix[0,0])
+        pitch_3 = np.arctan2(-matrix[2,0], np.cos(yaw_3)*matrix[0,0] + np.sin(yaw_3)* matrix[1,0])
+        angles = np.array([[roll_1, pitch_1, yaw_1], [roll_2, pitch_2, yaw_2], [roll_3, pitch_3, yaw_3]])
+        return np.rad2deg(angles)
+
 
     def _vector2angles(self, vector:np.ndarray,
                        rotation_matrix: np.ndarray=np.array([[-1.0, 0.0, 0.0],
@@ -590,6 +613,49 @@ class GripPositionEstimation():
         
         angles = np.array([ax, ay, az])
         return np.rad2deg(angles)
+    
+    def _vectors2rotation(self, vector:np.ndarray, base_vector:np.ndarray,
+                       rotation_matrix: np.ndarray=np.array([[-1.0, 0.0, 0.0],
+                                                             [0.0, -1.0, 0.0],
+                                                             [0.0, 0.0, 1.0]])
+                        ) -> np.ndarray:
+        """
+        Computes the rotation matrix between 2 vectors 
+
+        Parameters:
+        vector (np.ndarray): unit vector of the wanted position
+        base_vector (np.ndarray): base unit vector
+        rotation_matrix (np.ndarray): Rotation matrix between the packet base and robot base
+
+        Returns:
+        np.ndarray: Angles(roll, pitch, yaw) in degrees
+        """
+        # Transformation of the vector into base coordinates
+        vector = rotation_matrix @ vector
+
+        v = np.cross(base_vector, vector)
+        s = np.linalg.norm(v)
+        c = np.dot(base_vector, vector)
+        I = np.eye(3)
+        skew_sym_matrix = np.array([[0, -v[2], v[1]],
+                                    [v[2], 0, -v[0]],
+                                    [-v[1], v[0], 0]])
+        R = I + skew_sym_matrix + np.dot(skew_sym_matrix,skew_sym_matrix) *((1-c)/s**2)
+        print(R@base_vector) # Just sanity check that this should be the same for allignment
+        angles = self._rot_matrix2RPY(R)
+        print(angles)
+        x, y , z = vector
+        rot_z = np.arctan2(x, y)
+        rot_x = np.arctan2(np.hypot(x, y), z)
+        roll, pitch, yaw = np.rad2deg(np.array([rot_z, 0.0, rot_x]))
+        print(f"Just 2 angles maybe IDK- roll:{roll} pitch{pitch}, yaw:{yaw}" )
+        theta_x = np.arctan2(R[2,1], R[2,2])
+        theta_y = np.arctan2(-R[2,0], np.linalg.norm(R[2,1:]))
+        theta_z = np.arctan2(R[1,0], R[0,0])
+        array = np.array([theta_x, theta_y, theta_z])
+        return np.rad2deg(array)
+
+
 
     def estimate_from_images(self, rgb_image_name: str, depth_image_name: str,
                              path: str="", anchor: np.array=np.array([.5, .5])
@@ -786,8 +852,13 @@ def main():
     R = np.array([[-1.0, 0.0, 0.0],
                 [0.0, -1.0, 0.0],
                 [0.0, 0.0, 1.0]])
+    
     a, b, c = gpe._vector2angles(aproach_vect, R)
     print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}")
+    base = np.array([0.0,0.0,1.0])
+    a, b, c = gpe._vector2rotation(aproach_vect, base,R)
+    print(f"Angles between gripper base and normal: {a},  {b},  {c}")
+   
     # depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array00.npy"))
     # point_relative, normal = gpe.estimate_from_depth_array(depth_array)
     # depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array0.npy"))
