@@ -6,6 +6,7 @@ import os
 from PIL import Image
 import cv2
 from scipy import signal
+import math 
 
 from robot_cell.packet.packet_object import Packet
 
@@ -631,8 +632,29 @@ class GripPositionEstimation():
         np.ndarray: Angles(roll, pitch, yaw) in degrees
         """
         # Transformation of the vector into base coordinates
-        vector = rotation_matrix @ vector
+        new_z = rotation_matrix @ vector  
+        base_coords = np.array([[1.0, 0.0, 0.0],[0.0, 1.0, 0.0],[0.0, 0.0, 1.0]])
+        # Computation of new base base based around the given z axis
+        # Selected y axis to be in the direction of the conv belt
+        new_y = np.array([1.0, 0.0, 0.0])
+        new_y[2] = -(np.dot(new_z[:2], new_y[:2]))/new_z[2]
+        new_y /= np.linalg.norm(new_y)
+        new_x = np.cross(new_y, new_z)
+        print(f"New base for selection\n x: {new_x}, {np.linalg.norm(new_x)} \n y: {new_y}, {np.linalg.norm(new_y)} \n z: {new_z}, {np.linalg.norm(new_z)}")
 
+        # Rotations between angles
+        c_alpha = np.dot(base_coords[:2, 0], new_x[:2])/(1* np.linalg.norm(base_coords[:2, 0]))
+        alpha = 0.0
+        # Compute alpha from cosine
+        Rz = np.array([[math.cos(alpha), -math.sin(alpha), 0],
+                       [math.sin(alpha), math.cos(alpha), 0],
+                       [0,0,1]])
+        coords_z = Rz @ base_coords
+        # Now to rotate to the angle for x to be the same
+        c_beta = np.dot(coords_z[:,0], gir)
+
+        # Computation based on rotation matrix
+        vector = new_z
         v = np.cross(base_vector, vector)
         s = np.linalg.norm(v)
         c = np.dot(base_vector, vector)
@@ -641,21 +663,20 @@ class GripPositionEstimation():
                                     [v[2], 0, -v[0]],
                                     [-v[1], v[0], 0]])
         R = I + skew_sym_matrix + np.dot(skew_sym_matrix,skew_sym_matrix) *((1-c)/s**2)
-        print(R@base_vector) # Just sanity check that this should be the same for allignment
+        print(R @ base_vector) # Just sanity check that this should be the same for allignment
+        # From rotation matrix to RPY angles
         angles = self._rot_matrix2RPY(R)
         print(angles)
         x, y , z = vector
         rot_z = np.arctan2(x, y)
         rot_x = np.arctan2(np.hypot(x, y), z)
         roll, pitch, yaw = np.rad2deg(np.array([rot_z, 0.0, rot_x]))
-        print(f"Just 2 angles maybe IDK- roll:{roll} pitch{pitch}, yaw:{yaw}" )
+        print(f"Just 2 angles maybe IDK- roll:{roll} pitch:{pitch}, yaw:{yaw}" )
         theta_x = np.arctan2(R[2,1], R[2,2])
         theta_y = np.arctan2(-R[2,0], np.linalg.norm(R[2,1:]))
         theta_z = np.arctan2(R[1,0], R[0,0])
         array = np.array([theta_x, theta_y, theta_z])
         return np.rad2deg(array)
-
-
 
     def estimate_from_images(self, rgb_image_name: str, depth_image_name: str,
                              path: str="", anchor: np.array=np.array([.5, .5])
@@ -683,7 +704,6 @@ class GripPositionEstimation():
         relative = self._get_relative_coordinates(center, anchor)
 
         return relative, normal
-
 
     def estimate_from_depth_array(self, depth_array: np.ndarray,
                                   packet_mask: np.ndarray = None,
@@ -856,7 +876,7 @@ def main():
     a, b, c = gpe._vector2angles(aproach_vect, R)
     print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}")
     base = np.array([0.0,0.0,1.0])
-    a, b, c = gpe._vector2rotation(aproach_vect, base,R)
+    a, b, c = gpe._vectors2rotation(aproach_vect, base,R)
     print(f"Angles between gripper base and normal: {a},  {b},  {c}")
    
     # depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array00.npy"))
