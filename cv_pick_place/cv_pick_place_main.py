@@ -611,9 +611,9 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
     z_lims = (PACK_DEPTHS[packet_to_pick.type], MAX_Z)
     packet_coords = (pick_pos_x, pick_pos_y)
     y_lims = (MIN_Y, MAX_Y)
-    dx, dy, pick_pos_z, a_a, a_b, a_c = gripper_pose_estimator.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
+    dx, dy, pick_pos_z, roll, pitch, yaw = gripper_pose_estimator.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
     print(f"[INFO]: Estimeted optimal point:\n\t\tx, y shifts: {dx:.2f}, {dy:.2f},\
-            \n\t\tz position: {pick_pos_z:.2f}\n\t\t angles: {a_a:.2f}, {a_b:.2f}, {a_c:.2f}")
+            \n\t\tz position: {pick_pos_z:.2f}\n\t\t angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}")
     if dx is not None:
         pick_pos_x += dx
         pick_pos_y += dy
@@ -642,9 +642,9 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
         'packet_type': packet_type,
         'x_offset': 140,
         'pack_z': pick_pos_z,
-        'a': 90.0,
-        'b': 0.0,
-        'c': 180.0,
+        'a': roll,
+        'b': pitch,
+        'c': yaw,
         'z_offset': 50.0
         }
     # trajectory_dict = {

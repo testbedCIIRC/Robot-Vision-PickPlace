@@ -317,7 +317,7 @@ class RobotControl(RobotCommunication):
         nodes.append(self.ShPlace_Pos_Z)
         values.append(ua.DataValue(ua.Variant(pack_z + z_offset, ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_A)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['a']-rot, ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['a'], ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_B)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['b'], ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_C)
