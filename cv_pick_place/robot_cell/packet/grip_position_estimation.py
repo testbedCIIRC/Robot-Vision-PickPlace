@@ -636,77 +636,63 @@ class GripPositionEstimation():
         new_z = rotation_matrix @ vector
         # want the opposite threshold
         new_z *= -1
-        print(f"[INFO]: Aproach vector {new_z}")
+
+        print(f"[INFO]: Aproach vector {new_z} in coord base")
 
         # new_z = np.array([0,0,-1]) testing case
         # base of the coordinate system
         base_coords = np.array([[1.0, 0.0, 0.0],
                                 [0.0, 1.0, 0.0],
                                 [0.0, 0.0, 1.0]])
-
+        # NOTE:
         # Computation of new base base based around the given z axis
-        # Selected y axis to be in the direction of the conv belt
+        # Selected y axis to be in the direction of the conv belt (ie 1, 0, ?)
+        # Recalculation of the lacs element so it lies in the plane
+        # x axis is then calculated to give orthogonal and follow right hand rule
         new_y = np.array([1.0, 0.0, 0.0])
         new_y[2] = -(np.dot(new_z[:2], new_y[:2]))/new_z[2]
         new_y /= np.linalg.norm(new_y)
         new_x = np.cross(new_y, new_z)
-        print(f"[INFO]: New base for picking\n x: {new_x},\
-                {np.linalg.norm(new_x)} \n y: {new_y}, {np.linalg.norm(new_y)}\
-                \n z: {new_z}, {np.linalg.norm(new_z)}")
+        if self.verbose:
+            print(f"[INFO]: New base for picking\n x: {new_x}, {np.linalg.norm(new_x):.2f}\
+                    \n y: {new_y}, {np.linalg.norm(new_y):.2f}\
+                    \n z: {new_z}, {np.linalg.norm(new_z):.2f}")
 
         # Rotations between angles x -> projection of x_new to xy plane
         alpha = np.arctan2(np.linalg.norm(np.cross(base_coords[:2, 0], new_x[:2])), np.dot(base_coords[:2, 0], new_x[:2]))
         Rz = np.array([[math.cos(alpha), -math.sin(alpha), 0],
                        [math.sin(alpha), math.cos(alpha), 0],
                        [0,0,1]])
+
         # Rz[np.abs(Rz) < EPS]  = 0.0            
         coords_z = base_coords @ Rz
-        print(coords_z)
+        # print(coords_z)
         # Now to rotate to the angle for x' ->x_new
         beta = np.arctan2(np.linalg.norm(np.cross(coords_z[:, 0], new_x)), np.dot(coords_z[:, 0], new_x))
+        beta *=  - 1 if new_x[2] >= 0 else 1 
         Ry = np.array([[math.cos(beta), 0, math.sin(beta)],
                        [0, 1, 0],
                        [-math.sin(beta), 0, math.cos(beta)]])
         # Ry[np.abs(Ry) < EPS]  = 0.0  
         coords_y = coords_z @ Ry
-        print(coords_y)
+        # print(coords_y)
         # Now rotation from z''-> z_new
         gamma = np.arctan2(np.linalg.norm(np.cross(coords_y[:, 2], new_z)), np.dot(coords_y[:, 2], new_z))
+        gamma *= 1 if new_y[2] >= 0 else -1
+        # gamma *=  - np.sign(new_y[2])
         # This could be redundant
         Rx = np.array([[1, 0, 0],
                        [0, math.cos(gamma), -math.sin(gamma)],
                        [0, math.sin(gamma), math.cos(gamma)]])
         # Rx[np.abs(Rx) < EPS]  = 0.0  
-        print(Rx)
+        # print(Rx)
         new_coords = coords_y @ Rx
-        print(new_coords)
-        print(f"[INFO]: transformed base by the angles:\n x: {new_coords[:,0]}\n y: {new_coords[:,1]}\n z: {new_coords[:,2]}")
-
+        # print(new_coords)
+        if self.verbose:
+            print(f"[INFO]: transformed base by the angles:\n x: {new_coords[:,0]}\n y: {new_coords[:,1]}\n z: {new_coords[:,2]}")
+            print(f"[INFO]: Delta between bases(Should be ZERO) \n x: {new_x - new_coords[:,0]}\n y: {new_y - new_coords[:,1]}\n z: { new_z -new_coords[:,2]}")
         
         array = np.array([alpha, beta, gamma])
-        # Computation based on rotation matrix
-        # vector = new_z
-        # v = np.cross(base_vector, vector)
-        # s = np.linalg.norm(v)
-        # c = np.dot(base_vector, vector)
-        # I = np.eye(3)
-        # skew_sym_matrix = np.array([[0, -v[2], v[1]],
-        #                             [v[2], 0, -v[0]],
-        #                             [-v[1], v[0], 0]])
-        # R = I + skew_sym_matrix + np.dot(skew_sym_matrix,skew_sym_matrix) *((1-c)/s**2)
-        # print(R @ base_vector) # Just sanity check that this should be the same for allignment
-        # # From rotation matrix to RPY angles
-        # angles = self._rot_matrix2RPY(R)
-        # print(angles)
-        # x, y , z = vector
-        # rot_z = np.arctan2(x, y)
-        # rot_x = np.arctan2(np.hypot(x, y), z)
-        # roll, pitch, yaw = np.rad2deg(np.array([rot_z, 0.0, rot_x]))
-        # print(f"Just 2 angles maybe IDK- roll:{roll} pitch:{pitch}, yaw:{yaw}" )
-        # theta_x = np.arctan2(R[2,1], R[2,2])
-        # theta_y = np.arctan2(-R[2,0], np.linalg.norm(R[2,1:]))
-        # theta_z = np.arctan2(R[1,0], R[0,0])
-        # array = np.array([theta_x, theta_y, theta_z])
         return np.rad2deg(array)
 
     def estimate_from_images(self, rgb_image_name: str, depth_image_name: str,
@@ -898,28 +884,27 @@ def main():
     R = np.array([[-1.0, 0.0, 0.0],
                 [0.0, -1.0, 0.0],
                 [0.0, 0.0, 1.0]])
-    
+    print("# Test 1")
     a, b, c = gpe._vectors2RPYrot(aproach_vect,R)
-    
     print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}") 
+
+    print("# Test 2")
     a, b, c = gpe._vectors2RPYrot(aproach_vect,R)
-    print()
     print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}")
-    
+
+    print("# Test 3")
     aproach_vect = np.array([0, 0, 1])
-    print()
-    a, b, c = gpe._vectors2RPYrot(aproach_vect, np.eye(3))
+    a, b, c = gpe._vectors2RPYrot(aproach_vect,R)
     print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}")
-
-    aproach_vect = np.array([-0.02269775, -0.00326943,  0.99973703])
-    print()
-    a, b, c = gpe._vectors2RPYrot(aproach_vect, np.eye(3))
-    print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}")
-
     
+    print("# Test 4")
+    aproach_vect = np.array([-0.02269775, -0.00326943,  0.99973703])
+    a, b, c = gpe._vectors2RPYrot(aproach_vect,R)
+    print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}")
+
+    print("# Test 5")
     aproach_vect = np.array([-0.02271198, -0.00535559,  0.9997277 ])
-    print()
-    a, b, c = gpe._vectors2RPYrot(aproach_vect, np.eye(3))
+    a, b, c = gpe._vectors2RPYrot(aproach_vect,R)
     print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}")
     # depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array00.npy"))
     # point_relative, normal = gpe.estimate_from_depth_array(depth_array)
