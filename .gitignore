@@ -10,3 +10,7 @@ depth_image_crop.png
 
 # VZ local environment
 Tensorflow/ 
+TensorflowYOLACT
+delete.py
+delete.ipynb
+depth_array*.npy

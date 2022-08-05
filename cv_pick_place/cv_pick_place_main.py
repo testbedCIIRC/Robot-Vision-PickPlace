@@ -26,11 +26,16 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.functions import *
 
+from robot_cell.packet.grip_position_estimation import GripPositionEstimation
 
 # DETECTOR_TYPE = 'deep_1'
 # DETECTOR_TYPE = 'deep_2'
 DETECTOR_TYPE = 'hsv'
 
+# CONSTANTS
+MAX_Z = 500
+MIN_Y = 45.0
+MAX_Y = 470.0
 
 def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
     """
@@ -51,6 +56,12 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     apriltag.load_world_points('conveyor_points.json')
     pt = ItemTracker(max_disappeared_frames = 20, guard = 50, max_item_distance = 400)
     dc = DepthCamera(config_path = 'D435_camera_config.json')
+
+    gripper_pose_estimator = GripPositionEstimation(
+        visualize=False, verbose=True, center_switch="mass",
+        gripper_radius=0.08, max_num_tries = 100, height_th= -0.76, num_bins=20,
+        black_list_radius = 0.01, save_depth_array=False
+    )
 
     if DETECTOR_TYPE == 'deep_1':
         show_boot_screen('STARTING NEURAL NET...')
@@ -173,7 +184,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         
         # Detect packets using neural HSV thresholding
         elif DETECTOR_TYPE == 'hsv':
-            image_frame, detected_packets = pack_detect.detect_packet_hsv(rgb_frame,
+            image_frame, detected_packets, mask = pack_detect.detect_packet_hsv(rgb_frame,
                                                                           encoder_pos,
                                                                           draw_box = show_bbox,
                                                                           image_frame = image_frame)
@@ -191,7 +202,9 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 # Check if packet is far enough from edge
                 if item.centroid[0] - item.width / 2 > item.crop_border_px and item.centroid[0] + item.width / 2 < (frame_width - item.crop_border_px):
                     depth_crop = item.get_crop_from_frame(depth_frame)
+                    mask_crop = item.get_crop_from_frame(mask)
                     item.add_depth_crop_to_average(depth_crop)
+                    item.set_mask(mask_crop)
 
         # Update registered packet list with new packet info
         registered_packets = pt.item_database
@@ -232,7 +245,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 packet_to_pick = pick_list.pop(pick_ID)
                 print("[INFO]: Chose packet ID: {} to pick".format(str(packet.id)))
 
-                trajectory_dict, prepick_xyz_coords = get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, 
+                trajectory_dict, prepick_xyz_coords = get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estimator, grip_time_offset, 
                                                                          PACK_DEPTHS, MIN_PICK_DISTANCE, MAX_PICK_DISTANCE, Z_OFFSET, X_PICK_OFFSET)
                 print("[DEBUG]: Depth = {}".format(trajectory_dict['pack_z']))
                 # Set trajectory
@@ -559,7 +572,7 @@ def prep_pick_list(pick_list, encoder_pos_m, homography, grip_time_offset, X_PIC
     return pick_list, pick_list_positions
 
 
-def get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, PACK_DEPTHS, MIN_PICK_DISTANCE, MAX_PICK_DISTANCE, Z_OFFSET, X_PICK_OFFSET):
+def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estimator, grip_time_offset, PACK_DEPTHS, MIN_PICK_DISTANCE, MAX_PICK_DISTANCE, Z_OFFSET, X_PICK_OFFSET):
     """
     Get dictionary of parameters for changing trajectory
 
@@ -567,6 +580,7 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, P
         packet_to_pick (packet): Packet choosen for picking
         homography (numpy.ndarray): Homography matrix.
         rob_dict (dict): Dictionary of predefined pick positions
+        gripper_pose_estimator: TODO
         grip_time_offset (int): x position offset in mm for prepick position
         PACK_DEPTHS (list[int]): Default z values for picking, by packet type
         MIN_PICK_DISTANCE (int): Minimal x position for picking
@@ -591,10 +605,27 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, P
     packet_type = packet_to_pick.type
     print("[DEBUG]: packet type {}".format(packet_type))
 
-    # Set packet depth to fixed value by type
-    pick_pos_z = compute_mean_packet_z(packet_to_pick, PACK_DEPTHS[packet_to_pick.type])
-    pick_pos_z = offset_packet_depth_by_x(pick_pos_x, pick_pos_z)
+    # Set packet depth to fixed value by type                
+    # NOTE: Here is prediction of position by the gripper pose estimation
+    # Limiting the height for packet pick positions
+    z_lims = (PACK_DEPTHS[packet_to_pick.type], MAX_Z)
+    packet_coords = (pick_pos_x, pick_pos_y)
+    y_lims = (MIN_Y, MAX_Y)
+    shift_x, shift_y, pick_pos_z, roll, pitch, yaw = gripper_pose_estimator.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
+    if shift_x is not None:
+        print(f"[INFO]: Estimeted optimal point:\n\tx, y shifts: {shift_x:.2f}, {shift_y:.2f},\
+                \n\tz position: {pick_pos_z:.2f}\n\tRPY angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}")
+        pick_pos_x += shift_x
+        pick_pos_y += shift_y
+    else: 
+        # TODO: Implement behaviour in the future 
+        # Either continue with centroid or skip packet IDK, TBD
+        pass
 
+    # Set packet depth to fixed value by type
+    # pick_pos_z = compute_mean_packet_z(packet_to_pick, pack_depths[packet_to_pick.type])
+    # pick_pos_z = offset_packet_depth_by_x(pick_pos_x, pick_pos_z) + 30
+    pick_pos_z = offset_packet_depth_by_x(pick_pos_x, pick_pos_z)
 
     # Check if y is range of conveyor width and adjust accordingly
     pick_pos_y = np.clip(pick_pos_y, 75.0, 470.0)
@@ -609,9 +640,20 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, grip_time_offset, P
         'y': pick_pos_y,
         'rot': gripper_rot,
         'packet_type': packet_type,
-        'x_offset': X_PICK_OFFSET,
+        'x_offset': 140,
         'pack_z': pick_pos_z,
-        'z_offset': Z_OFFSET
+        'a': roll,
+        'b': pitch,
+        'c': yaw,
+        'z_offset': 50.0
         }
+    # trajectory_dict = {
+    #     'x': pick_pos_x,
+    #     'y': pick_pos_y,
+    #     'rot': gripper_rot,
+    #     'packet_type': packet_type,
+    #     'x_offset': 140,
+    #     'pack_z': pick_pos_z,
+    # }
 
     return trajectory_dict, prepick_xyz_coords
