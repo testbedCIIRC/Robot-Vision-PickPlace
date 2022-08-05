@@ -35,6 +35,8 @@ class GripPositionEstimation():
         black_list_radius (float): Distance for blacklisting points
         """
         self.visualization = visualize
+        if self.visualization:
+            print(f"[WARN]: Visualization while computing the pointcloud breaks the flow in real time")
         self.verbose = verbose
         self.save_depth = save_depth_array
         # assert center_switch in ["mass", "height"], "center_switch must be 'mass' or 'height'"
@@ -66,7 +68,8 @@ class GripPositionEstimation():
                                       path: str = "") -> o3d.geometry.PointCloud:
         """
         Loads open3d PointCloud from rgb image and depth image stored in path into self.pcd
-        
+        Used for development
+
         Parameters:
         rgb_name (str): name of the rgb image(.jpg)
         depth_name (str): name of the depth image(.png)
@@ -90,6 +93,8 @@ class GripPositionEstimation():
     def _load_numpy_depth_array_from_png(self, depth_name:str) -> np.ndarray:
         """
         Load png image and converts it to the numpy ndarray
+        Used for development
+
         Parameters:
         depth_name (str): Path to the png. file with depth
 
@@ -134,8 +139,8 @@ class GripPositionEstimation():
 
     def _get_points_and_estimete_normals(self) -> tuple[np.ndarray]:
         """
-        Estimates normals from PointCloud and saves both points coordinates and
-        their respective normals
+        Estimates normals from PointCloud and reutrns both points coordinates and
+        their respective normals in numpy arrays
 
         Returns:
         tuple[np.ndarray, np.ndarray] : vetex points and their normals
@@ -303,10 +308,12 @@ class GripPositionEstimation():
 
     def _anuluss_mask(self, center: np.ndarray, normal:np.ndarray) -> np.ndarray:
         """
-        Returns mask of pointes which are in annulus
+        Returns mask of pointes which are in annulus. Annulus is given by center
+        and gripper radius
 
         Parameters:
-        center (np.ndarray):center point of the annulus, 
+        center (np.ndarray): Center point of the annulus
+        normal (np.ndarray): Normal in the center point
         
         Returns:
         np.ndarray: binary mask
@@ -324,7 +331,7 @@ class GripPositionEstimation():
         Returns binary mask of points which are are closer to center than radius
 
         Parameters:
-        center (np.ndarray): shape (2,)
+        center (np.ndarray): ceneter point 
         radius (float): radius of the circle
 
         Returns:
@@ -344,8 +351,6 @@ class GripPositionEstimation():
         Returns:
         tuple[np.ndarray, np.ndarray]: plane center and plane normal
         """
-        # assert points.shape[1] == 3, "Points should have size 3(x,y,z)"
-        # assert len(points.shape) == 2, "Points should be 2D"
         c = points.mean(axis=0)
         A = points - c
         M = np.dot(A.T, A)
@@ -355,7 +360,6 @@ class GripPositionEstimation():
     def _get_candidate_point(self, center: np.ndarray, allowed:np.ndarray) -> np.ndarray:
         """
         Selects point closest to center, which is not blacklisted
-        FIXME: fix docstring add 
         Parameters:
         center (np.ndarray): center of mass
         allowed (np.ndarray): binary mask of allowed points
@@ -411,7 +415,7 @@ class GripPositionEstimation():
 
         validity = valid_max and valid_min and valid_conv
         if self.verbose:
-            print(f"[INFO]: Point {point} is valid: {validity}")
+            print(f"[INFO]:Run: {self.run_number}. Point {point} is valid: {validity}")
             if not valid_max:
                 print(f"\tReason - Spike:\tPoint {self.points[max_point, :]} difference in height is: {np.abs(self.points[max_point,2] - point[2])} spike threshold: { self.spike_threshold}")
             if not valid_min:
@@ -470,12 +474,6 @@ class GripPositionEstimation():
         packet_mask = self.points[:, 2] >= self.mask_threshold
         filtered_points = self.points[packet_mask, :]
         blacklist = np.full((self.points.shape[0],), True)   
-        
-        if self.visualization:
-            viz_dict = {
-                    "Height filtered points": filtered_points,
-            }
-            self._visualize_frame(viz_dict)
 
         if self.center_switch == 'mass':
             center, normal = self._get_center_of_mass(filtered_points)
@@ -554,6 +552,7 @@ class GripPositionEstimation():
 
         Returns: 
         np.ndarray: relative coordinates of point to anchor and height(px,py,z)
+                    in packet coord system
         """
         max_bound = self.pcd.get_max_bound()
         min_bound = self.pcd.get_min_bound()
@@ -562,64 +561,12 @@ class GripPositionEstimation():
         point_anchor_rel = point_rel - anchor
 
         return np.hstack((point_anchor_rel, point[2]))
-
-    def _rot_matrix2RPY(self, matrix:np.ndarray) -> np.ndarray:
-        """
-        Convers rotation matrix to roll, pitch, yaw angles 
-
-        Parameters: 
-        matrix (np.ndarray): rotation matrix to be converted
-
-        Returns:
-        np.ndarray: angles(roll, pitch, yaw) in degrees
-        """
-        norm = np.linalg.norm(matrix[2,1:])
-        pitch_1 = np.arctan2(-matrix[2,0], norm)
-        pitch_2 = np.arctan2(-matrix[2,0], -norm)
-        cp_1 = np.cos(pitch_1)
-        cp_2 = np.cos(pitch_2)
-        roll_1 = np.arctan2(matrix[1,0]/cp_1, matrix[0,0]/cp_1)
-        roll_2 = np.arctan2(matrix[1,0]/cp_2, matrix[0,0]/cp_2)
-        yaw_1 = np.arctan2(matrix[2,1]/cp_1, matrix[2,2]/cp_1)
-        yaw_2 = np.arctan2(matrix[2,1]/cp_2, matrix[2,2]/cp_2)
-        roll_3  = np.arctan2(matrix[2,1], matrix[2,2])
-        yaw_3 = np.arctan2(matrix[1,0], matrix[0,0])
-        pitch_3 = np.arctan2(-matrix[2,0], np.cos(yaw_3)*matrix[0,0] + np.sin(yaw_3)* matrix[1,0])
-        angles = np.array([[roll_1, pitch_1, yaw_1], [roll_2, pitch_2, yaw_2], [roll_3, pitch_3, yaw_3]])
-        return np.rad2deg(angles)
-
-
-    def _vector2angles(self, vector:np.ndarray,
-                       rotation_matrix: np.ndarray=np.array([[-1.0, 0.0, 0.0],
-                                                             [0.0, -1.0, 0.0],
-                                                             [0.0, 0.0, 1.0]])
-                        ) -> np.ndarray:
-        """
-        Changes vector for approach by the gripper and converts it into angles
-        for the gripper
-
-        Parameters:
-        vector (np.ndarray): vector to be converted, expects unit vector
-        rotation_matrix (np.ndarrray): Rotation matrix between bases of pcd and gripper
-
-        Returns
-        tuple[float]: Angles ax, ay, az in degrees[°]
-        """
-        # Transform between bases of depth image and gripper
-        g_normal = rotation_matrix @ vector
-        print(f"Rotated normal:\t\t {g_normal} in gripper base")
-        # Converts vector to base angles
-        ax = np.arctan2(np.linalg.norm(g_normal[1:]), g_normal[0]) # a = ...
-        ay = np.arctan2(np.linalg.norm(g_normal[0::2]), g_normal[1]) # b = ...
-        az = np.arctan2(np.linalg.norm(g_normal[:2]), g_normal[2]) # c = ...
-        
-        angles = np.array([ax, ay, az])
-        return np.rad2deg(angles)
     
     def _vectors2RPYrot(self, vector:np.ndarray,
                         rotation_matrix: np.ndarray=np.array([[-1.0, 0.0, 0.0],
                                                               [0.0, -1.0, 0.0],
-                                                              [0.0, 0.0, 1.0]])
+                                                              [0.0, 0.0, 1.0]]),
+                        new_y = np.array([1.0, 0.0, 0.0])
                         ) -> np.ndarray:
         """
         Compute roll, pitch, yaw angles based on the vector, which is firstly
@@ -628,72 +575,69 @@ class GripPositionEstimation():
         Parameters:
         vector (np.ndarray): unit vector of the wanted position
         rotation_matrix (np.ndarray): Rotation matrix between the packet base and coord base
+                                      Default is that packet and base coords systems are
+                                      rotated 180 degrees around z axis
+        new_y (np.ndarray): direction of new y axis (currently set [1, 0, ?])
 
         Returns:
         np.ndarray: Angles(roll, pitch, yaw) in degrees
         """
         # Transformation of the vector into base coordinates
-        new_z = rotation_matrix @ vector
-        # want the opposite threshold
-        new_z *= -1
+        new_z = -1 * (rotation_matrix @ vector)
+        if self.verbose:
+            print(f"[INFO]: Aproach vector {new_z} in coord base")
 
-        print(f"[INFO]: Aproach vector {new_z} in coord base")
-
-        # new_z = np.array([0,0,-1]) testing case
-        # base of the coordinate system
+        # base of the coordinate system used for recalculation of the angles
         base_coords = np.array([[1.0, 0.0, 0.0],
                                 [0.0, 1.0, 0.0],
                                 [0.0, 0.0, 1.0]])
-        # NOTE:
-        # Computation of new base base based around the given z axis
-        # Selected y axis to be in the direction of the conv belt (ie 1, 0, ?)
-        # Recalculation of the lacs element so it lies in the plane
-        # x axis is then calculated to give orthogonal and follow right hand rule
-        new_y = np.array([1.0, 0.0, 0.0])
+
+        # NOTE: Computation of new base base based around the given z axis
+        #   Selected y axis to be in the direction of the conv belt (ie 1, 0, ?)
+        #   Recalculation of the lacs element so it lies in the plane
+        #   x axis is then calculated to give orthogonal and follow right hand rule
         new_y[2] = -(np.dot(new_z[:2], new_y[:2]))/new_z[2]
         new_y /= np.linalg.norm(new_y)
         new_x = np.cross(new_y, new_z)
         if self.verbose:
-            print(f"[INFO]: New base for picking\n x: {new_x}, {np.linalg.norm(new_x):.2f}\
-                    \n y: {new_y}, {np.linalg.norm(new_y):.2f}\
-                    \n z: {new_z}, {np.linalg.norm(new_z):.2f}")
+            print(f"[INFO]: New base for picking\
+                    \n x: {new_x}, norm: {np.linalg.norm(new_x):.2f}\
+                    \n y: {new_y}, norm: {np.linalg.norm(new_y):.2f}\
+                    \n z: {new_z}, norm: {np.linalg.norm(new_z):.2f}")
 
         # Rotations between angles x -> projection of x_new to xy plane
         alpha = np.arctan2(np.linalg.norm(np.cross(base_coords[:2, 0], new_x[:2])), np.dot(base_coords[:2, 0], new_x[:2]))
         Rz = np.array([[math.cos(alpha), -math.sin(alpha), 0],
                        [math.sin(alpha), math.cos(alpha), 0],
                        [0,0,1]])
-
-        # Rz[np.abs(Rz) < EPS]  = 0.0            
         coords_z = base_coords @ Rz
-        # print(coords_z)
+
         # Now to rotate to the angle for x' ->x_new
         beta = np.arctan2(np.linalg.norm(np.cross(coords_z[:, 0], new_x)), np.dot(coords_z[:, 0], new_x))
         beta *=  - 1 if new_x[2] >= 0 else 1 
         Ry = np.array([[math.cos(beta), 0, math.sin(beta)],
                        [0, 1, 0],
                        [-math.sin(beta), 0, math.cos(beta)]])
-        # Ry[np.abs(Ry) < EPS]  = 0.0  
         coords_y = coords_z @ Ry
-        # print(coords_y)
+
         # Now rotation from z''-> z_new
         gamma = np.arctan2(np.linalg.norm(np.cross(coords_y[:, 2], new_z)), np.dot(coords_y[:, 2], new_z))
         gamma *= 1 if new_y[2] >= 0 else -1
-        # gamma *=  - np.sign(new_y[2])
-        # This could be redundant
+        # This could be redundant Just for control if calculated and wanted bases are correct
         Rx = np.array([[1, 0, 0],
                        [0, math.cos(gamma), -math.sin(gamma)],
                        [0, math.sin(gamma), math.cos(gamma)]])
-        # Rx[np.abs(Rx) < EPS]  = 0.0  
-        # print(Rx)
         new_coords = coords_y @ Rx
-        # print(new_coords)
+
         if self.verbose:
-            print(f"[INFO]: transformed base by the angles:\n x: {new_coords[:,0]}\n y: {new_coords[:,1]}\n z: {new_coords[:,2]}")
-            print(f"[INFO]: Delta between bases(Should be ZERO) \n x: {new_x - new_coords[:,0]}\n y: {new_y - new_coords[:,1]}\n z: { new_z -new_coords[:,2]}")
+            print(f"[INFO]: transformed base by the angles:\
+                    \n x: {new_coords[:,0]}\n y: {new_coords[:,1]}\n z: {new_coords[:,2]}")
+            print(f"[INFO]: Delta between bases(Should be ZERO)\
+                    \n x: {new_x - new_coords[:,0]}\n y: {new_y - new_coords[:,1]}\n z: { new_z -new_coords[:,2]}")
         
-        array = np.array([alpha, beta, gamma])
-        return np.rad2deg(array)
+        # Final array of angles in degrees
+        angles = np.rad2deg(np.array([alpha, beta, gamma]))
+        return angles
 
     def estimate_from_images(self, rgb_image_name: str, depth_image_name: str,
                              path: str="", anchor: np.array=np.array([.5, .5])
@@ -731,7 +675,7 @@ class GripPositionEstimation():
 
         Parameters:
         depth_array (np.ndarray): Depth values
-        packet_mask (np.ndarray): Mask in which is the packet, If None continue with all depths
+        packet_mask (np.ndarray): Binary mask with packet, If None continue with all depths
         anchor (np.ndarray): Relative coordinates of anchor point(center(px,py))
         
         Returns:
@@ -779,8 +723,8 @@ class GripPositionEstimation():
         black_list_radius(float): Radius for blacklisting
 
         Returns:
-        tuple(float): shift_in_x, shift_in_y, height_from_z,
-                      rotation_a, rotation_b, rotation_c
+        tuple(float): shift_in_x, shift_in_y, height_in_z,
+                      roll, pitch, yaw
         """
         self.blacklist_radius = blacklist_radius
         z_min, z_max = z_lim
@@ -790,7 +734,7 @@ class GripPositionEstimation():
 
         pack_z = z_min
         shift_x, shift_y = None, None 
-        ax, ay, az = None, None, None
+        roll, pitch, yaw = None, None, None
 
         depth_exist = depth_frame is not None
         point_exists = False
@@ -800,7 +744,7 @@ class GripPositionEstimation():
         if depth_exist:
             mask = packet.mask
             if self.save_depth:
-                # NOTE: JUST FOR SAVING THE TEST IMG
+                # NOTE: JUST FOR SAVING THE TEST IMG, DELELTE MAYBE
                 print(f"[INFO]: SAVING the depth array of packet {packet.id}")
                 np.save(f"depth_array{packet.id}_precrop.npy", depth_frame)
                 np.save(f"depth_array{packet.id}_precrop_mask.npy", mask)
@@ -828,34 +772,29 @@ class GripPositionEstimation():
 
             # Ancor for relative coordinates
             anchor = np.array([0.5, ratio])
+
             if self.save_depth:
-                # NOTE: JUST FOR SAVING THE TEST IMG
+                # NOTE: JUST FOR SAVING THE TEST IMG, DELETE MAYBE
                 print(f"[INFO]: SAVING the depth array of packet {packet.id}")
                 np.save(f"depth_array{packet.id}_postcrop.npy", depth_frame)
                 np.save(f"depth_array{packet.id}_postcrop_mask.npy", mask)
 
-            # Estimates 
+            # Estimates the point and normal
             point_relative, normal = self.estimate_from_depth_array(depth_frame, mask, anchor)
             point_exists = point_relative is not None
 
+            # Original 
             if point_exists:
-                print(f"[INFO]: Estimated normal {normal}")
                 # Adjustment for the gripper
                 dx, dy, z = point_relative
-                shift_x, shift_y =  dx * mm_height, dy * mm_width
+                shift_x, shift_y =  -1 * dx * mm_height, -1*dy * mm_width
                 # Changes the z value to be positive ,converts m to mm and shifts by the conv2cam_dist
-                print(f"[DEL]: {z} original height")
                 pack_z = abs(-1.0 * M2MM * z + self.th_val*M2MM )
-                print(f"[DEL]: {pack_z} Pre clipping")
                 pack_z = np.clip(pack_z, z_min, z_max)
-                print(f"[DEL]: {pack_z} After clipping")
-                # Normal to angles in robot base, not packet
-                # Rotation Matrix between the bases of the pcd and the gripper
-                # 180 degreese around z axis(just in basic)
                 roll, pitch, yaw = self._vectors2RPYrot(normal)
 
         if self.verbose :
-            print(f"[INFO]: Optimal point found:{depth_exist and  point_exists}")
+            print(f"[INFO]: Optimal point found: {depth_exist and  point_exists}")
             if not depth_exist:
                 print(f"\tReason - Average depth frame is None. Returns None")
             if not point_exists:
@@ -864,9 +803,7 @@ class GripPositionEstimation():
 
 
 def main():
-    # FIXME: CLEAN THIS MESS
-    # Demo how to work with class
-
+    # NOTE: Demo of how to work with this
     # Size of the triangle edge and radius of the circle
     triangle_edge = 0.085  # in meters
     gripper_radius = triangle_edge/np.sqrt(3)
@@ -880,83 +817,11 @@ def main():
     point_relative, normal = gpe.estimate_from_depth_array(depth_array, mask)
     # normal = np.array([0, 0, 1])
     print(f"Estimated normal:\t {normal} in packet base")
-    aproach_vect = normal
     R = np.array([[-1.0, 0.0, 0.0],
                 [0.0, -1.0, 0.0],
                 [0.0, 0.0, 1.0]])
-    print("# Test 1")
-    a, b, c = gpe._vectors2RPYrot(aproach_vect,R)
+    a, b, c = gpe._vectors2RPYrot(normal,R)
     print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}") 
-
-    print("# Test 2")
-    a, b, c = gpe._vectors2RPYrot(aproach_vect,R)
-    print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}")
-
-    print("# Test 3")
-    aproach_vect = np.array([0, 0, 1])
-    a, b, c = gpe._vectors2RPYrot(aproach_vect,R)
-    print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}")
-    
-    print("# Test 4")
-    aproach_vect = np.array([-0.02269775, -0.00326943,  0.99973703])
-    a, b, c = gpe._vectors2RPYrot(aproach_vect,R)
-    print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}")
-
-    print("# Test 5")
-    aproach_vect = np.array([-0.02271198, -0.00535559,  0.9997277 ])
-    a, b, c = gpe._vectors2RPYrot(aproach_vect,R)
-    print(f"Angles between gripper base and normal: {a:.2f},  {b:.2f},  {c:.2f}")
-    # depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array00.npy"))
-    # point_relative, normal = gpe.estimate_from_depth_array(depth_array)
-    # depth_array = np.load(os.path.join("cv_pick_place","robot_cell","packet", "data", "depth_array0.npy"))
-    # point_relative, normal = gpe.estimate_from_depth_array(depth_array)
-
-    # point_exists = point_relative is not None
-    # conv2cam_dist = 777.0
-    # z_min = 5
-    # z_max = 500
-    # d = gpe.deltas
-    # print("max_b\t", gpe.max_bound)
-    # print("min_b\t", gpe.min_bound)
-    # print("deltas", gpe.deltas)
-    # if point_exists:
-    #     dx, dy, z = point_relative
-    #     shift_x, shift_y =  dx*d[0], dy*d[1]
-    #     # changes the z value to be positive ,converts m to mm and shifts by the conv2cam_dist
-    #     pack_z = abs(-1.0 * M2MM * z - conv2cam_dist)
-    #     print(pack_z)
-    #     pack_z = np.clip(pack_z, z_min, z_max)
-
-    #     # Rotation between the bases of the pcd and the gripper
-    #     # 180 degreese around z axis(just in basic)
-    #     R = np.array([[-1.0, 0.0, 0.0],
-    #                     [0.0, -1.0, 0.0],
-    #                     [0.0, 0.0, 1.0]])
-        
-    #     ax, ay, az = gpe._vector2angles(normal, R)
-    # print(f"[INFO]: Estimeted optimal point:\n\t\tx, y shifts: {dx:.4f}, {dy:.4f},\
-    #         \n\t\tz position: {pack_z:.2f}\n\t\tangles: {ax:.2f}, {ay:.2f}, {az:.2f}")
-    # # Estimating point and normal from color and depth images
-    # point, normal = gpe.estimate_from_images("color_image_crop.jpg", "depth_image_crop.png",
-    #                                          path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
-    
-    # point, normal = gpe.estimate_from_images("rgb_image2.jpg", "depth_image2.png",
-    #                                          path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
-    
-    # point, normal = gpe.estimate_from_images("rgb_image1.jpg", "depth_image1.png",
-    #                                           path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
-    
-    # point, normal = gpe.estimate_from_images("rgb_image3.jpg", "depth_image3.png",
-    #                                          path=os.path.join("cv_pick_place","robot_cell","packet", "data"), anchor=np.array([.5, .5]))
-    
-    # if point is not None:
-    #     print(f"[INFO]: Picked_point\t{point}\t picked_normal\t {normal} norm = {np.linalg.norm(normal)}")
-
-    # Estimate point and normal from anouther image pairs
-    # gpe.estimate_optimal_point_and_normal_from_images("rgb_image1.jpg", "depth_image1.png", path="data")
-    # print("picked_point", point)
-    # print("picked_normal", normal, np.linalg.norm(normal))
-
 
 if __name__ == "__main__":
     main()

@@ -60,7 +60,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     gripper_pose_estimator = GripPositionEstimation(
         visualize=False, verbose=True, center_switch="mass",
         gripper_radius=0.08, max_num_tries = 100, height_th= -0.76, num_bins=20,
-        black_list_radius = 0.01, save_depth_array=True
+        black_list_radius = 0.01, save_depth_array=False
     )
 
     if DETECTOR_TYPE == 'deep_1':
@@ -611,12 +611,12 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
     z_lims = (PACK_DEPTHS[packet_to_pick.type], MAX_Z)
     packet_coords = (pick_pos_x, pick_pos_y)
     y_lims = (MIN_Y, MAX_Y)
-    dx, dy, pick_pos_z, roll, pitch, yaw = gripper_pose_estimator.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
-    print(f"[INFO]: Estimeted optimal point:\n\t\tx, y shifts: {dx:.2f}, {dy:.2f},\
-            \n\t\tz position: {pick_pos_z:.2f}\n\t\t angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}")
-    if dx is not None:
-        pick_pos_x += dx
-        pick_pos_y += dy
+    shift_x, shift_y, pick_pos_z, roll, pitch, yaw = gripper_pose_estimator.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
+    if shift_x is not None:
+        print(f"[INFO]: Estimeted optimal point:\n\tx, y shifts: {shift_x:.2f}, {shift_y:.2f},\
+                \n\tz position: {pick_pos_z:.2f}\n\tRPY angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}")
+        pick_pos_x += shift_x
+        pick_pos_y += shift_y
     else: 
         # TODO: Implement behaviour in the future 
         # Either continue with centroid or skip packet IDK, TBD
@@ -624,8 +624,8 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
 
     # Set packet depth to fixed value by type
     # pick_pos_z = compute_mean_packet_z(packet_to_pick, pack_depths[packet_to_pick.type])
-    pick_pos_z = offset_packet_depth_by_x(pick_pos_x, pick_pos_z) + 30
-
+    # pick_pos_z = offset_packet_depth_by_x(pick_pos_x, pick_pos_z) + 30
+    pick_pos_z = offset_packet_depth_by_x(pick_pos_x, pick_pos_z)
 
     # Check if y is range of conveyor width and adjust accordingly
     pick_pos_y = np.clip(pick_pos_y, 75.0, 470.0)
