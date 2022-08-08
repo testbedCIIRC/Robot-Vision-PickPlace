@@ -686,8 +686,6 @@ class GripPositionEstimation():
             belt = np.logical_not(packet_mask) * depth_array
             packet = packet_mask * depth_array
             # Selects lowest value as the threshold for the 
-            # TODO fix error: ValueError: zero-size array to reduction operation minimum which has no identity
-            print("[DEBUG]: belt: {}, packet: {}".format(np.nonzero(belt), np.nonzero(packet)))
             self.mask_threshold = max(np.min(belt[np.nonzero(belt)]), np.max(packet[np.nonzero(packet)]))
             print(f"[INFO]: Selected depth threshold from mask: {self.mask_threshold}")
             depth_array[np.logical_not(packet_mask)] = self.mask_threshold
@@ -746,7 +744,7 @@ class GripPositionEstimation():
         if depth_exist:
             mask = packet.mask
             if self.save_depth:
-                # NOTE: JUST FOR SAVING THE TEST IMG, DELELTE MAYBE
+                # NOTE: JUST FOR SAVING THE TEST IMG, DELETE MAYBE
                 print(f"[INFO]: SAVING the depth array of packet {packet.id}")
                 np.save(f"depth_array{packet.id}_precrop.npy", depth_frame)
                 np.save(f"depth_array{packet.id}_precrop_mask.npy", mask)
@@ -760,9 +758,9 @@ class GripPositionEstimation():
                 ratio_over = abs(pack_y_max - y_max)/packet.height_bnd_mm
                 k = 1 - ratio_over
                 mm_height *= k
-                depth_frame = depth_frame[:int(ratio_over)*dims[0], :]
+                depth_frame = depth_frame[:int(k * dims[0]), :]
                 ratio /= k
-                mask = mask[:int(ratio_over)*dims[0], :]
+                mask = mask[:int(k * dims[0]), :]
                 
             if pack_y_min < y_min:
                 ratio_over = abs(pack_y_min - y_min)/packet.height_bnd_mm
@@ -772,7 +770,7 @@ class GripPositionEstimation():
                 ratio = (0.5 - ratio_over)/k
                 mask = mask[int(ratio_over * dims[0]):, :]
 
-            # Ancor for relative coordinates
+            # Anchor for relative coordinates
             anchor = np.array([0.5, ratio])
 
             if self.save_depth:
