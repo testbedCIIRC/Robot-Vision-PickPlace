@@ -87,6 +87,7 @@ class RobotControl(RobotCommunication):
         self.Abort_Prog.set_value(ua.DataValue(True))
         print('[INFO]: Program aborted.')
         time.sleep(0.5)
+        self.Abort_Prog.set_value(ua.DataValue(False))
         
     def start_program(self, mode = False):
         """

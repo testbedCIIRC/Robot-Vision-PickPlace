@@ -137,7 +137,7 @@ class GripPositionEstimation():
         self.pcd = pcd
 
 
-    def _get_points_and_estimete_normals(self) -> tuple[np.ndarray]:
+    def _get_points_and_estimate_normals(self) -> tuple[np.ndarray]:
         """
         Estimates normals from PointCloud and reutrns both points coordinates and
         their respective normals in numpy arrays
@@ -457,7 +457,7 @@ class GripPositionEstimation():
         """
         
         self._pcd_down_sample()
-        self.points, self.normals = self._get_points_and_estimete_normals()
+        self.points, self.normals = self._get_points_and_estimate_normals()
         if self.visualization:
             o3d.visualization.draw_geometries([self.pcd])
         if self.mask_threshold is None:
@@ -686,6 +686,8 @@ class GripPositionEstimation():
             belt = np.logical_not(packet_mask) * depth_array
             packet = packet_mask * depth_array
             # Selects lowest value as the threshold for the 
+            # TODO fix error: ValueError: zero-size array to reduction operation minimum which has no identity
+            print("[DEBUG]: belt: {}, packet: {}".format(np.nonzero(belt), np.nonzero(packet)))
             self.mask_threshold = max(np.min(belt[np.nonzero(belt)]), np.max(packet[np.nonzero(packet)]))
             print(f"[INFO]: Selected depth threshold from mask: {self.mask_threshold}")
             depth_array[np.logical_not(packet_mask)] = self.mask_threshold
