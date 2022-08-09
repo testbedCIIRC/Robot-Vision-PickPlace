@@ -41,6 +41,7 @@ MAX_PICK_DISTANCE = 1900 # Maximal x position in mm for packet picking
 Z_OFFSET = 50.0 # Z height offset from pick height for all positions except for pick position
 X_PICK_OFFSET = 140 # X offset between prepick and pick position
 GRIP_TIME_OFFSET = 400  # X offset from current packet position to prepick position
+PICK_START_X_OFFSET = 25 # Offset between robot and packet for starting the pick move
 # TODO Vit please add comments
 MAX_Z = 500
 MIN_Y = 45.0
@@ -65,12 +66,18 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
     apriltag.load_world_points('conveyor_points.json')
     pt = ItemTracker(max_disappeared_frames = 20, guard = 50, max_item_distance = 400)
     dc = DepthCamera(config_path = 'D435_camera_config.json')
-
+    
     gripper_pose_estimator = GripPositionEstimation(
         visualize=False, verbose=True, center_switch="mass",
         gripper_radius=0.08, max_num_tries = 100, height_th= -0.76, num_bins=20,
         black_list_radius = 0.01, save_depth_array=False
     )
+    # Load home position from dictionary
+    home_xyz_coords = np.array([rob_dict['home_pos'][0]['x'],
+                                rob_dict['home_pos'][0]['y'],
+                                rob_dict['home_pos'][0]['z']])
+    stateMachine = RobotStateMachine(control_pipe, gripper_pose_estimator, encoder_pos_m, home_xyz_coords, verbose = True)
+
 
     if DETECTOR_TYPE == 'deep_1':
         show_boot_screen('STARTING NEURAL NET...')
@@ -83,35 +90,32 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                                         white_lower = [60, 0, 85], white_upper = [179, 255, 255],
                                         brown_lower = [0, 33, 57], brown_upper = [60, 255, 178])
 
-    # Drawing toggles
-    show_bbox = True # Bounding box visualization enable
-    show_frame_data = False # Show frame data (robot pos, encoder vel, FPS ...)
-    show_depth_map = False # Overlay colorized depth enable
-    show_hsv_mask = False # Remove pixels not within HSV mask boundaries
+    # Toggles
+    toggles_dict = {
+        'gripper' : False,
+        'conv_left' : False, # Conveyor heading left enable
+        'conv_right' : False, # Conveyor heading right enable
+        'show_bbox' : True, # Bounding box visualization enable
+        'show_frame_data' : False, # Show frame data (robot pos, encoder vel, FPS ...)
+        'show_depth_map' : False, # Overlay colorized depth enable
+        'show_hsv_mask' : False, # Remove pixels not within HSV mask boundaries
+    }
 
     # Variables
-    pick_list = [] # List for items ready to be picked
     frame_count = 1 # Counter of frames for homography update
     text_size = 1
-    gripper = False
-    conv_left = False # Conveyor heading left enable
-    conv_right = False # Conveyor heading right enable
     homography = None # Homography matrix
-    state = "READY" # Robot state machine variable
-    is_in_home_pos = False  # Indicate if robot is currently in home position
-    home_xyz_coords = np.array([rob_dict['home_pos'][0]['x'],
-                                rob_dict['home_pos'][0]['y'],
-                                rob_dict['home_pos'][0]['z']])
-
-
-
     
+
     # Set home position from dictionary on startup
     control_pipe.send(RcData(RcCommand.SET_HOME_POS_SH))
 
     while True:
         # Start timer for FPS estimation
         start_time = time.time()
+
+        # READ DATA
+        ###################
 
         # Read data dict from PLC server
         try:
@@ -139,7 +143,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         image_frame = rgb_frame.copy()
 
         # Draw HSV mask over screen if enabled
-        if show_hsv_mask and DETECTOR_TYPE == 'hsv':
+        if toggles_dict['show_hsv_mask'] and DETECTOR_TYPE == 'hsv':
             image_frame = pack_detect.draw_hsv_mask(image_frame)
 
         # HOMOGRAPHY UPDATE
@@ -171,7 +175,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             image_frame, detected_packets = pack_detect.deep_pack_obj_detector(rgb_frame, 
                                                                                depth_frame,
                                                                                encoder_pos,
-                                                                               bnd_box = show_bbox,
+                                                                               bnd_box = toggles_dict['show_bbox'],
                                                                                homography = homography,
                                                                                image_frame = image_frame)
             for packet in detected_packets:
@@ -188,186 +192,27 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
         elif DETECTOR_TYPE == 'hsv':
             image_frame, detected_packets, mask = pack_detect.detect_packet_hsv(rgb_frame,
                                                                           encoder_pos,
-                                                                          draw_box = show_bbox,
+                                                                          draw_box = toggles_dict['show_bbox'],
                                                                           image_frame = image_frame)
 
         registered_packets = packet_tracking(pt, detected_packets, depth_frame, frame_width, mask)
 
         # STATE MACHINE
         ###############
-
-
         # Robot ready when programs are fully finished and it isn't moving
-        is_rob_ready = prog_done and (rob_stopped or not stop_active)
-
-        
-        pick_list = add_to_pick_list(pick_list, registered_packets, encoder_vel) 
-
-        # robot is ready to recieve commands
-        if state == "READY" and is_rob_ready and homography is not None:
-            pick_list, pick_list_positions = prep_pick_list(pick_list, encoder_pos_m, homography)
-            # Choose a item for picking
-            if pick_list and pick_list_positions.max() > MIN_PICK_DISTANCE:
-                packet_to_pick, trajectory_dict = start_program(pick_list, pick_list_positions, homography, gripper_pose_estimator, control_pipe)
-                # Save prepick position for use in TO_PREPICK state
-                prepick_xyz_coords = np.array([trajectory_dict['x'], trajectory_dict['y'], trajectory_dict['pack_z'] + Z_OFFSET])
-                is_in_home_pos = False
-                state = "TO_PREPICK"
-                print("[INFO]: state TO_PREPICK")
-            # send robot to home position if it itsn't already
-            elif not is_in_home_pos:
-                control_pipe.send(RcData(RcCommand.GO_TO_HOME))
-                state = "TO_HOME_POS"
-                print("[INFO]: state TO_HOME_POS")
-
-        # moving to home position
-        if state == "TO_HOME_POS":
-            if is_rob_ready and is_rob_in_pos(pos, home_xyz_coords):
-                is_in_home_pos = True
-                state = "READY"
-                print("[INFO]: state READY")
-
-        # moving to prepick position
-        if state == "TO_PREPICK":
-            # check if robot arrived to prepick position
-            if is_rob_in_pos(pos, prepick_xyz_coords):
-                state = "WAIT_FOR_PACKET"
-                print("[INFO]: state WAIT_FOR_PACKET")
-
-        # waiting for packet
-        if state == "WAIT_FOR_PACKET":
-            encoder_pos = encoder_pos_m.value
-            # check encoder and activate robot 
-            packet_to_pick.centroid = packet_to_pick.getCentroidFromEncoder(encoder_pos)
-            packet_pos_x = packet_to_pick.getCentroidInWorldFrame(homography)[0]
-            # If packet is too far abort and return to ready
-            if packet_pos_x > trajectory_dict['x'] + X_PICK_OFFSET:
-                control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
-                control_pipe.send(RcData(RcCommand.ABORT_PROGRAM))
-                control_pipe.send(RcData(RcCommand.GRIPPER, False))
-                state = "READY"
-                print("[INFO]: missed packet, state READY")
-
-            # If packet is close enough continue picking operation
-            elif packet_pos_x > trajectory_dict['x'] - 25 - trajectory_dict['shift_x']:
-                control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
-                state = "PLACING"
-                print("[INFO]: state PLACING")
-
-        # placing packet
-        if state == "PLACING":
-            if is_rob_ready:
-                state = "READY"
-                print("[INFO]: state READY")
+        is_rob_ready = prog_done and (rob_stopped or not stop_active)  
+        stateMachine.run(homography, is_rob_ready, registered_packets, encoder_vel, pos)
 
         # FRAME GRAPHICS
         ################
-
-        # Draw packet info
-        for packet in registered_packets:
-            if packet.disappeared == 0:
-                # Draw centroid estimated with encoder position
-                cv2.drawMarker(image_frame, packet.getCentroidFromEncoder(encoder_pos), 
-                       (255, 255, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
-
-
-                # Draw packet ID and type
-                text_id = "ID {}, Type {}".format(packet.id, packet.type)
-                drawText(image_frame, text_id, (packet.centroid_px.x + 10, packet.centroid_px.y), text_size)
-
-                # Draw packet centroid value in pixels
-                text_centroid = "X: {}, Y: {} (px)".format(packet.centroid_px.x, packet.centroid_px.y)
-                drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(45 * text_size)), text_size)
-
-                # Draw packet centroid value in milimeters
-                text_centroid = "X: {:.2f}, Y: {:.2f} (mm)".format(packet.centroid_mm.x, packet.centroid_mm.y)
-                drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(80 * text_size)), text_size)
-
-                packet_depth_mm = compute_mean_packet_z(packet, PACK_DEPTHS[packet.type])
-                # Draw packet depth value in milimeters
-                text_centroid = "Z: {:.2f} (mm)".format(packet_depth_mm)
-                drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(115 * text_size)), text_size)
-
-        # Draw packet depth crop to separate frame
-        for packet in registered_packets:
-            if packet.avg_depth_crop is not None:
-                cv2.imshow("Depth Crop", colorizeDepthFrame(packet.avg_depth_crop))
-                break
-
-        # Show depth frame overlay.
-        if show_depth_map:
-            image_frame = cv2.addWeighted(image_frame, 0.8, colorized_depth, 0.3, 0)
-
-        # Show FPS and robot position data
-        if show_frame_data:
-            # Draw FPS to screen
-            text_fps = "FPS: {:.2f}".format(1.0 / (time.time() - start_time))
-            drawText(image_frame, text_fps, (10, int(35 * text_size)), text_size)
-
-            # Draw OPCUA data to screen
-            text_robot = str(info_dict)
-            drawText(image_frame, text_robot, (10, int(75 * text_size)), text_size)
-
-        image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
-
-        # Show frames on cv2 window
-        cv2.imshow("Frame", image_frame)
+        draw_frame(image_frame, registered_packets, encoder_pos, text_size, toggles_dict, info_dict, colorized_depth, start_time, frame_width, frame_height)
         
         # Keyboard inputs
         key = cv2.waitKey(1)
-
-        # KEYBOARD INPUTS
-        #################
-
-        # Toggle gripper
-        if key == ord('g'):
-            gripper = not gripper
-            control_pipe.send(RcData(RcCommand.GRIPPER, gripper))
-
-        # Toggle conveyor in left direction
-        if key == ord('n'):
-            conv_left = not conv_left
-            control_pipe.send(RcData(RcCommand.CONVEYOR_LEFT, conv_left))
-
-        # Toggle conveyor in right direction
-        if key == ord('m'):
-            conv_right = not conv_right
-            control_pipe.send(RcData(RcCommand.CONVEYOR_RIGHT, conv_right))
-
-        # Toggle detected packets bounding box display
-        if key == ord('b'):
-            show_bbox = not show_bbox
+        end_prog, toggles_dict = process_key_input(key, control_pipe, toggles_dict, is_rob_ready)
         
-        # Toggle depth map overlay
-        if key == ord('d'):
-            show_depth_map = not show_depth_map
-
-        # Toggle frame data display
-        if key == ord('f'):
-            show_frame_data = not show_frame_data
-
-        # Toggle HSV mask overlay
-        if key == ord ('h'):
-            show_hsv_mask = not show_hsv_mask
-
-        # Abort program
-        if key == ord('a'):
-            control_pipe.send(RcData(RcCommand.ABORT_PROGRAM))
-        
-        # Continue program
-        if key == ord('c'):
-            control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
-        
-        # Stop program
-        if key == ord('s'):
-            control_pipe.send(RcData(RcCommand.STOP_PROGRAM))
-
-        # Print info
-        if key == ord('i'):
-            print("[INFO]: Is robot ready = {}".format(is_rob_ready))
-
         # End main
-        if key == 27:
+        if end_prog:
             control_pipe.send(RcData(RcCommand.CLOSE_PROGRAM))
             cv2.destroyAllWindows()
             dc.release()
@@ -408,6 +253,99 @@ def packet_tracking(pt, detected_packets, depth_frame, frame_width, mask):
 
     return registered_packets
 
+class RobotStateMachine:
+    """ State machine for robot control
+    """
+    def __init__(self, control_pipe, gripper_pose_estimator, encoder_pos_m, home_xyz_coords, verbose = False):
+            # input
+            self.cp = control_pipe
+            self.gpe = gripper_pose_estimator
+            self.enc_pos = encoder_pos_m
+            self.home_xyz_coords = home_xyz_coords
+            self.verbose = verbose
+            # init
+            self.state = 'READY'
+            self.pick_list = []
+            self.is_in_home_pos = False
+            self.prepick_xyz_coords = []
+            self.packet_to_pick = None
+            self.trajectory_dict = {}
+        # TODO add comments to variables
+    def run(self, homography, is_rob_ready, registered_packets, encoder_vel, pos):
+        """Run the state machine
+
+        Args:
+            homography (numpy.ndarray): Homography matrix.
+            is_rob_ready (bool): indication if robot is ready to start
+            registered_packets (list[packets]): _description_
+            encoder_vel (double): encoder velocity
+            pos (np.ndarray): current robot position
+        Returns:
+            state (string): current state
+        """
+        
+        self.pick_list = add_to_pick_list(self.pick_list, registered_packets, encoder_vel) 
+
+        # robot is ready to recieve commands
+        if self.state == "READY" and is_rob_ready and homography is not None:
+            self.pick_list, pick_list_positions = prep_pick_list(self.pick_list, self.enc_pos, homography)
+            # Choose a item for picking
+            if self.pick_list and pick_list_positions.max() > MIN_PICK_DISTANCE:
+                self.packet_to_pick, self.trajectory_dict = start_program(self.pick_list, pick_list_positions, homography, self.gpe, self.cp)
+                # Save prepick position for use in TO_PREPICK state
+                self.prepick_xyz_coords = np.array([self.trajectory_dict['x'], self.trajectory_dict['y'], self.trajectory_dict['pack_z'] + Z_OFFSET])
+                self.is_in_home_pos = False
+                self.state = "TO_PREPICK"
+                if self.verbose : print("[INFO]: state TO_PREPICK")
+            # send robot to home position if it itsn't already
+            elif not self.is_in_home_pos:
+                self.cp.send(RcData(RcCommand.GO_TO_HOME))
+                self.state = "TO_HOME_POS"
+                if self.verbose : print("[INFO]: state TO_HOME_POS")
+
+        # moving to home position
+        if self.state == "TO_HOME_POS":
+            if is_rob_ready and is_rob_in_pos(pos, self.home_xyz_coords):
+                self.is_in_home_pos = True
+                self.state = "READY"
+                if self.verbose : print("[INFO]: state READY")
+
+        # moving to prepick position
+        if self.state == "TO_PREPICK":
+            # check if robot arrived to prepick position
+            if is_rob_in_pos(pos, self.prepick_xyz_coords):
+                self.state = "WAIT_FOR_PACKET"
+                if self.verbose : print("[INFO]: state WAIT_FOR_PACKET")
+
+        # waiting for packet
+        if self.state == "WAIT_FOR_PACKET":
+            encoder_pos = self.enc_pos.value
+            # check encoder and activate robot 
+            self.packet_to_pick.centroid = self.packet_to_pick.getCentroidFromEncoder(encoder_pos)
+            packet_pos_x = self.packet_to_pick.getCentroidInWorldFrame(homography)[0]
+            # If packet is too far abort and return to ready
+            if packet_pos_x > self.trajectory_dict['x'] + X_PICK_OFFSET:
+                self.cp.send(RcData(RcCommand.CONTINUE_PROGRAM))
+                self.cp.send(RcData(RcCommand.ABORT_PROGRAM))
+                self.cp.send(RcData(RcCommand.GRIPPER, False))
+                self.state = "READY"
+                if self.verbose : print("[INFO]: missed packet, state READY")
+
+            # If packet is close enough continue picking operation
+            elif packet_pos_x > self.trajectory_dict['x'] - PICK_START_X_OFFSET - self.trajectory_dict['shift_x']:
+                self.cp.send(RcData(RcCommand.CONTINUE_PROGRAM))
+                self.state = "PLACING"
+                if self.verbose : print("[INFO]: state PLACING")
+
+        # placing packet
+        if self.state == "PLACING":
+            if is_rob_ready:
+                self.state = "READY"
+                if self.verbose : print("[INFO]: state READY")
+
+        return self.state
+
+
 
 def add_to_pick_list(pick_list, registered_packets, encoder_vel):
     """Add packets which have been tracked for FRAMES_LIM frames to the pick list
@@ -415,7 +353,7 @@ def add_to_pick_list(pick_list, registered_packets, encoder_vel):
     Args:
         pick_list (list[packets]): list of packets ready to be picked
         registered_packets (list[packet_object]): List of tracked packet objects
-        encoder_vel ( TODO ): encoder velocity
+        encoder_vel (double): encoder velocity
     """
     # When speed of conveyor more than -100 it is moving to the left
     is_conv_mov = encoder_vel < - 100.0
@@ -549,9 +487,6 @@ def start_program(pick_list, pick_list_positions, homography, gripper_pose_estim
         packet_to_pick (packet): Packet choosen for picking
         trajectory_dict (dict): Dictionary of parameters for changing trajectory 
     """
-
-    print("[DEBUG]: pick list type {}]".format(type(pick_list_positions)))
-    print("[DEBUG]: pick list data type {}]".format(type(pick_list_positions[0])))
     # Chose farthest item on belt
     pick_ID = pick_list_positions.argmax()
     packet_to_pick = pick_list.pop(pick_ID)
@@ -568,10 +503,127 @@ def start_program(pick_list, pick_list_positions, homography, gripper_pose_estim
     return packet_to_pick, trajectory_dict
 
 
+def draw_frame(image_frame, registered_packets, encoder_pos, text_size, toggles_dict, info_dict, colorized_depth, start_time, frame_width, frame_height):
+    """
+    Draw information on image frame
+
+    """
+    # Draw packet info
+    for packet in registered_packets:
+        if packet.disappeared == 0:
+            # Draw centroid estimated with encoder position
+            cv2.drawMarker(image_frame, packet.getCentroidFromEncoder(encoder_pos), 
+                    (255, 255, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
 
 
+            # Draw packet ID and type
+            text_id = "ID {}, Type {}".format(packet.id, packet.type)
+            drawText(image_frame, text_id, (packet.centroid_px.x + 10, packet.centroid_px.y), text_size)
+
+            # Draw packet centroid value in pixels
+            text_centroid = "X: {}, Y: {} (px)".format(packet.centroid_px.x, packet.centroid_px.y)
+            drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(45 * text_size)), text_size)
+
+            # Draw packet centroid value in milimeters
+            text_centroid = "X: {:.2f}, Y: {:.2f} (mm)".format(packet.centroid_mm.x, packet.centroid_mm.y)
+            drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(80 * text_size)), text_size)
+
+            packet_depth_mm = compute_mean_packet_z(packet, PACK_DEPTHS[packet.type])
+            # Draw packet depth value in milimeters
+            text_centroid = "Z: {:.2f} (mm)".format(packet_depth_mm)
+            drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(115 * text_size)), text_size)
+
+    # Draw packet depth crop to separate frame
+    for packet in registered_packets:
+        if packet.avg_depth_crop is not None:
+            cv2.imshow("Depth Crop", colorizeDepthFrame(packet.avg_depth_crop))
+            break
+
+    # Show depth frame overlay.
+    if toggles_dict['show_depth_map']:
+        image_frame = cv2.addWeighted(image_frame, 0.8, colorized_depth, 0.3, 0)
+
+    # Show FPS and robot position data
+    if toggles_dict['show_frame_data']:
+        # Draw FPS to screen
+        text_fps = "FPS: {:.2f}".format(1.0 / (time.time() - start_time))
+        drawText(image_frame, text_fps, (10, int(35 * text_size)), text_size)
+
+        # Draw OPCUA data to screen
+        text_robot = str(info_dict)
+        drawText(image_frame, text_robot, (10, int(75 * text_size)), text_size)
+
+    image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
+
+    # Show frames on cv2 window
+    cv2.imshow("Frame", image_frame)
 
 
+def process_key_input(key, control_pipe, toggles_dict, is_rob_ready):
+    """
+    Process input from keyboard
+
+    Args:
+        key (int): pressed key
+        control_pipe (Pipe): Communication pipe between processes
+        toggles_dict (dict): Dictionary of toggle variables for indication and controll
+        is_rob_ready (bool): Shows if robot is ready
+    Returns:
+        end_prog (bool): End programm
+        toggles_dict (dict): Dictionary of toggle variables for indication and controll
+    """
+    end_prog = False
+    # Toggle gripper
+    if key == ord('g'):
+        toggles_dict['gripper'] = not toggles_dict['gripper']
+        control_pipe.send(RcData(RcCommand.GRIPPER, toggles_dict['gripper']))
+
+    # Toggle conveyor in left direction
+    if key == ord('n'):
+        toggles_dict['conv_left'] = not toggles_dict['conv_left']
+        control_pipe.send(RcData(RcCommand.CONVEYOR_LEFT, toggles_dict['conv_left']))
+
+    # Toggle conveyor in right direction
+    if key == ord('m'):
+        toggles_dict['conv_right'] = not toggles_dict['conv_right']
+        control_pipe.send(RcData(RcCommand.CONVEYOR_RIGHT, toggles_dict['conv_right']))
+
+    # Toggle detected packets bounding box display
+    if key == ord('b'):
+        toggles_dict['show_bbox'] = not toggles_dict['show_bbox']
+    
+    # Toggle depth map overlay
+    if key == ord('d'):
+        toggles_dict['show_depth_map'] = not toggles_dict['show_depth_map']
+
+    # Toggle frame data display
+    if key == ord('f'):
+        toggles_dict['show_frame_data'] = not toggles_dict['show_frame_data']
+
+    # Toggle HSV mask overlay
+    if key == ord ('h'):
+        toggles_dict['show_hsv_mask'] = not toggles_dict['show_hsv_mask']
+
+    # Abort program
+    if key == ord('a'):
+        control_pipe.send(RcData(RcCommand.ABORT_PROGRAM))
+    
+    # Continue program
+    if key == ord('c'):
+        control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
+    
+    # Stop program
+    if key == ord('s'):
+        control_pipe.send(RcData(RcCommand.STOP_PROGRAM))
+
+    # Print info
+    if key == ord('i'):
+        print("[INFO]: Is robot ready = {}".format(is_rob_ready))
+
+    if key == 27:   # Esc
+        end_prog = True
+
+    return end_prog, toggles_dict
 
 
 
