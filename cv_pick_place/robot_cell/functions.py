@@ -117,14 +117,14 @@ def colorizeDepthFrame(depth_frame):
     colorized_depth_frame = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
     return colorized_depth_frame
 
-def get_gripper_offset(packetXY, robotXY):
-    # NOTE add enc velocity ?
-    K = 170
-    a = 0.6
-    robot_dist = np.linalg.norm(packetXY-robotXY)
-    print(robot_dist)
-    offset = int(K + a*robot_dist + np.sign(packetXY[0]-robotXY[0])*70)
-    print("[INFO]: Calculated offset {}".format(offset))
-    if offset > 500:
-        offset = 500
-    return offset
+def is_rob_in_pos(rob_pos, desired_pos):
+    """ CHeck if robot is in desired position
+    Args:
+        rob_pos (np.array[6]): Array of current robot positions
+        desired_pos (np.array[3]): Array of desired x,y,z position
+    Returns:
+        _type_: _description_
+    """
+    curr_xyz_coords = np.array(rob_pos[0:3])        # get x,y,z coordinates
+    robot_dist = np.linalg.norm(desired_pos-curr_xyz_coords)
+    return robot_dist < 3

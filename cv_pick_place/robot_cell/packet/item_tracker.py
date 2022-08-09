@@ -140,7 +140,7 @@ class ItemTracker:
                 if minimal_distance is None or dist < minimal_distance:
                     minimal_distance = dist
                     minimal_dist_index = tracked_item_index
-            
+            # TODO prevent multiple detections being assigned the same id
             if minimal_dist_index is not None and minimal_distance < self.max_item_distance:
                 labeled_item_list[detected_item_index].id = self.item_database[minimal_dist_index].id
 
