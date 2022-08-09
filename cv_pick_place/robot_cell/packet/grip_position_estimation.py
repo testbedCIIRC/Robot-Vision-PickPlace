@@ -137,7 +137,7 @@ class GripPositionEstimation():
         self.pcd = pcd
 
 
-    def _get_points_and_estimete_normals(self) -> tuple[np.ndarray]:
+    def _get_points_and_estimate_normals(self) -> tuple[np.ndarray]:
         """
         Estimates normals from PointCloud and reutrns both points coordinates and
         their respective normals in numpy arrays
@@ -457,7 +457,7 @@ class GripPositionEstimation():
         """
         
         self._pcd_down_sample()
-        self.points, self.normals = self._get_points_and_estimete_normals()
+        self.points, self.normals = self._get_points_and_estimate_normals()
         if self.visualization:
             o3d.visualization.draw_geometries([self.pcd])
         if self.mask_threshold is None:
@@ -744,7 +744,7 @@ class GripPositionEstimation():
         if depth_exist:
             mask = packet.mask
             if self.save_depth:
-                # NOTE: JUST FOR SAVING THE TEST IMG, DELELTE MAYBE
+                # NOTE: JUST FOR SAVING THE TEST IMG, DELETE MAYBE
                 print(f"[INFO]: SAVING the depth array of packet {packet.id}")
                 np.save(f"depth_array{packet.id}_precrop.npy", depth_frame)
                 np.save(f"depth_array{packet.id}_precrop_mask.npy", mask)
@@ -758,9 +758,9 @@ class GripPositionEstimation():
                 ratio_over = abs(pack_y_max - y_max)/packet.height_bnd_mm
                 k = 1 - ratio_over
                 mm_height *= k
-                depth_frame = depth_frame[:int(ratio_over)*dims[0], :]
+                depth_frame = depth_frame[:int(k * dims[0]), :]
                 ratio /= k
-                mask = mask[:int(ratio_over)*dims[0], :]
+                mask = mask[:int(k * dims[0]), :]
                 
             if pack_y_min < y_min:
                 ratio_over = abs(pack_y_min - y_min)/packet.height_bnd_mm
@@ -770,7 +770,7 @@ class GripPositionEstimation():
                 ratio = (0.5 - ratio_over)/k
                 mask = mask[int(ratio_over * dims[0]):, :]
 
-            # Ancor for relative coordinates
+            # Anchor for relative coordinates
             anchor = np.array([0.5, ratio])
 
             if self.save_depth:
