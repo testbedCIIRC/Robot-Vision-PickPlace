@@ -249,7 +249,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 packet_to_pick = pick_list.pop(pick_ID)
                 print("[INFO]: Chose packet ID: {} to pick".format(str(packet.id)))
 
-                trajectory_dict, prepick_xyz_coords = get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estimator, grip_time_offset, 
+                trajectory_dict, prepick_xyz_coords, shift_x = get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estimator, grip_time_offset, 
                                                                          PACK_DEPTHS, MIN_PICK_DISTANCE, MAX_PICK_DISTANCE, Z_OFFSET, X_PICK_OFFSET)
                 print("[DEBUG]: Depth = {}".format(trajectory_dict['pack_z']))
                 # Set trajectory
@@ -298,7 +298,7 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
                 print("[INFO]: missed packet, state READY")
 
             # If packet is close enough continue picking operation
-            elif packet_pos_x > trajectory_dict['x'] - 25:
+            elif packet_pos_x > trajectory_dict['x'] - 25 - shift_x:
                 control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 state = "PLACING"
                 print("[INFO]: state PLACING")
@@ -629,9 +629,6 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
     if shift_x is not None:
         print(f"[INFO]: Estimated optimal point:\n\tx, y shifts: {shift_x:.2f}, {shift_y:.2f},\
                 \n\tz position: {pick_pos_z:.2f}\n\tRPY angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}")
-        # NOTE: Shifts in x position don't change the pick position relative to centroid, 
-        #        that is given by x_offset and continue in WAIT_FOR_PACKET state
-        pick_pos_x += shift_x 
         pick_pos_y += shift_y
     else: 
         # TODO: Implement behaviour in the future 
@@ -662,4 +659,4 @@ def get_pick_positions(packet_to_pick, homography, rob_dict, gripper_pose_estima
         'z_offset': Z_OFFSET
         }
 
-    return trajectory_dict, prepick_xyz_coords
+    return trajectory_dict, prepick_xyz_coords, shift_x
