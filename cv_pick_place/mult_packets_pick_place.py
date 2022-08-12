@@ -8,18 +8,13 @@ from multiprocessing import Manager
 from multiprocessing import Pipe
 
 from robot_cell.packet.packet_object import Packet
-from robot_cell.packet.item_object import Item
-from robot_cell.packet.packettracker import PacketTracker
 from robot_cell.packet.item_tracker import ItemTracker
-from robot_cell.packet.point_cloud_viz import PointCloudViz
-from robot_cell.packet.centroidtracker import CentroidTracker
 from robot_cell.control.robot_communication import RobotCommunication
 from robot_cell.control.control_state_machine import RobotStateMachine
 
 from robot_cell.control.robot_control import RobotControl
 from robot_cell.control.robot_control import RcCommand
 from robot_cell.control.robot_control import RcData
-from robot_cell.control.pick_place_demos import RobotDemos
 from robot_cell.detection.realsense_depth import DepthCamera
 from robot_cell.detection.packet_detector import PacketDetector
 from robot_cell.detection.apriltag_detection import ProcessingApriltag
@@ -52,178 +47,7 @@ PP_CONSTS = {
                 'MAX_Y' : 470.0
             }
 
-def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
-    """
-    Process for pick and place with moving conveyor and point cloud operations.
-    
-    Parameters:
-    rob_dict (dict): RobotControl object for program execution
-    paths (dict): Deep detector parameter
-    files (dict): Deep detector parameter
-    check_point (string): Deep detector parameter
-    info_dict (multiprocessing.dcit): Dict from multiprocessing Manager for reading OPCUA info from another process
-    encoder_pos_m (multiprocessing.value): Value object from multiprocessing Manager for reading encoder value from another process
-    control_pipe (multiprocessing.pipe): Pipe object connected to another process for sending commands
-    
-    """
-    # Inititalize objects
-    apriltag = ProcessingApriltag()
-    apriltag.load_world_points('conveyor_points.json')
-    pt = ItemTracker(max_disappeared_frames = 20, guard = 50, max_item_distance = 400)
-    dc = DepthCamera(config_path = 'D435_camera_config.json')
-    
-    gripper_pose_estimator = GripPositionEstimation(
-        visualize=False, verbose=True, center_switch="mass",
-        gripper_radius=0.08, max_num_tries = 100, height_th= -0.76, num_bins=20,
-        black_list_radius = 0.01, save_depth_array=False
-    )
-    # Load home position from dictionary
-    home_xyz_coords = np.array([rob_dict['home_pos'][0]['x'], rob_dict['home_pos'][0]['y'], rob_dict['home_pos'][0]['z']])
-    stateMachine = RobotStateMachine(control_pipe, gripper_pose_estimator, encoder_pos_m, 
-                                     home_xyz_coords, constants= PP_CONSTS, verbose = True)
 
-
-    if DETECTOR_TYPE == 'deep_1':
-        show_boot_screen('STARTING NEURAL NET...')
-        pack_detect = PacketDetector(paths, files, check_point, 3)
-    elif DETECTOR_TYPE == 'deep_2':
-        # TODO Implement new deep detector
-        pass
-    elif DETECTOR_TYPE == 'hsv':
-        pack_detect = ThresholdDetector(ignore_vertical_px = 133, ignore_horizontal_px = 50, max_ratio_error = 0.15,
-                                        white_lower = [60, 0, 85], white_upper = [179, 255, 255],
-                                        brown_lower = [0, 33, 57], brown_upper = [60, 255, 178])
-
-    # Toggles
-    toggles_dict = {
-        'gripper' : False, # Gripper state
-        'conv_left' : False, # Conveyor heading left enable
-        'conv_right' : False, # Conveyor heading right enable
-        'show_bbox' : True, # Bounding box visualization enable
-        'show_frame_data' : False, # Show frame data (robot pos, encoder vel, FPS ...)
-        'show_depth_map' : False, # Overlay colorized depth enable
-        'show_hsv_mask' : False, # Remove pixels not within HSV mask boundaries
-    }
-
-    # Variables
-    frame_count = 1 # Counter of frames for homography update
-    text_size = 1
-    homography = None # Homography matrix
-    
-
-    # Set home position from dictionary on startup
-    control_pipe.send(RcData(RcCommand.SET_HOME_POS_SH))
-
-    while True:
-        # Start timer for FPS estimation
-        start_time = time.time()
-
-        # READ DATA
-        ###################
-
-        # Read data dict from PLC server
-        try:
-            rob_stopped = info_dict['rob_stopped']
-            stop_active = info_dict['stop_active']
-            prog_done = info_dict['prog_done']
-            encoder_vel = info_dict['encoder_vel']
-            pos = info_dict['pos']
-            speed_override = info_dict['speed_override']
-        except:
-            continue
-
-        # Read encoder dict from PLC server
-        encoder_pos = encoder_pos_m.value
-        if encoder_pos is None:
-            continue
-
-        # Get frames from realsense
-        success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
-        if not success:
-            continue
-
-        frame_height, frame_width, frame_channel_count = rgb_frame.shape
-        text_size = (frame_height / 1000)
-        image_frame = rgb_frame.copy()
-
-        # Draw HSV mask over screen if enabled
-        if toggles_dict['show_hsv_mask'] and DETECTOR_TYPE == 'hsv':
-            image_frame = pack_detect.draw_hsv_mask(image_frame)
-
-        # HOMOGRAPHY UPDATE
-        ###################
-
-        # Update homography
-        if frame_count == 1:
-            apriltag.detect_tags(rgb_frame)
-            homography = apriltag.compute_homog()
-
-        image_frame = apriltag.draw_tags(image_frame)
-
-        # If homography has been detected
-        if isinstance(homography, np.ndarray):
-            # Increase counter for homography update
-            frame_count += 1
-            if frame_count >= MAX_FRAME_COUNT:
-                frame_count = 1
-
-            # Set homography in HSV detector
-            if DETECTOR_TYPE == 'hsv':
-                pack_detect.set_homography(homography)
-
-        # PACKET DETECTION
-        ##################
-        
-        # Detect packets using neural network
-        if DETECTOR_TYPE == 'deep_1':
-            image_frame, detected_packets = pack_detect.deep_pack_obj_detector(rgb_frame, 
-                                                                               depth_frame,
-                                                                               encoder_pos,
-                                                                               bnd_box = toggles_dict['show_bbox'],
-                                                                               homography = homography,
-                                                                               image_frame = image_frame)
-            for packet in detected_packets:
-                packet.width = packet.width * frame_width
-                packet.height = packet.height * frame_height
-        
-        # Detect packets using neural network
-        elif DETECTOR_TYPE == 'deep_2':
-            # TODO Implement new deep detector
-            detected_packets = []
-            pass
-        
-        # Detect packets using neural HSV thresholding
-        elif DETECTOR_TYPE == 'hsv':
-            image_frame, detected_packets, mask = pack_detect.detect_packet_hsv(rgb_frame,
-                                                                          encoder_pos,
-                                                                          draw_box = toggles_dict['show_bbox'],
-                                                                          image_frame = image_frame)
-
-        registered_packets = packet_tracking(pt, detected_packets, depth_frame, frame_width, mask)
-
-        # STATE MACHINE
-        ###############
-        # Robot ready when programs are fully finished and it isn't moving
-        is_rob_ready = prog_done and (rob_stopped or not stop_active)  
-        stateMachine.run(homography, is_rob_ready, registered_packets, encoder_vel, pos)
-
-        # FRAME GRAPHICS
-        ################
-        draw_frame(image_frame, registered_packets, encoder_pos, text_size, toggles_dict, info_dict, colorized_depth, start_time, frame_width, frame_height)
-        
-        # Keyboard inputs
-        key = cv2.waitKey(1)
-        end_prog, toggles_dict = process_key_input(key, control_pipe, toggles_dict, is_rob_ready)
-        
-        # End main
-        if end_prog:
-            control_pipe.send(RcData(RcCommand.CLOSE_PROGRAM))
-            cv2.destroyAllWindows()
-            dc.release()
-            break
-
-
-#------------------------------FUNCTIONS----------------------------------------------------------------
 def packet_tracking(pt, detected_packets, depth_frame, frame_width, mask):
     """
     Assign IDs to detected packets and update depth frames
@@ -381,89 +205,175 @@ def process_key_input(key, control_pipe, toggles_dict, is_rob_ready):
     return end_prog, toggles_dict
 
 
-
-
-
-
-
-#------------------------- MODE SELECT --------------------------------------------------
-def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
+def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
     """
-    Program selection function.
-
+    Process for pick and place with moving conveyor and point cloud operations.
+    
     Parameters:
-    rc (object): RobotControl object for program execution.
-    rd (object): RobotDemos object containing pick and place demos.
-
+    rob_dict (dict): RobotControl object for program execution
+    paths (dict): Deep detector parameter
+    files (dict): Deep detector parameter
+    check_point (string): Deep detector parameter
+    info_dict (multiprocessing.dcit): Dict from multiprocessing Manager for reading OPCUA info from another process
+    encoder_pos_m (multiprocessing.value): Value object from multiprocessing Manager for reading encoder value from another process
+    control_pipe (multiprocessing.pipe): Pipe object connected to another process for sending commands
+    
     """
-    # Read mode input.
-    mode = input()
-    # Dictionary with robot positions and robot programs.
-    modes_dict = {
-        '1':{'dict':Pick_place_dict, 
-            'func':demos.main_robot_control_demo},
-        '2':{'dict':Pick_place_dict, 
-            'func':demos.main_pick_place},
-        '3':{'dict':Pick_place_dict_conv_mov, 
-            'func':demos.main_pick_place_conveyor_w_point_cloud},
-        '4':{'dict':Short_pick_place_dict, 
-            'func':main}
-                }
+    # Inititalize objects
+    apriltag = ProcessingApriltag()
+    apriltag.load_world_points('conveyor_points.json')
+    pt = ItemTracker(max_disappeared_frames = 20, guard = 50, max_item_distance = 400)
+    dc = DepthCamera(config_path = 'D435_camera_config.json')
+    
+    gripper_pose_estimator = GripPositionEstimation(
+        visualize=False, verbose=True, center_switch="mass",
+        gripper_radius=0.08, max_num_tries = 100, height_th= -0.76, num_bins=20,
+        black_list_radius = 0.01, save_depth_array=False
+    )
+    # Load home position from dictionary
+    home_xyz_coords = np.array([rob_dict['home_pos'][0]['x'], rob_dict['home_pos'][0]['y'], rob_dict['home_pos'][0]['z']])
+    stateMachine = RobotStateMachine(control_pipe, gripper_pose_estimator, encoder_pos_m, 
+                                     home_xyz_coords, constants = PP_CONSTS, verbose = True)
 
-    # If mode is a program key.
-    if mode in modes_dict:
-        # Set robot positions and robot program
-        r_control.rob_dict = modes_dict[mode]['dict']
-        robot_prog = modes_dict[mode]['func']
 
-        # If first mode (not threaded) start program
-        if mode == '1':
-            robot_prog(r_control)
+    if DETECTOR_TYPE == 'deep_1':
+        show_boot_screen('STARTING NEURAL NET...')
+        pack_detect = PacketDetector(paths, files, check_point, 3)
+    elif DETECTOR_TYPE == 'deep_2':
+        # TODO Implement new deep detector
+        pass
+    elif DETECTOR_TYPE == 'hsv':
+        pack_detect = ThresholdDetector(ignore_vertical_px = 133, ignore_horizontal_px = 50, max_ratio_error = 0.15,
+                                        white_lower = [60, 0, 85], white_upper = [179, 255, 255],
+                                        brown_lower = [0, 33, 57], brown_upper = [60, 255, 178])
 
-        elif mode == '4':
-            with Manager() as manager:
-                info_dict = manager.dict()
-                encoder_pos = manager.Value('d', None)
+    # Toggles
+    toggles_dict = {
+        'gripper' : False, # Gripper state
+        'conv_left' : False, # Conveyor heading left enable
+        'conv_right' : False, # Conveyor heading right enable
+        'show_bbox' : True, # Bounding box visualization enable
+        'show_frame_data' : False, # Show frame data (robot pos, encoder vel, FPS ...)
+        'show_depth_map' : False, # Overlay colorized depth enable
+        'show_hsv_mask' : False, # Remove pixels not within HSV mask boundaries
+    }
 
-                control_pipe_1, control_pipe_2 = Pipe()
+    # Variables
+    frame_count = 1 # Counter of frames for homography update
+    text_size = 1
+    homography = None # Homography matrix
+    
 
-                main_proc = Process(target = robot_prog, args = (r_control.rob_dict, paths, files, check_point, info_dict, encoder_pos, control_pipe_1))
-                info_server_proc = Process(target = r_comm_info.robot_server, args = (info_dict, ))
-                encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (encoder_pos, ))
-                control_server_proc = Process(target = r_control.control_server, args = (control_pipe_2, ))
+    # Set home position from dictionary on startup
+    control_pipe.send(RcData(RcCommand.SET_HOME_POS_SH))
 
-                main_proc.start()
-                info_server_proc.start()
-                encoder_server_proc.start()
-                control_server_proc.start()
+    while True:
+        # Start timer for FPS estimation
+        start_time = time.time()
 
-                # Wait for the main process to end
-                main_proc.join()
-                info_server_proc.kill()
-                encoder_server_proc.kill()
-                control_server_proc.kill()
+        # READ DATA
+        ###################
 
-        # Otherwise start selected threaded program
-        else:
-            with Manager() as manager:
-                info_dict = manager.dict()
+        # Read data dict from PLC server
+        try:
+            rob_stopped = info_dict['rob_stopped']
+            stop_active = info_dict['stop_active']
+            prog_done = info_dict['prog_done']
+            encoder_vel = info_dict['encoder_vel']
+            pos = info_dict['pos']
+            speed_override = info_dict['speed_override']
+        except:
+            continue
 
-                main_proc = Process(target = robot_prog, args = (r_control, paths, files, check_point, info_dict))
-                info_server_proc = Process(target = r_comm_info.robot_server, args = (info_dict, ))
+        # Read encoder dict from PLC server
+        encoder_pos = encoder_pos_m.value
+        if encoder_pos is None:
+            continue
 
-                main_proc.start()
-                info_server_proc.start()
+        # Get frames from realsense
+        success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
+        if not success:
+            continue
 
-                # Wait for the main process to end
-                main_proc.join()
-                info_server_proc.kill()
+        frame_height, frame_width, frame_channel_count = rgb_frame.shape
+        text_size = (frame_height / 1000)
+        image_frame = rgb_frame.copy()
 
-    # If input is exit, exit python.
-    if mode == 'e':
-        exit()
+        # Draw HSV mask over screen if enabled
+        if toggles_dict['show_hsv_mask'] and DETECTOR_TYPE == 'hsv':
+            image_frame = pack_detect.draw_hsv_mask(image_frame)
 
-    # Return function recursively.
-    return program_mode(demos, r_control, r_comm_info, r_comm_encoder)
+        # HOMOGRAPHY UPDATE
+        ###################
+
+        # Update homography
+        if frame_count == 1:
+            apriltag.detect_tags(rgb_frame)
+            homography = apriltag.compute_homog()
+
+        image_frame = apriltag.draw_tags(image_frame)
+
+        # If homography has been detected
+        if isinstance(homography, np.ndarray):
+            # Increase counter for homography update
+            frame_count += 1
+            if frame_count >= MAX_FRAME_COUNT:
+                frame_count = 1
+
+            # Set homography in HSV detector
+            if DETECTOR_TYPE == 'hsv':
+                pack_detect.set_homography(homography)
+
+        # PACKET DETECTION
+        ##################
+        
+        # Detect packets using neural network
+        if DETECTOR_TYPE == 'deep_1':
+            image_frame, detected_packets = pack_detect.deep_pack_obj_detector(rgb_frame, 
+                                                                               depth_frame,
+                                                                               encoder_pos,
+                                                                               bnd_box = toggles_dict['show_bbox'],
+                                                                               homography = homography,
+                                                                               image_frame = image_frame)
+            for packet in detected_packets:
+                packet.width = packet.width * frame_width
+                packet.height = packet.height * frame_height
+        
+        # Detect packets using neural network
+        elif DETECTOR_TYPE == 'deep_2':
+            # TODO Implement new deep detector
+            detected_packets = []
+            pass
+        
+        # Detect packets using neural HSV thresholding
+        elif DETECTOR_TYPE == 'hsv':
+            image_frame, detected_packets, mask = pack_detect.detect_packet_hsv(rgb_frame,
+                                                                          encoder_pos,
+                                                                          draw_box = toggles_dict['show_bbox'],
+                                                                          image_frame = image_frame)
+
+        registered_packets = packet_tracking(pt, detected_packets, depth_frame, frame_width, mask)
+
+        # STATE MACHINE
+        ###############
+        # Robot ready when programs are fully finished and it isn't moving
+        is_rob_ready = prog_done and (rob_stopped or not stop_active)  
+        stateMachine.run(homography, is_rob_ready, registered_packets, encoder_vel, pos)
+
+        # FRAME GRAPHICS
+        ################
+        draw_frame(image_frame, registered_packets, encoder_pos, text_size, toggles_dict, info_dict, colorized_depth, start_time, frame_width, frame_height)
+        
+        # Keyboard inputs
+        key = cv2.waitKey(1)
+        end_prog, toggles_dict = process_key_input(key, control_pipe, toggles_dict, is_rob_ready)
+        
+        # End main
+        if end_prog:
+            control_pipe.send(RcData(RcCommand.CLOSE_PROGRAM))
+            cv2.destroyAllWindows()
+            dc.release()
+            break
 
 
 if __name__ == '__main__':
@@ -496,24 +406,36 @@ if __name__ == '__main__':
     # Define robot positions dictionaries from json file.
     file = open('robot_positions.json')
     robot_poses = json.load(file)
-    Pick_place_dict_conv_mov_slow = robot_poses['Pick_place_dict_conv_mov_slow']
-    Pick_place_dict_conv_mov = robot_poses['Pick_place_dict_conv_mov']
-    Pick_place_dict = robot_poses['Pick_place_dict']
     Short_pick_place_dict = robot_poses['Short_pick_place_dict']
     
     # Initialize robot demos and robot control objects.
     r_control = RobotControl(None)
     r_comm_info = RobotCommunication()
     r_comm_encoder = RobotCommunication()
-    demos = RobotDemos(paths, files, check_point)
 
     # Show message about robot programs.
-    print('Select pick and place mode: \n'+
-    '1 : Pick and place with static conveyor and hand gestures\n'+
-    '2 : Pick and place with static conveyor and multithreading\n'+
-    '3 : Pick and place with moving conveyor, point cloud and multithreading\n'+
-    '4 : Main Pick and place\n'+
-    'e : To exit program\n')
+    print('Multiple packets pick place start')
+    r_control.rob_dict = Short_pick_place_dict
+    # Start program
+    with Manager() as manager:
+        info_dict = manager.dict()
+        encoder_pos = manager.Value('d', None)
 
-    # Start program mode selection.
-    program_mode(demos, r_control, r_comm_info, r_comm_encoder)
+        control_pipe_1, control_pipe_2 = Pipe()
+
+        main_proc = Process(target = main, args = (r_control.rob_dict, paths, files, check_point, info_dict, encoder_pos, control_pipe_1))
+        info_server_proc = Process(target = r_comm_info.robot_server, args = (info_dict, ))
+        encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (encoder_pos, ))
+        control_server_proc = Process(target = r_control.control_server, args = (control_pipe_2, ))
+
+        main_proc.start()
+        info_server_proc.start()
+        encoder_server_proc.start()
+        control_server_proc.start()
+
+        # Wait for the main process to end
+        main_proc.join()
+        info_server_proc.kill()
+        encoder_server_proc.kill()
+        control_server_proc.kill()
+        
