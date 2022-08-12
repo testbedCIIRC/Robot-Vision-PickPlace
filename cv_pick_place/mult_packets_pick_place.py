@@ -216,7 +216,7 @@ def process_key_input(key, control_pipe, toggles_dict, is_rob_ready):
     return end_prog, toggles_dict
 
 
-def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
+def main_multi_packets(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
     """
     Process for pick and place with moving conveyor and point cloud operations.
     
@@ -385,68 +385,3 @@ def main(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_
             cv2.destroyAllWindows()
             dc.release()
             break
-
-
-if __name__ == '__main__':
-    # Define model parameters.
-    CUSTOM_MODEL_NAME = 'my_ssd_mobnet' 
-    check_point ='ckpt-3'
-    LABEL_MAP_NAME = 'label_map.pbtxt'
-
-    # Define model paths.
-    paths = {'ANNOTATION_PATH':os.path.join(
-                                            'Tensorflow',
-                                            'workspace',
-                                            'annotations'),
-            'CHECKPOINT_PATH': os.path.join(
-                                            'Tensorflow', 
-                                            'workspace',
-                                            'models',
-                                            CUSTOM_MODEL_NAME) 
-            }
-    files = {'PIPELINE_CONFIG':os.path.join(
-                                            'Tensorflow', 
-                                            'workspace',
-                                            'models',
-                                            CUSTOM_MODEL_NAME,
-                                            'pipeline.config'),
-            'LABELMAP': os.path.join(paths['ANNOTATION_PATH'], 
-                                        LABEL_MAP_NAME)
-            }
-
-    # Define robot positions dictionaries from json file.
-    file = open('robot_positions.json')
-    robot_poses = json.load(file)
-    Short_pick_place_dict = robot_poses['Short_pick_place_dict']
-    
-    # Initialize robot demos and robot control objects.
-    r_control = RobotControl(None)
-    r_comm_info = RobotCommunication()
-    r_comm_encoder = RobotCommunication()
-
-    # Show message about robot programs.
-    print('Multiple packets pick place start')
-    r_control.rob_dict = Short_pick_place_dict
-    # Start program
-    with Manager() as manager:
-        info_dict = manager.dict()
-        encoder_pos = manager.Value('d', None)
-
-        control_pipe_1, control_pipe_2 = Pipe()
-
-        main_proc = Process(target = main, args = (r_control.rob_dict, paths, files, check_point, info_dict, encoder_pos, control_pipe_1))
-        info_server_proc = Process(target = r_comm_info.robot_server, args = (info_dict, ))
-        encoder_server_proc = Process(target = r_comm_encoder.encoder_server, args = (encoder_pos, ))
-        control_server_proc = Process(target = r_control.control_server, args = (control_pipe_2, ))
-
-        main_proc.start()
-        info_server_proc.start()
-        encoder_server_proc.start()
-        control_server_proc.start()
-
-        # Wait for the main process to end
-        main_proc.join()
-        info_server_proc.kill()
-        encoder_server_proc.kill()
-        control_server_proc.kill()
-        

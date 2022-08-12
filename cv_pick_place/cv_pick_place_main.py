@@ -4,7 +4,7 @@ from multiprocessing import Process
 from multiprocessing import Manager
 from multiprocessing import Pipe
 from robot_cell.control.pick_place_demos import RobotDemos
-from mult_packets_pick_place import main
+from mult_packets_pick_place import main_multi_packets
 
 from robot_cell.control.robot_control import RobotControl
 from robot_cell.control.robot_communication import RobotCommunication
@@ -30,7 +30,7 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
         '3':{'dict':Pick_place_dict_conv_mov, 
             'func':demos.main_pick_place_conveyor_w_point_cloud},
         '4':{'dict':Short_pick_place_dict, 
-            'func':main}
+            'func':main_multi_packets}
                 }
 
     # If mode is a program key.
