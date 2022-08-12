@@ -261,7 +261,7 @@ class Packet:
             if mask.shape != self.mask.shape:
                 print(f"[WARN]: Tried to average two uncompatible sizes")
                 return
-            # NOTE: JUST FOR TESTING THE COMBINING OF THE MASks
+            # NOTE: JUST FOR TESTING THE COMBINING OF THE MASKS
             self.mask = np.logical_and(mask, self.mask)
 
     def add_angle_to_average(self, angle: float) -> None:

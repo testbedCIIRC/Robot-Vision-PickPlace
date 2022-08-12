@@ -271,6 +271,7 @@ class RobotStateMachine:
             self.packet_to_pick = None
             self.trajectory_dict = {}
         # TODO add comments to variables
+        
     def run(self, homography, is_rob_ready, registered_packets, encoder_vel, pos):
         """Run the state machine
 

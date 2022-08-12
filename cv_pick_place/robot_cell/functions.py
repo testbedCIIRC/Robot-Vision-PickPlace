@@ -61,7 +61,7 @@ def compute_mean_packet_z(packet, pack_z_fixed):
 
     """
     if packet.avg_depth_crop is None:
-        print("[WARNING] Avg Depth frame is None")
+        print("[WARNING]: Avg Depth frame is None")
         return pack_z_fixed
     conv2cam_dist = 777.0 # mm
     # range 25 - 13
@@ -118,7 +118,7 @@ def colorizeDepthFrame(depth_frame):
     return colorized_depth_frame
 
 def is_rob_in_pos(rob_pos, desired_pos):
-    """ CHeck if robot is in desired position
+    """ Check if robot is in desired position
     Args:
         rob_pos (np.array[6]): Array of current robot positions
         desired_pos (np.array[3]): Array of desired x,y,z position
