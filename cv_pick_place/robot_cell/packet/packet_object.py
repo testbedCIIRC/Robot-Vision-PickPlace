@@ -80,6 +80,8 @@ class Packet:
         self.centroid_initial_px = None
         # First detected position of encoder in pixels
         self.encoder_initial_position = None
+        # Number of frames item has been tracked
+        self.track_frame = 0        
 
 
         self.in_pick_list = False
@@ -121,10 +123,6 @@ class Packet:
         # Used for offsetting centroid position calculated using encoder
         self.first_centroid_position = centroid
 
-         # Number of frames item has been tracked
-        self.track_frame = 0
-
-        self.marked_for_picking = False
 
     def set_id(self, id: int) -> None:
         """
@@ -263,7 +261,7 @@ class Packet:
             if mask.shape != self.mask.shape:
                 print(f"[WARN]: Tried to average two uncompatible sizes")
                 return
-            # NOTE: JUST FOR TESTING THE COMBINING OF THE MASks
+            # NOTE: JUST FOR TESTING THE COMBINING OF THE MASKS
             self.mask = np.logical_and(mask, self.mask)
 
     def add_angle_to_average(self, angle: float) -> None:

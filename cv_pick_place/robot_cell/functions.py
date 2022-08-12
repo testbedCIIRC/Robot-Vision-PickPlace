@@ -2,16 +2,6 @@ import numpy as np
 import cv2
 
 
-def drawText(frame, text, position, size = 1):
-    cv2.putText(frame, 
-                text, 
-                position,
-                cv2.FONT_HERSHEY_SIMPLEX, size, (0, 0, 0), 4)
-    cv2.putText(frame, 
-                text, 
-                position,
-                cv2.FONT_HERSHEY_SIMPLEX, size, (255, 255, 255), 2)
-
 
 def compute_gripper_rot(angle):
     """
@@ -61,7 +51,7 @@ def compute_mean_packet_z(packet, pack_z_fixed):
 
     """
     if packet.avg_depth_crop is None:
-        print("[WARNING] Avg Depth frame is None")
+        print("[WARNING]: Avg Depth frame is None")
         return pack_z_fixed
     conv2cam_dist = 777.0 # mm
     # range 25 - 13
@@ -93,17 +83,6 @@ def compute_mean_packet_z(packet, pack_z_fixed):
     except:
         return pack_z_fixed
 
-def offset_packet_depth_by_x(pick_pos_x, packet_z):
-    """
-    Change the z position for picking based on the position on the belt, because the conveyor belt is tilted.
-
-    Args:
-        pick_pos_x (int): X coordinate for picking in mm
-        packet_z (int): Callculated depth
-    """
-    offset = 6e-6*(pick_pos_x*pick_pos_x)  - 0.0107*pick_pos_x + 4.2933
-    return packet_z + offset
-
 
 def meanFilter(depth_frame):
     kernel = np.ones((10, 10), np.float32) / 25
@@ -116,15 +95,3 @@ def colorizeDepthFrame(depth_frame):
     depth_frame_hist = clahe.apply(depth_frame.astype(np.uint8))
     colorized_depth_frame = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
     return colorized_depth_frame
-
-def get_gripper_offset(packetXY, robotXY):
-    # NOTE add enc velocity ?
-    K = 170
-    a = 0.6
-    robot_dist = np.linalg.norm(packetXY-robotXY)
-    print(robot_dist)
-    offset = int(K + a*robot_dist + np.sign(packetXY[0]-robotXY[0])*70)
-    print("[INFO]: Calculated offset {}".format(offset))
-    if offset > 500:
-        offset = 500
-    return offset

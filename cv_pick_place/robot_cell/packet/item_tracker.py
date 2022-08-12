@@ -127,6 +127,7 @@ class ItemTracker:
 
         """
         labeled_item_list = detected_item_list
+        assigned_ids = []
 
         for detected_item_index, detected_item in enumerate(detected_item_list):
             # For every newly detected item, store distance to all tracked items
@@ -140,8 +141,9 @@ class ItemTracker:
                 if minimal_distance is None or dist < minimal_distance:
                     minimal_distance = dist
                     minimal_dist_index = tracked_item_index
-            
-            if minimal_dist_index is not None and minimal_distance < self.max_item_distance:
+            # TODO prevent multiple detections being assigned the same id
+            if minimal_dist_index is not None and minimal_distance < self.max_item_distance and minimal_dist_index not in assigned_ids:
                 labeled_item_list[detected_item_index].id = self.item_database[minimal_dist_index].id
+                assigned_ids.append(minimal_dist_index)
 
         return labeled_item_list

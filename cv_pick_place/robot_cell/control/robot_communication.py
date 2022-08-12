@@ -233,6 +233,7 @@ class RobotCommunication:
             'ns=3;s="InstPickPlace"."instPrePickPos"."Done"')
         self.Place_Done =  self.client.get_node(
             'ns=3;s="InstPickPlace"."instPlacePos"."Done"')
+            
     def get_robot_info(self):
         """
         Reads periodically needed values from the PLC.
