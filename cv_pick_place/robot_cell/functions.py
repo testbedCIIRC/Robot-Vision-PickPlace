@@ -93,17 +93,6 @@ def compute_mean_packet_z(packet, pack_z_fixed):
     except:
         return pack_z_fixed
 
-def offset_packet_depth_by_x(pick_pos_x, packet_z):
-    """
-    Change the z position for picking based on the position on the belt, because the conveyor belt is tilted.
-
-    Args:
-        pick_pos_x (int): X coordinate for picking in mm
-        packet_z (int): Callculated depth
-    """
-    offset = 6e-6*(pick_pos_x*pick_pos_x)  - 0.0107*pick_pos_x + 4.2933
-    return packet_z + offset
-
 
 def meanFilter(depth_frame):
     kernel = np.ones((10, 10), np.float32) / 25
@@ -116,15 +105,3 @@ def colorizeDepthFrame(depth_frame):
     depth_frame_hist = clahe.apply(depth_frame.astype(np.uint8))
     colorized_depth_frame = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
     return colorized_depth_frame
-
-def is_rob_in_pos(rob_pos, desired_pos):
-    """ Check if robot is in desired position
-    Args:
-        rob_pos (np.array[6]): Array of current robot positions
-        desired_pos (np.array[3]): Array of desired x,y,z position
-    Returns:
-        _type_: _description_
-    """
-    curr_xyz_coords = np.array(rob_pos[0:3])        # get x,y,z coordinates
-    robot_dist = np.linalg.norm(desired_pos-curr_xyz_coords)
-    return robot_dist < 3
