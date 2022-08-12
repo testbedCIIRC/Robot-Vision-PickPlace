@@ -2,16 +2,6 @@ import numpy as np
 import cv2
 
 
-def drawText(frame, text, position, size = 1):
-    cv2.putText(frame, 
-                text, 
-                position,
-                cv2.FONT_HERSHEY_SIMPLEX, size, (0, 0, 0), 4)
-    cv2.putText(frame, 
-                text, 
-                position,
-                cv2.FONT_HERSHEY_SIMPLEX, size, (255, 255, 255), 2)
-
 
 def compute_gripper_rot(angle):
     """

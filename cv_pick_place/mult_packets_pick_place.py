@@ -82,6 +82,17 @@ def packet_tracking(pt, detected_packets, depth_frame, frame_width, mask):
     return registered_packets
 
 
+def drawText(frame, text, position, size = 1):
+    cv2.putText(frame, 
+                text, 
+                position,
+                cv2.FONT_HERSHEY_SIMPLEX, size, (0, 0, 0), 4)
+    cv2.putText(frame, 
+                text, 
+                position,
+                cv2.FONT_HERSHEY_SIMPLEX, size, (255, 255, 255), 2)
+
+
 def draw_frame(image_frame, registered_packets, encoder_pos, text_size, toggles_dict, info_dict, colorized_depth, start_time, frame_width, frame_height):
     """
     Draw information on image frame
