@@ -127,23 +127,35 @@ class ItemTracker:
 
         """
         labeled_item_list = detected_item_list
-        assigned_ids = []
+        # if no packets are being detected or tracked
+        if len(detected_item_list) == 0 or len(self.item_database) == 0:
+            return labeled_item_list
+        else:
+            # create a list of tracked and detected centroids
+            trackedCentroids = [item.centroid for item in self.item_database]
+            detectCentroids = [item.centroid for item in detected_item_list]
+            # compute the distance between each pair of items
+            distances = dist.cdist(np.array(trackedCentroids), np.array(detectCentroids))
+            # sort tracked items (rows) by minimal distance
+            tracked = distances.min(axis=1).argsort()
+            # sort detected items (columns) by minimal distance
+            detected = distances.argmin(axis=1)[tracked]
 
-        for detected_item_index, detected_item in enumerate(detected_item_list):
-            # For every newly detected item, store distance to all tracked items
-            minimal_distance = None
-            minimal_dist_index = None
+            usedTracked = set()
+            usedDetected = set()
+            # loop over the combination of the (row, column) index, starting from minimal distances
+            for (trac, det) in zip(tracked, detected):
+                # ignore already used items
+                if trac in usedTracked or det in usedDetected:
+                    continue
+                # if assigned distance is too far, ignore it
+                if distances[trac, det] > self.max_item_distance:
+                    continue
+                # assign id to detected item
+                labeled_item_list[det].id = self.item_database[trac].id
 
-            for tracked_item_index, tracked_item in enumerate(self.item_database):
-                # Compute distance
-                dist = sqrt((detected_item.centroid[0] - tracked_item.centroid[0]) ** 2 + (detected_item.centroid[1] - tracked_item.centroid[1]) ** 2)
-
-                if minimal_distance is None or dist < minimal_distance:
-                    minimal_distance = dist
-                    minimal_dist_index = tracked_item_index
-            # TODO prevent multiple detections being assigned the same id
-            if minimal_dist_index is not None and minimal_distance < self.max_item_distance and minimal_dist_index not in assigned_ids:
-                labeled_item_list[detected_item_index].id = self.item_database[minimal_dist_index].id
-                assigned_ids.append(minimal_dist_index)
+                # indicate which items were used
+                usedTracked.add(trac)
+                usedDetected.add(det)
 
         return labeled_item_list
