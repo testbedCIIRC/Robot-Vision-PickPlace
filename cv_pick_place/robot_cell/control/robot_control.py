@@ -240,7 +240,7 @@ class RobotControl(RobotCommunication):
 
         time.sleep(0.7)
 
-    def change_trajectory_short(self, x, y, rot, packet_type, x_offset = 0.0, pack_z = 5.0, post_pick_y_offset = 470, z_offset = 50.0, a=90.0, b=0.0,c=180.0):
+    def change_trajectory_short(self, x, y, angle, packet_type, x_offset = 0.0, pack_z = 5.0, post_pick_y_offset = 470, z_offset = 50.0, a=90.0, b=0.0,c=180.0):
         """
         Updates the trajectory points for the robot program.
     
@@ -259,6 +259,7 @@ class RobotControl(RobotCommunication):
         """
         nodes = []
         values = []
+        rot = self.compute_reverse_gripper_rot(angle)
 
         nodes.append(self.ShPrePick_Pos_X)
         values.append(ua.DataValue(ua.Variant(x, ua.VariantType.Float)))
@@ -318,7 +319,7 @@ class RobotControl(RobotCommunication):
         nodes.append(self.ShPlace_Pos_Z)
         values.append(ua.DataValue(ua.Variant(pack_z + z_offset, ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_A)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['a'], ua.VariantType.Float)))
+        values.append(ua.DataValue(ua.Variant(rot, ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_B)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['b'], ua.VariantType.Float)))
         nodes.append(self.ShPlace_Pos_C)
@@ -362,7 +363,7 @@ class RobotControl(RobotCommunication):
 
     def compute_gripper_rot(self, angle):
         """
-        Computes the gripper rotation based on the detected packet angle.
+        Computes the gripper rotation based on the detected packet angle. For rotating at picking.
     
         Parameters:
         angle (float): Detected angle of packet.
@@ -376,6 +377,24 @@ class RobotControl(RobotCommunication):
             rot = 90 + (90 - angle)
         if angle <= 45:
             rot = 90 - angle
+        return rot
+
+    def compute_reverse_gripper_rot(self, angle):
+        """
+        Computes the gripper rotation based on the detected packet angle. For rotating at placing.
+    
+        Parameters:
+        angle (float): Detected angle of packet.
+    
+        Returns:
+        float: Gripper rotation.
+
+        """
+        angle = abs(angle)
+        if angle > 45:
+            rot = angle
+        if angle <= 45:
+            rot = 90 + angle
         return rot
 
     def compute_mean_packet_z(self, packet, pack_z_fixed):
