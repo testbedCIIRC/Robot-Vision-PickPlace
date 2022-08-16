@@ -498,6 +498,7 @@ class GripPositionEstimation():
                     "center plane": plane_c
                 }
                 self._visualize_frame(viz_dict)
+            center[2] = plane_c[2]
             return center, plane_n
 
         blacklist = self._expand_blacklist(center, blacklist)
@@ -529,8 +530,8 @@ class GripPositionEstimation():
                     "center plane": plane_c,
                 }
                 self._visualize_frame(viz_dict)
-
-            return center, plane_n
+            c_point[2] = plane_c[2]
+            return c_point, plane_n
 
         if self.verbose:
             print(f"[WARN]: Could not find the valid point, retrurning None. Reason: ")
@@ -789,7 +790,7 @@ class GripPositionEstimation():
                 dx, dy, z = point_relative
                 shift_x, shift_y =  -1 * dx * mm_height, -1*dy * mm_width
                 # Changes the z value to be positive ,converts m to mm and shifts by the conv2cam_dist
-                pack_z = abs(-1.0 * M2MM * z + self.th_val*M2MM )
+                pack_z = abs(-1.0 * M2MM * z + self.th_val*M2MM ) - 5.0
                 pack_z = np.clip(pack_z, z_min, z_max)
                 roll, pitch, yaw = self._vectors2RPYrot(normal)
 
