@@ -118,8 +118,7 @@ class RobotStateMachine:
         packet_x,pick_pos_y = packet_to_pick.getCentroidInWorldFrame(homography)
         pick_pos_x = packet_x + self.constants['GRIP_TIME_OFFSET']
 
-        angle = packet_to_pick.angle
-        gripper_rot = compute_gripper_rot(angle)        # TODO: Use rotation
+        angle = packet_to_pick.avg_angle_deg
         packet_type = packet_to_pick.type
 
         # Set packet depth to fixed value by type                
@@ -150,7 +149,7 @@ class RobotStateMachine:
         trajectory_dict = {
             'x': pick_pos_x,
             'y': pick_pos_y,
-            'rot': gripper_rot,
+            'rot': angle,
             'packet_type': packet_type,
             'x_offset': self.constants['X_PICK_OFFSET'],
             'pack_z': pick_pos_z,
