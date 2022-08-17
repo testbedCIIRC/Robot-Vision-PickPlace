@@ -133,9 +133,8 @@ class RobotStateMachine:
                     \n\tz position: {pick_pos_z:.2f}\n\tRPY angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}")
             pick_pos_y += shift_y
         else: 
-            # TODO: Implement behaviour in the future 
-            # Either continue with centroid or skip packet IDK, TBD
-            pass
+            # no pick position has been found, skip packet
+            return None
 
         # Check if x is range
         pick_pos_x = np.clip(pick_pos_x, self.constants['MIN_PICK_DISTANCE'], self.constants['MAX_PICK_DISTANCE'] - 1.5*self.constants['X_PICK_OFFSET'])
@@ -181,15 +180,15 @@ class RobotStateMachine:
         print("[INFO]: Chose packet ID: {} to pick".format(str(packet_to_pick.id)))
 
         trajectory_dict = self._get_pick_positions(packet_to_pick, homography)
-
-
-        # Set trajectory
-        self.cp.send(RcData(RcCommand.CHANGE_SHORT_TRAJECTORY, trajectory_dict))
-        # Start robot program.
-        self.cp.send(RcData(RcCommand.START_PROGRAM, True))
+        if trajectory_dict: 
+            # Set trajectory
+            self.cp.send(RcData(RcCommand.CHANGE_SHORT_TRAJECTORY, trajectory_dict))
+            # Start robot program.
+            self.cp.send(RcData(RcCommand.START_PROGRAM, True))
 
         return packet_to_pick, trajectory_dict
 
+        
     def _is_rob_in_pos(self, rob_pos, desired_pos):
         """ Check if robot is in desired position
         Args:
@@ -225,11 +224,12 @@ class RobotStateMachine:
             if self.pick_list and pick_list_positions.max() > self.constants['MIN_PICK_DISTANCE']:
                 # Select packet and start pick place opration
                 self.packet_to_pick, self.trajectory_dict = self._start_program(pick_list_positions, homography)
-                # Save prepick position for use in TO_PREPICK state
-                self.prepick_xyz_coords = np.array([self.trajectory_dict['x'], self.trajectory_dict['y'], self.trajectory_dict['pack_z'] + self.constants['Z_OFFSET']])
-                self.is_in_home_pos = False
-                self.state = "TO_PREPICK"
-                if self.verbose : print("[INFO]: state TO_PREPICK")
+                if self.trajectory_dict:
+                    # Save prepick position for use in TO_PREPICK state
+                    self.prepick_xyz_coords = np.array([self.trajectory_dict['x'], self.trajectory_dict['y'], self.trajectory_dict['pack_z'] + self.constants['Z_OFFSET']])
+                    self.is_in_home_pos = False
+                    self.state = "TO_PREPICK"
+                    if self.verbose : print("[INFO]: state TO_PREPICK")
             # send robot to home position if it itsn't already
             elif not self.is_in_home_pos:
                 self.cp.send(RcData(RcCommand.GO_TO_HOME))
