@@ -1,4 +1,5 @@
 from dis import dis
+from tkinter import CENTER
 import open3d as o3d
 import numpy as np
 import matplotlib.pyplot as plt
@@ -788,11 +789,14 @@ class GripPositionEstimation():
             if point_exists:
                 # Adjustment for the gripper
                 dx, dy, z = point_relative
-                shift_x, shift_y =  -1 * dx * mm_height, -1*dy * mm_width
+                shift_x, shift_y =  -1 * dx * mm_width, -1*dy * mm_height
                 # Changes the z value to be positive ,converts m to mm and shifts by the conv2cam_dist
                 pack_z = abs(-1.0 * M2MM * z + self.th_val*M2MM ) - 5.0
                 pack_z = np.clip(pack_z, z_min, z_max)
                 roll, pitch, yaw = self._vectors2RPYrot(normal)
+                point_relative[0] += anchor[0]
+                point_relative[1] += anchor[1]
+
 
         if self.verbose :
             print(f"[INFO]: Optimal point found: {depth_exist and  point_exists}")
@@ -800,7 +804,7 @@ class GripPositionEstimation():
                 print(f"\tReason - Average depth frame is None. Returns None")
             if not point_exists:
                 print(f"\tReason - Valid point was not found. Returns None")
-        return shift_x, shift_y, pack_z, roll, pitch, yaw         
+        return shift_x, shift_y, pack_z, roll, pitch, yaw, point_relative        
 
 
 def main():
