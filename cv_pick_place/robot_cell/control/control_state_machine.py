@@ -106,18 +106,21 @@ class RobotStateMachine:
 
 
     def _draw_depth_map(self, packet, depth, pick_point):
+        """ 
+        Draw depth map used for grip estimation. And position and depth of the grip.
+
+        Args:
+            packet (Packet): Used packet object
+            depth (float): Pick depth
+            pick_point (tuple(floats)): relative pick position in image
+        """
         if packet.avg_depth_crop is not None:
             image_frame = colorizeDepthFrame(packet.avg_depth_crop)
             img_height, img_width, frame_channel_count = image_frame.shape
             text_size = (img_height / 700)
-            # TODO inverse
 
             dx, dy, z = pick_point
-
             pick_point =  int(dx*img_width), int(dy*img_height)
-            print("PICK PLACE")
-            print(pick_point)
-
             
             cv2.drawMarker(image_frame, pick_point, 
                     (0, 0, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
