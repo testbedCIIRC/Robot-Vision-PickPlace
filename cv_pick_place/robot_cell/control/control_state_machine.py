@@ -2,6 +2,7 @@ import numpy as np
 from robot_cell.functions import *
 from robot_cell.control.robot_control import RcData
 from robot_cell.control.robot_control import RcCommand
+from numpy.linalg import inv
 
 # Default pick place constants
 CONSTANTS = {
@@ -104,6 +105,29 @@ class RobotStateMachine:
         return packet_z + offset
 
 
+    def _draw_depth_map(self, packet, depth, pick_point):
+        if packet.avg_depth_crop is not None:
+            image_frame = colorizeDepthFrame(packet.avg_depth_crop)
+            img_height, img_width, frame_channel_count = image_frame.shape
+            text_size = (img_height / 700)
+            # TODO inverse
+
+            dx, dy, z = pick_point
+
+            pick_point =  int(dx*img_width), int(dy*img_height)
+            print("PICK PLACE")
+            print(pick_point)
+
+            
+            cv2.drawMarker(image_frame, pick_point, 
+                    (0, 0, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
+            # Draw packet depth value in milimeters
+            text_centroid = "Z: {:.2f} (mm)".format(depth)
+            drawText(image_frame, text_centroid, (pick_point[0] - 30, pick_point[1] + 20), text_size)
+            image_frame = cv2.resize(image_frame, (500, 500))
+            cv2.imshow("Pick Pos", image_frame)
+
+
     def _get_pick_positions(self, packet_to_pick, homography):
         """
         Get dictionary of parameters for changing trajectory
@@ -127,7 +151,7 @@ class RobotStateMachine:
         z_lims = (self.constants['PACK_DEPTHS'][packet_to_pick.type], self.constants['MAX_Z'])
         packet_coords = (pick_pos_x, pick_pos_y)
         y_lims = (self.constants['MIN_Y'], self.constants['MAX_Y'])
-        shift_x, shift_y, pick_pos_z, roll, pitch, yaw = self.gpe.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
+        shift_x, shift_y, pick_pos_z, roll, pitch, yaw, pick_point = self.gpe.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
         if shift_x is not None:
             print(f"[INFO]: Estimated optimal point:\n\tx, y shifts: {shift_x:.2f}, {shift_y:.2f},\
                     \n\tz position: {pick_pos_z:.2f}\n\tRPY angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}")
@@ -143,7 +167,7 @@ class RobotStateMachine:
         # Offset pick height by position on belt
         pick_pos_z = self._offset_packet_depth_by_x(pick_pos_x, pick_pos_z)
         
-
+        self._draw_depth_map(packet_to_pick, pick_pos_z, pick_point)
         # Change end points of robot.   
         trajectory_dict = {
             'x': pick_pos_x,

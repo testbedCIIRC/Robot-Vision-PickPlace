@@ -115,10 +115,12 @@ def draw_frame(image_frame, registered_packets, encoder_pos, text_size, toggles_
             text_centroid = "Z: {:.2f} (mm)".format(packet_depth_mm)
             drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(115 * text_size)), text_size)
 
-    # Draw packet depth crop to separate frame
+        # Draw packet depth crop to separate frame
     for packet in registered_packets:
         if packet.avg_depth_crop is not None:
-            cv2.imshow("Depth Crop", colorizeDepthFrame(packet.avg_depth_crop))
+            depth_img = colorizeDepthFrame(packet.avg_depth_crop)
+            depth_img = cv2.resize(depth_img, (500, 500))
+            cv2.imshow("Depth Crop", depth_img)
             break
 
     # Show depth frame overlay.
