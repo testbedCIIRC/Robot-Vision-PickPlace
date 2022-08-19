@@ -177,10 +177,6 @@ class Packet:
             print("[WARNING] Tried to set packet CENTROID to ({}, {}) (Should be integers)".format(x, y))
             return
 
-        if x < 0 or y < 0:
-            print("[WARNING] Tried to set packet CENTROID to ({}, {}) (Should be greater than or equal to 0)".format(x, y))
-            return
-
         # Set parameter
         self.centroid_px = self.PointTuple(x, y)
 
@@ -261,7 +257,6 @@ class Packet:
             if mask.shape != self.mask.shape:
                 print(f"[WARN]: Tried to average two uncompatible sizes")
                 return
-            # NOTE: JUST FOR TESTING THE COMBINING OF THE MASKS
             self.mask = np.logical_and(mask, self.mask)
 
     def add_angle_to_average(self, angle: float) -> None:
@@ -356,7 +351,7 @@ class Packet:
         # k = 1.2365  # 1280 x 720
         k = 1.8672  # 1440 x 1080
         # k = 1.2365  # 1080 x 720
-        return (int(k * (encoder_position - self.starting_encoder_position) + self.first_centroid_position[0]), self.centroid[1])
+        return (int(k * (encoder_position - self.encoder_initial_position) + self.centroid_initial_px.x), self.centroid_px.y)
 
     # OBSOLETE
     def getCentroidInWorldFrame(self, homography):

@@ -132,8 +132,8 @@ class ItemTracker:
             return labeled_item_list
         else:
             # create a list of tracked and detected centroids
-            trackedCentroids = [item.centroid for item in self.item_database]
-            detectCentroids = [item.centroid for item in detected_item_list]
+            trackedCentroids = [item.centroid_px for item in self.item_database]
+            detectCentroids = [item.centroid_px for item in detected_item_list]
             # compute the distance between each pair of items
             distances = dist.cdist(np.array(trackedCentroids), np.array(detectCentroids))
             # sort tracked items (rows) by minimal distance
