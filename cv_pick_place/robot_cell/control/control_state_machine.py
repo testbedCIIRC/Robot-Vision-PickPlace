@@ -83,9 +83,10 @@ class RobotStateMachine:
             return [], []
         # Update pick list to current positions
         for packet in self.pick_list:
-            packet.centroid = packet.getCentroidFromEncoder(encoder_pos)
+            x, y  = packet.getCentroidFromEncoder(encoder_pos)
+            packet.set_centroid(x, y, homography)
         # Get list of current world x coordinates
-        pick_list_positions = np.array([packet.getCentroidInWorldFrame(homography)[0] for packet in self.pick_list])
+        pick_list_positions = np.array([packet.centroid_mm.x for packet in self.pick_list])
         # If item is too far remove it from list
         is_valid_position = pick_list_positions < self.constants['MAX_PICK_DISTANCE'] - self.constants['GRIP_TIME_OFFSET'] - 1.5*self.constants['X_PICK_OFFSET']
         self.pick_list = np.ndarray.tolist(np.asanyarray(self.pick_list)[is_valid_position])     
@@ -142,7 +143,7 @@ class RobotStateMachine:
             trajectory_dict (dict): Dictionary of parameters for changing trajectory 
         """
         # Set positions and Start robot
-        packet_x,pick_pos_y = packet_to_pick.getCentroidInWorldFrame(homography)
+        packet_x,pick_pos_y = packet_to_pick.centroid_mm
         pick_pos_x = packet_x + self.constants['GRIP_TIME_OFFSET']
 
         angle = packet_to_pick.avg_angle_deg
@@ -281,8 +282,9 @@ class RobotStateMachine:
         if self.state == "WAIT_FOR_PACKET":
             encoder_pos = self.enc_pos.value
             # check encoder and activate robot 
-            self.packet_to_pick.centroid = self.packet_to_pick.getCentroidFromEncoder(encoder_pos)
-            packet_pos_x = self.packet_to_pick.getCentroidInWorldFrame(homography)[0]
+            x, y = self.packet_to_pick.getCentroidFromEncoder(encoder_pos)
+            self.packet_to_pick.set_centroid(x, y, homography)
+            packet_pos_x = self.packet_to_pick.centroid_mm.x
             # If packet is too far abort and return to ready
             if packet_pos_x > self.trajectory_dict['x'] + self.constants['X_PICK_OFFSET']:
                 self.cp.send(RcData(RcCommand.CONTINUE_PROGRAM))
