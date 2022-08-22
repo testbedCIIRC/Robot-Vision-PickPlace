@@ -48,9 +48,8 @@ class ProcessingApriltag:
         if is_enough_points_detect:
             self.homography, _ = cv2.findHomography(np.array(self.image_points_detect), 
                                                          np.array(self.world_points_detect))
-            print('[INFO]: Homography matrix updated')
         else:
-            print("[INFO]: Less than 4 AprilTags found in frame, new homography matrix was not computed")
+            print("[WARNING]: Less than 4 AprilTags found in frame, new homography matrix was not computed")
         
         return self.homography
 

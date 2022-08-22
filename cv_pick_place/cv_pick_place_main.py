@@ -42,9 +42,11 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
         # If first mode (not threaded) start program
         if mode == '1':
             robot_prog(r_control)
+            print("[INFO]: Starting program: Pick and place with static conveyor and hand gestures")
 
         elif mode == '4':
             with Manager() as manager:
+                print("[INFO]: Starting program: Multi packets pick and place")
                 info_dict = manager.dict()
                 encoder_pos = manager.Value('d', None)
 
@@ -69,6 +71,7 @@ def program_mode(demos, r_control, r_comm_info, r_comm_encoder):
         # Otherwise start selected threaded program
         else:
             with Manager() as manager:
+                print(f"[INFO]: Starting program: {mode}")
                 info_dict = manager.dict()
 
                 main_proc = Process(target = robot_prog, args = (r_control, paths, files, check_point, info_dict))
