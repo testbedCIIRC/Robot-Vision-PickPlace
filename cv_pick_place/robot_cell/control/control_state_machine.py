@@ -257,26 +257,26 @@ class RobotStateMachine:
                     self.prepick_xyz_coords = np.array([self.trajectory_dict['x'], self.trajectory_dict['y'], self.trajectory_dict['pack_z'] + self.constants['Z_OFFSET']])
                     self.is_in_home_pos = False
                     self.state = "TO_PREPICK"
-                    if self.verbose : print("[INFO]: state TO_PREPICK")
+                    if self.verbose : print("[INFO]: State: TO_PREPICK")
             # send robot to home position if it itsn't already
             elif not self.is_in_home_pos:
                 self.cp.send(RcData(RcCommand.GO_TO_HOME))
                 self.state = "TO_HOME_POS"
-                if self.verbose : print("[INFO]: state TO_HOME_POS")
+                if self.verbose : print("[INFO]: State: TO_HOME_POS")
 
         # moving to home position
         if self.state == "TO_HOME_POS":
             if is_rob_ready and self._is_rob_in_pos(pos, self.home_xyz_coords):
                 self.is_in_home_pos = True
                 self.state = "READY"
-                if self.verbose : print("[INFO]: state READY")
+                if self.verbose : print("[INFO]: State: READY")
 
         # moving to prepick position
         if self.state == "TO_PREPICK":
             # check if robot arrived to prepick position
             if self._is_rob_in_pos(pos, self.prepick_xyz_coords):
                 self.state = "WAIT_FOR_PACKET"
-                if self.verbose : print("[INFO]: state WAIT_FOR_PACKET")
+                if self.verbose : print("[INFO]: State: WAIT_FOR_PACKET")
 
         # waiting for packet
         if self.state == "WAIT_FOR_PACKET":
@@ -291,17 +291,17 @@ class RobotStateMachine:
                 self.cp.send(RcData(RcCommand.ABORT_PROGRAM))
                 self.cp.send(RcData(RcCommand.GRIPPER, False))
                 self.state = "READY"
-                if self.verbose : print("[INFO]: missed packet, state READY")
+                if self.verbose : print("[INFO]: missed packet, State: READY")
             # If packet is close enough continue picking operation
             elif packet_pos_x > self.trajectory_dict['x'] - self.constants['PICK_START_X_OFFSET'] - self.trajectory_dict['shift_x']:
                 self.cp.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 self.state = "PLACING"
-                if self.verbose : print("[INFO]: state PLACING")
+                if self.verbose : print("[INFO]: State: PLACING")
 
         # placing packet
         if self.state == "PLACING":
             if is_rob_ready:
                 self.state = "READY"
-                if self.verbose : print("[INFO]: state READY")
+                if self.verbose : print("[INFO]: State: READY")
 
         return self.state

@@ -601,11 +601,13 @@ class GripPositionEstimation():
         new_y[2] = -(np.dot(new_z[:2], new_y[:2]))/new_z[2]
         new_y /= np.linalg.norm(new_y)
         new_x = np.cross(new_y, new_z)
-        if self.verbose:
-            print(f"[INFO]: New base for picking\
-                    \n x: {new_x}, norm: {np.linalg.norm(new_x):.2f}\
-                    \n y: {new_y}, norm: {np.linalg.norm(new_y):.2f}\
-                    \n z: {new_z}, norm: {np.linalg.norm(new_z):.2f}")
+
+        # For debugging purposes
+        # if self.verbose:
+        #     print(f"[INFO]: New base for picking\
+        #             \n x: {new_x}, norm: {np.linalg.norm(new_x):.2f}\
+        #             \n y: {new_y}, norm: {np.linalg.norm(new_y):.2f}\
+        #             \n z: {new_z}, norm: {np.linalg.norm(new_z):.2f}")
 
         # Rotations between angles x -> projection of x_new to xy plane
         alpha = np.arctan2(np.linalg.norm(np.cross(base_coords[:2, 0], new_x[:2])), np.dot(base_coords[:2, 0], new_x[:2]))
@@ -631,11 +633,12 @@ class GripPositionEstimation():
                        [0, math.sin(gamma), math.cos(gamma)]])
         new_coords = coords_y @ Rx
 
-        if self.verbose:
-            print(f"[INFO]: transformed base by the angles:\
-                    \n x: {new_coords[:,0]}\n y: {new_coords[:,1]}\n z: {new_coords[:,2]}")
-            print(f"[INFO]: Delta between bases(Should be ZERO)\
-                    \n x: {new_x - new_coords[:,0]}\n y: {new_y - new_coords[:,1]}\n z: { new_z -new_coords[:,2]}")
+        # For debugging purposes
+        # if self.verbose:
+        #     print(f"[INFO]: transformed base by the angles:\
+        #             \n x: {new_coords[:,0]}\n y: {new_coords[:,1]}\n z: {new_coords[:,2]}")
+        #     print(f"[INFO]: Delta between bases(Should be ZERO)\
+        #             \n x: {new_x - new_coords[:,0]}\n y: {new_y - new_coords[:,1]}\n z: { new_z -new_coords[:,2]}")
         
         # Final array of angles in degrees
         angles = np.rad2deg(np.array([alpha, beta, gamma]))
