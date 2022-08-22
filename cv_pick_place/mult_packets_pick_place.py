@@ -116,6 +116,7 @@ def draw_frame(image_frame, registered_packets, encoder_pos, text_size, toggles_
             drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(115 * text_size)), text_size)
 
     # Draw packet depth crop to separate frame
+    cv2.imshow("Depth Crop", np.zeros((500, 500)))
     for packet in registered_packets:
         if packet.avg_depth_crop is not None:
             depth_img = colorizeDepthFrame(packet.avg_depth_crop)
