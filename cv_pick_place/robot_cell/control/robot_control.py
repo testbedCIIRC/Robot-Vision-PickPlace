@@ -27,9 +27,8 @@ class RcData():
         self.command = command
         self.data = data
     
-
 class RobotControl(RobotCommunication):
-    def __init__(self, rob_dict):
+    def __init__(self, rob_dict, verbose = False):
         """
         RobotControl object constructor.
     
@@ -38,6 +37,7 @@ class RobotControl(RobotCommunication):
 
         """
         self.rob_dict = rob_dict
+        self.verbose = verbose
 
         # Inherit RobotCommunication.
         super().__init__()
@@ -67,7 +67,7 @@ class RobotControl(RobotCommunication):
         self.Conti_Prog.set_value(ua.DataValue(True))
         time.sleep(0.5)
         self.Conti_Prog.set_value(ua.DataValue(False))
-        print('[INFO]: Program continued.')
+        if self.verbose : print('[INFO]: Program continued.')
 
     def stop_program(self):
         """
@@ -96,7 +96,7 @@ class RobotControl(RobotCommunication):
         """
         self.Pick_Place_Select.set_value(ua.DataValue(mode))
         self.Start_Prog.set_value(ua.DataValue(True))
-        print('[INFO]: Program started.')
+        if self.verbose : print('[INFO]: Program started.')
         time.sleep(0.5)
         self.Start_Prog.set_value(ua.DataValue(False))
         time.sleep(0.5)
@@ -120,7 +120,7 @@ class RobotControl(RobotCommunication):
 
         """
         self.Gripper_State.set_value(ua.DataValue(state))
-        print('[INFO]: Gripper state is {}.'.format(state))
+        if self.verbose : print('[INFO]: Gripper state is {}.'.format(state))
         time.sleep(0.1)
     
     def change_conveyor_right(self, conv_right):
@@ -147,7 +147,7 @@ class RobotControl(RobotCommunication):
 
         """
         self.Go_to_home.set_value(ua.DataValue(True))
-        print('[INFO]: Sent robot to home pos.')
+        if self.verbose : print('[INFO]: Sent robot to home pos.')
         time.sleep(0.4)
         self.Go_to_home.set_value(ua.DataValue(False))
         time.sleep(0.4)
@@ -331,7 +331,7 @@ class RobotControl(RobotCommunication):
 
         self.client.set_values(nodes, values)
 
-        time.sleep(0.7)
+        time.sleep(0.2)
 
     def set_home_pos_short(self):
         """
@@ -425,7 +425,7 @@ class RobotControl(RobotCommunication):
 
                 # Get centroid from depth mean crop.
                 centroid_depth = depth_mean[y_depth, x_depth]
-                print('Centroid_depth:',centroid_depth)
+                if self.verbose : print('Centroid_depth:',centroid_depth)
 
                 # Compute packet z position with respect to conveyor base.
                 pack_z = abs(conv2cam_dist - centroid_depth)
@@ -434,7 +434,7 @@ class RobotControl(RobotCommunication):
                 pack_z_in_range = (pack_z > pack_z_fixed) and (pack_z < pack_z_fixed + 17.0)
 
                 if pack_z_in_range:
-                    print('[Info]: Pack z in range')
+                    if self.verbose : print('[INFO]: Pack z in range')
                     return pack_z
                 else: return pack_z_fixed
 
