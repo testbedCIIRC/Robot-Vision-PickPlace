@@ -14,3 +14,4 @@ TensorflowYOLACT
 delete.py
 delete.ipynb
 depth_array*.npy
+cv_pick_place/dataset_capture
