@@ -1,11 +1,25 @@
 import cv2
 import numpy as np
 import time
+import os
+from datetime import datetime
 
 from robot_cell.detection.realsense_depth import DepthCamera
 
 def empty_function(x):
     None
+
+OBJECTS = (
+    "banana",
+    "ketchup",
+    "trex",
+    "catfood",
+    "mouthwash",
+    "toothpaste",
+    "skittles",
+    "showergel",
+    "stainremover",
+)
 
 # Create a window
 cv2.namedWindow('Frame')
@@ -51,6 +65,12 @@ dc = DepthCamera(config_path = 'D435_camera_config.json', recording_path = 'reco
 
 time.sleep(1)
 success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
+directory_name = "dataset_capture"
+os.makedirs(directory_name, exist_ok=True)
+obj = OBJECTS[0]
+print(f"Objects:")
+for e, s in enumerate(OBJECTS):
+    print(f"\t{e} - {s}")
 
 while True:
     # Get frames from recording
@@ -103,13 +123,33 @@ while True:
         cv2.destroyAllWindows()
         break
 
+    if key == ord("s"):
+        now = datetime.now() # current date and time
+        date_time = now.strftime("%Y-%m-%d_%H-%M-%S-%f")
+
+        img_name = obj+"_"+date_time+".jpg"
+        cv2.imwrite(os.path.join(directory_name, img_name), rgb_frame)
+        print(f"[INFO]: Saved image {img_name}")
+    
+    for i in range(10):
+        if i == 9:
+            break
+        if key == ord(str(i)):
+            obj = OBJECTS[i]
+            print(f"Selected object: {i} - {obj}")
+    
+    if key == ord("h"):
+        print(f"Objects:")
+        for e, s in enumerate(OBJECTS):
+            print(f"\t{e} - {s}")
+
     # Print trackbar values to terminal
     if key == ord('i'):
         print("Lower HSV bounds: [" + str(min_h) + ", " + str(min_s) + ", " + str(min_v) + "]")
         print("Upper HSV bounds: [" + str(max_h) + ", " + str(max_s) + ", " + str(max_v) + "]")
         print("Frame bounds: " + str(frame_bounds))
         print("------------------")
-        
+
     # Stop camera on current frame
     if key == ord('f'):
         freeze_frame = not freeze_frame
