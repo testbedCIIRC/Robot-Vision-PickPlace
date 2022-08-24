@@ -25,7 +25,7 @@ CONSTANTS = {
 
 class RobotStateMachine:
     """
-    State machine for robot control
+    State machine for robot control.
     """
     
     def __init__(self,
@@ -44,7 +44,7 @@ class RobotStateMachine:
             encoder_pos_m (multiprocessing.value): Value object from multiprocessing Manager for reading encoder value from another process.
             home_xyz_coords (np.array): Numpy array of home position coordinates.
             constants (dict): Dictionary of constants defining behaviour of the state machine.
-            verbose (bool): If extra information should be printed to console.
+            verbose (bool): If extra information should be printed to the console.
         """
 
         # Init variables

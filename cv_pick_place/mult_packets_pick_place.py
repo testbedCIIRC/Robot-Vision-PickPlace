@@ -108,7 +108,7 @@ def draw_frame(image_frame: np.ndarray,
                encoder_pos: int,
                text_size: float,
                toggles_dict: dict,
-               info_dict: dict,
+               info_dict: multiprocessing.dict,
                colorized_depth: np.ndarray,
                start_time: float,
                frame_width: int,
@@ -122,7 +122,7 @@ def draw_frame(image_frame: np.ndarray,
         encoder_pos (int): Encoder position value.
         text_size (float): Size modifier of the text.
         toggles_dict (dict): Dictionary of variables toggling various drawing functions.
-        info_dict (dict): Dictionary of variables containing information about the cell.
+        info_dict (multiprocessing.dict): Dictionary of variables containing information about the cell.
         colorized_depth (np.ndarray): Frame containing colorized depth values.
         start_time (float): Start time of current frame. Should be measured at start of every while loop.
         frame_width (int): Width of the camera frame in pixels.

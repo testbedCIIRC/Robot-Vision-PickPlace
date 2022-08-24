@@ -1,16 +1,17 @@
-import open3d as o3d
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-import sys
-import cv2
-import time
 import copy
 import math
 
-class PointCloudViz():
-    def __init__(self, path, packet, dims = (240,240)):
+import numpy as np
+import cv2
+import open3d as o3d
 
+
+class PointCloudViz():
+    """
+    Class for vizualization of packet data.
+    """
+
+    def __init__(self, path, packet, dims = (240,240)):
         self.path = path
         self.packet = packet
         self.dims = dims
