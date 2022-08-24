@@ -1,22 +1,9 @@
-import os
-import sys
-import cv2 
-import json
 import time
-import random
-import datetime
+
+import cv2
 import numpy as np
-import pyrealsense2
-import scipy.signal
 from opcua import ua
-from opcua import Client
-import matplotlib as mpl
-from scipy import ndimage
-from queue import Queue
-from threading import Thread
-from threading import Timer
-from collections import OrderedDict
-from scipy.spatial import distance as dist
+import multiprocessing
 
 from robot_cell.control.robot_control import RobotControl
 from robot_cell.packet.packettracker import PacketTracker
@@ -26,17 +13,22 @@ from robot_cell.detection.realsense_depth import DepthCamera
 from robot_cell.detection.packet_detector import PacketDetector
 from robot_cell.detection.apriltag_detection import ProcessingApriltag
 
+
 class RobotDemos:
-    def __init__(self, paths, files, checkpt):
+    """
+    Class containing functions for different robot demos.
+    """
+
+    def __init__(self, paths: dict, files: dict, checkpt: str):
         """
         RobotDemos object constructor.
-    
-        Parameters:
-        paths (dict): Dictionary with annotation and checkpoint paths.
-        files (dict): Dictionary with pipeline and config paths. 
-        checkpt (str): string with chepoint to load for CNN.
 
+        Args:
+            paths (dict): Dictionary with annotation and checkpoint paths.
+            files (dict): Dictionary with pipeline and config paths.
+            checkpt (str): string with chepoint to load for CNN.
         """
+
         self.paths = paths
         self.files = files
         self.checkpt = checkpt
@@ -44,22 +36,22 @@ class RobotDemos:
     def import_gestures_lib(self):
         """
         Imports the hand detection dependencies.
-
         """
+
         from cvzone.HandTrackingModule import HandDetector
         self.HandDetector = HandDetector
 
-    def gripper_gesture_control(self, rc, detector, cap, show = False):
+    def gripper_gesture_control(self, rc: RobotControl, detector, cap: cv2.VideoCapture, show: bool = False):
         """
         Function used to control the gripper with hand gestures.
 
-        Parameters:
-        rc (object): RobotControl object for program execution.
-        detector (object): Detector object from cvzone library.
-        cap (object): A cv2.VideoCapture object to access webcam.
-        show (bool): Boolean to enable or disable the function.
-
+        Args:
+            rc (RobotControl): RobotControl object for program execution.
+            detector (object): Detector object from cvzone library.
+            cap (cv2.VideoCapture): A cv2.VideoCapture object to access webcam.
+            show (bool): Boolean to enable or disable the function.
         """
+
         success, img = cap.read()
         if show:
             hands, img = detector.findHands(img)
@@ -106,17 +98,17 @@ class RobotDemos:
 
         cv2.imshow("Gestures", img)
 
-    def main_packet_detect(self, rc):
+    def main_packet_detect(self, rc: RobotControl) -> tuple[np.ndarray, list]:
             """
             Basic main packet detection.
 
             Parameters:
-            rc (object): RobotControl object for program execution.
+                rc (RobotControl): RobotControl object for program execution.
         
             Returns:
-            tuple(np.ndarray, list): Image  with detections and detections.
-        
+                tuple[np.ndarray, list]: Image with detections and detections.
             """
+
             rc.show_boot_screen('STARTING NEURAL NET...')
             warn_count = 0
             a = 0
@@ -208,13 +200,12 @@ class RobotDemos:
             print(detected)
             return added_image , detected
 
-    def main_robot_control_demo(self, rc):
+    def main_robot_control_demo(self, rc: RobotControl):
         """
         Pick and place with static conveyor and hand gestures.
 
-        Parameters:
-        rc (object): RobotControl object for program execution.
-
+        Args:
+            rc (RobotControl): RobotControl object for program execution.
         """
         self.import_gestures_lib()
         detected_img, detected = self.main_packet_detect(rc)
@@ -342,15 +333,18 @@ class RobotDemos:
                 print('Program Aborted: ',abort)
                 time.sleep(0.5)
                 
-    def main_pick_place(self, rc, paths, files, check_point, info_dict):
+    def main_pick_place(self, rc: RobotControl, paths: dict, files: dict, check_point: str, info_dict: multiprocessing.dict):
         """
         Pick and place with static conveyor and multithreading.
 
-        Parameters:
-        rc (object): RobotControl object for program execution.
-        info_pipe (object): Queue object containing data from the PLC server.
-
+        Args:
+            rc (RobotControl): RobotControl object for program execution.
+            paths (dict): Dictionary with annotation and checkpoint paths.
+            files (dict): Dictionary with pipeline and config paths.
+            checkpt (str): string with chepoint to load for CNN.
+            info_dict (multiprocessing.dict): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
         """
+
         apriltag = ProcessingApriltag()
         apriltag.load_world_points('conveyor_points.json')
         ct = CentroidTracker()    
@@ -511,15 +505,18 @@ class RobotDemos:
                 time.sleep(0.5)
                 break
 
-    def main_pick_place_conveyor_w_point_cloud(self, rc, paths, files, check_point, info_dict):
+    def main_pick_place_conveyor_w_point_cloud(self, rc: RobotControl, paths: dict, files: dict, check_point: str, info_dict: multiprocessing.dict):
         """
         Thread for pick and place with moving conveyor and point cloud operations.
-        
-        Parameters:
-        rc (object): RobotControl object for program execution.
-        info_pipe (object): Queue object containing data from the PLC server.
-        
+
+        Args:
+            rc (RobotControl): RobotControl object for program execution.
+            paths (dict): Dictionary with annotation and checkpoint paths.
+            files (dict): Dictionary with pipeline and config paths.
+            checkpt (str): string with chepoint to load for CNN.
+            info_dict (multiprocessing.dict): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
         """
+
         # Inititalize objects.
         apriltag = ProcessingApriltag()
         apriltag.load_world_points('conveyor_points.json')
