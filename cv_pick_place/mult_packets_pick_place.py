@@ -79,6 +79,23 @@ def packet_tracking(pt: ItemTracker,
     return registered_packets
 
 
+def colorizeDepthFrame(depth_frame: np.ndarray) -> np.ndarray:
+    """
+    Colorizes provided one channel depth frame into RGB image.
+
+    Args:
+        depth_frame (np.ndarray): Depth frame.
+
+    Returns:
+        np.ndarray: Colorized depth frame.
+    """
+
+    clahe = cv2.createCLAHE(clipLimit=20.0, tileGridSize=(5, 5))
+    depth_frame_hist = clahe.apply(depth_frame.astype(np.uint8))
+    colorized_depth_frame = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
+    return colorized_depth_frame
+
+
 def drawText(frame: np.ndarray,
              text: str,
              position: tuple[int, int],
@@ -101,6 +118,24 @@ def drawText(frame: np.ndarray,
                 text,
                 position,
                 cv2.FONT_HERSHEY_SIMPLEX, size, (255, 255, 255), 2)
+
+
+def show_boot_screen(message: str, resolution: tuple[int, int] = (540, 960)):
+    """
+    Opens main frame window with boot screen message.
+
+    Args:
+        message (str): Message to be displayed.
+        resolution (tuple[int, int]): Resolution of the window.
+    """
+
+    boot_screen = np.zeros(resolution)
+    cv2.namedWindow('Frame')
+    cv2.putText(boot_screen, message, 
+                ((resolution[1] // 2) - 150, resolution[0] // 2),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+    cv2.imshow("Frame", boot_screen)
+    cv2.waitKey(1)
 
 
 def draw_frame(image_frame: np.ndarray,
@@ -147,11 +182,6 @@ def draw_frame(image_frame: np.ndarray,
             # Draw packet centroid value in milimeters
             text_centroid = "X: {:.2f}, Y: {:.2f} (mm)".format(packet.centroid_mm.x, packet.centroid_mm.y)
             drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(80 * text_size)), text_size)
-
-            packet_depth_mm = compute_mean_packet_z(packet, PACK_DEPTHS[packet.type])
-            # Draw packet depth value in milimeters
-            text_centroid = "Z: {:.2f} (mm)".format(packet_depth_mm)
-            drawText(image_frame, text_centroid, (packet.centroid_px.x + 10, packet.centroid_px.y + int(115 * text_size)), text_size)
 
     # Draw packet depth crop to separate frame
     cv2.imshow("Depth Crop", np.zeros((500, 500)))
