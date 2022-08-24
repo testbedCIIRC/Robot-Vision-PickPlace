@@ -68,6 +68,7 @@ success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
 directory_name = "dataset_capture"
 os.makedirs(directory_name, exist_ok=True)
 obj = OBJECTS[0]
+os.makedirs(os.path.join(directory_name, obj), exist_ok=True)
 print(f"Objects:")
 for e, s in enumerate(OBJECTS):
     print(f"\t{e} - {s}")
@@ -128,7 +129,7 @@ while True:
         date_time = now.strftime("%Y-%m-%d_%H-%M-%S-%f")
 
         img_name = obj+"_"+date_time+".jpg"
-        cv2.imwrite(os.path.join(directory_name, img_name), rgb_frame)
+        cv2.imwrite(os.path.join(directory_name, obj, img_name), rgb_frame)
         print(f"[INFO]: Saved image {img_name}")
     
     for i in range(10):
@@ -136,6 +137,7 @@ while True:
             break
         if key == ord(str(i)):
             obj = OBJECTS[i]
+            os.makedirs(os.path.join(directory_name, obj), exist_ok=True)
             print(f"Selected object: {i} - {obj}")
     
     if key == ord("h"):
