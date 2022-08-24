@@ -1,59 +1,64 @@
-import cv2 
-import time
+import cv2
 import numpy as np
+import time
+import multiprocessing
 
-from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.control.control_state_machine import RobotStateMachine
-
 from robot_cell.control.robot_control import RcCommand
 from robot_cell.control.robot_control import RcData
 from robot_cell.detection.realsense_depth import DepthCamera
 from robot_cell.detection.packet_detector import PacketDetector
 from robot_cell.detection.apriltag_detection import ProcessingApriltag
-
 from robot_cell.detection.threshold_detector import ThresholdDetector
+from robot_cell.packet.packet_object import Packet
 from robot_cell.packet.item_tracker import ItemTracker
+from robot_cell.packet.grip_position_estimation import GripPositionEstimation
 from robot_cell.functions import *
 
-from robot_cell.packet.grip_position_estimation import GripPositionEstimation
-
+# Selection of object detector (uncomment selected detector)
 # DETECTOR_TYPE = 'deep_1'
 # DETECTOR_TYPE = 'deep_2'
 DETECTOR_TYPE = 'hsv'
 
 # CONSTANTS
 MAX_FRAME_COUNT = 500 # Number of frames between homography updates
-PACK_DEPTHS = [10.0, 3.0, 5.0, 5.0] # Predefined packet depths, index corresponds to type of packet.
- # constants for pick place operation
+PACK_DEPTHS = [10.0, 3.0, 5.0, 5.0] # Predefined packet depths, index corresponds to type of packet
+
+# Constants for pick place operation
 PP_CONSTS = {
-                'FRAMES_LIM' : 10, # Max frames object must be tracked to start pick & place
-                'PACK_DEPTHS' : PACK_DEPTHS, # Predefined packet depths, index corresponds to type of packet.
-                'MIN_PICK_DISTANCE' : 600,  # Minimal x position in mm for packet picking
-                'MAX_PICK_DISTANCE' : 1900, # Maximal x position in mm for packet picking
-                'Z_OFFSET' : 50.0, # Z height offset from pick height for all positions except for pick position
-                'X_PICK_OFFSET' : 140, # X offset between prepick and pick position
-                'GRIP_TIME_OFFSET' : 400,  # X offset from current packet position to prepick position
-                'PICK_START_X_OFFSET' : 25, # Offset between robot and packet for starting the pick move
-                'MAX_Z' : 500,
-                'MIN_Y' : 45.0,
-                'MAX_Y' : 470.0
-            }
+    'FRAMES_LIM' : 10, # Max frames object must be tracked to start pick & place
+    'PACK_DEPTHS' : PACK_DEPTHS, # Predefined packet depths, index corresponds to type of packet
+    'MIN_PICK_DISTANCE' : 600,  # Minimal x position in mm for packet picking
+    'MAX_PICK_DISTANCE' : 1900, # Maximal x position in mm for packet picking
+    'Z_OFFSET' : 50.0, # Z height offset from pick height for all positions except for pick position
+    'X_PICK_OFFSET' : 140, # X offset between prepick and pick position
+    'GRIP_TIME_OFFSET' : 400,  # X offset from current packet position to prepick position
+    'PICK_START_X_OFFSET' : 25, # Offset between robot and packet for starting the pick move
+    'MAX_Z' : 500,
+    'MIN_Y' : 45.0,
+    'MAX_Y' : 470.0
+}
 
 
-def packet_tracking(pt, detected_packets, depth_frame, frame_width, mask):
+def packet_tracking(pt: ItemTracker,
+                    detected_packets: list[Packet],
+                    depth_frame: np.ndarray,
+                    frame_width: int,
+                    mask: np.ndarray) -> None:
     """
-    Assign IDs to detected packets and update depth frames
+    Assigns IDs to detected packets and updates packet depth frames.
 
     Args:
-        pt (class): ItemTracker class
-        detected_packets (list): list of detected packets
-        depth_frame (numpy.ndarray): Depth frame.
-        frame_width (int): width of the camera frame
-        mask (np.ndarray): Binary mask of packet
+        pt (ItemTracker): ItemTracker class.
+        detected_packets (list[Packet]): List of detected packets.
+        depth_frame (np.ndarray): Depth frame from camera.
+        frame_width (int): Width of the camera frame in pixels.
+        mask (np.ndarray): Binary mask of packet.
 
     Returns:
-        registered_packets (list[packet_object]): List of tracked packet objects
+        registered_packets (list[Packet]): List of tracked packet objects.
     """
+
     # Update tracked packets from detected packets
     labeled_packets = pt.track_items(detected_packets)
     pt.update_item_database(labeled_packets)
@@ -74,29 +79,62 @@ def packet_tracking(pt, detected_packets, depth_frame, frame_width, mask):
     return registered_packets
 
 
-def drawText(frame, text, position, size = 1):
-    cv2.putText(frame, 
-                text, 
+def drawText(frame: np.ndarray,
+             text: str,
+             position: tuple[int, int],
+             size: float = 1) -> None:
+    """
+    Draws white text with black border to the frame.
+
+    Args:
+        frame (np.ndarray): Frame into which the text will be draw.
+        text (str): Text to draw.
+        position (tuple[int, int]): Position on the frame in pixels.
+        size (float): Size modifier of the text.
+    """
+
+    cv2.putText(frame,
+                text,
                 position,
                 cv2.FONT_HERSHEY_SIMPLEX, size, (0, 0, 0), 4)
-    cv2.putText(frame, 
-                text, 
+    cv2.putText(frame,
+                text,
                 position,
                 cv2.FONT_HERSHEY_SIMPLEX, size, (255, 255, 255), 2)
 
 
-def draw_frame(image_frame, registered_packets, encoder_pos, text_size, toggles_dict, info_dict, colorized_depth, start_time, frame_width, frame_height):
+def draw_frame(image_frame: np.ndarray,
+               registered_packets: list[Packet],
+               encoder_pos: int,
+               text_size: float,
+               toggles_dict: dict,
+               info_dict: dict,
+               colorized_depth: np.ndarray,
+               start_time: float,
+               frame_width: int,
+               frame_height: int) -> None:
     """
-    Draw information on image frame
+    Draw information on image frame.
 
+    Args:
+        image_frame (np.ndarray): Frame into which the information will be draw.
+        registered_packets (list[Packet]): List of tracked packet objects.
+        encoder_pos (int): Encoder position value.
+        text_size (float): Size modifier of the text.
+        toggles_dict (dict): Dictionary of variables toggling various drawing functions.
+        info_dict (dict): Dictionary of variables containing information about the cell.
+        colorized_depth (np.ndarray): Frame containing colorized depth values.
+        start_time (float): Start time of current frame. Should be measured at start of every while loop.
+        frame_width (int): Width of the camera frame in pixels.
+        frame_height (int): Height of the camera frame in pixels.
     """
+
     # Draw packet info
     for packet in registered_packets:
         if packet.disappeared == 0:
             # Draw centroid estimated with encoder position
             cv2.drawMarker(image_frame, packet.getCentroidFromEncoder(encoder_pos), 
                     (255, 255, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4)
-
 
             # Draw packet ID and type
             text_id = "ID {}, Type {}".format(packet.id, packet.type)
@@ -124,7 +162,7 @@ def draw_frame(image_frame, registered_packets, encoder_pos, text_size, toggles_
             cv2.imshow("Depth Crop", depth_img)
             break
 
-    # Show depth frame overlay.
+    # Show depth frame overlay
     if toggles_dict['show_depth_map']:
         image_frame = cv2.addWeighted(image_frame, 0.8, colorized_depth, 0.3, 0)
 
@@ -144,20 +182,26 @@ def draw_frame(image_frame, registered_packets, encoder_pos, text_size, toggles_
     cv2.imshow("Frame", image_frame)
 
 
-def process_key_input(key, control_pipe, toggles_dict, is_rob_ready):
+def process_key_input(key: int,
+                      control_pipe: multiprocessing.Pipe,
+                      toggles_dict: dict,
+                      is_rob_ready: bool) -> tuple[bool, dict]:
     """
-    Process input from keyboard
+    Process input from keyboard.
 
     Args:
-        key (int): pressed key
-        control_pipe (Pipe): Communication pipe between processes
-        toggles_dict (dict): Dictionary of toggle variables for indication and controll
-        is_rob_ready (bool): Shows if robot is ready
+        key (int): ID of pressed key.
+        control_pipe (multiprocessing.Pipe): Multiprocessing pipe object for sending commands to RobotControl object process.
+        toggles_dict (dict): Dictionary of toggle variables for indication and control.
+        is_rob_ready (bool): Shows if robot is ready.
+
     Returns:
-        end_prog (bool): End programm
-        toggles_dict (dict): Dictionary of toggle variables for indication and controll
+        end_prog (bool): Indicates if the program should end.
+        toggles_dict (dict): Dictionary of toggle variables changed according to user input.
     """
+
     end_prog = False
+
     # Toggle gripper
     if key == ord('g'):
         toggles_dict['gripper'] = not toggles_dict['gripper']
@@ -205,42 +249,59 @@ def process_key_input(key, control_pipe, toggles_dict, is_rob_ready):
     if key == ord('i'):
         print("[INFO]: Is robot ready = {}".format(is_rob_ready))
 
-    if key == 27:   # Esc
+    if key == 27:  # Esc
         end_prog = True
 
     return end_prog, toggles_dict
 
 
-def main_multi_packets(rob_dict, paths, files, check_point, info_dict, encoder_pos_m, control_pipe):
+def main_multi_packets(rob_dict: dict,
+                       paths: dict,
+                       files: dict,
+                       check_point: str,
+                       info_dict: multiprocessing.dict,
+                       encoder_pos_m: multiprocessing.value,
+                       control_pipe: multiprocessing.pipe) -> None:
     """
     Process for pick and place with moving conveyor and point cloud operations.
     
-    Parameters:
-    rob_dict (dict): RobotControl object for program execution
-    paths (dict): Deep detector parameter
-    files (dict): Deep detector parameter
-    check_point (string): Deep detector parameter
-    info_dict (multiprocessing.dcit): Dict from multiprocessing Manager for reading OPCUA info from another process
-    encoder_pos_m (multiprocessing.value): Value object from multiprocessing Manager for reading encoder value from another process
-    control_pipe (multiprocessing.pipe): Pipe object connected to another process for sending commands
-    
+    Args:
+        rob_dict (dict): Dictionary of predefined points.
+        paths (dict): Deep detector parameter.
+        files (dict): Deep detector parameter.
+        check_point (string): Deep detector parameter.
+        info_dict (multiprocessing.dict): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
+        encoder_pos_m (multiprocessing.value): Value object from multiprocessing Manager for reading encoder value from another process.
+        control_pipe (multiprocessing.pipe): Multiprocessing pipe object for sending commands to RobotControl object process.
     """
+
+    # Load home position from dictionary
+    home_xyz_coords = np.array([rob_dict['home_pos'][0]['x'], rob_dict['home_pos'][0]['y'], rob_dict['home_pos'][0]['z']])
+
     # Inititalize objects
     apriltag = ProcessingApriltag()
     apriltag.load_world_points('conveyor_points.json')
     pt = ItemTracker(max_disappeared_frames = 20, guard = 50, max_item_distance = 400)
     dc = DepthCamera(config_path = 'D435_camera_config.json')
-    
     gripper_pose_estimator = GripPositionEstimation(
-        visualize=False, verbose=True, center_switch="mass",
-        gripper_radius=0.08, max_num_tries = 100, height_th= -0.76, num_bins=20,
-        black_list_radius = 0.01, save_depth_array=False
+        visualize=False,
+        verbose=True,
+        center_switch="mass",
+        gripper_radius=0.08,
+        max_num_tries = 100,
+        height_th= -0.76,
+        num_bins=20,
+        black_list_radius = 0.01,
+        save_depth_array=False,
     )
-    # Load home position from dictionary
-    home_xyz_coords = np.array([rob_dict['home_pos'][0]['x'], rob_dict['home_pos'][0]['y'], rob_dict['home_pos'][0]['z']])
-    stateMachine = RobotStateMachine(control_pipe, gripper_pose_estimator, encoder_pos_m, 
-                                     home_xyz_coords, constants = PP_CONSTS, verbose = True)
-
+    stateMachine = RobotStateMachine(
+        control_pipe,
+        gripper_pose_estimator,
+        encoder_pos_m, 
+        home_xyz_coords,
+        constants = PP_CONSTS,
+        verbose = True
+    )
 
     if DETECTOR_TYPE == 'deep_1':
         show_boot_screen('STARTING NEURAL NET...')
@@ -268,7 +329,6 @@ def main_multi_packets(rob_dict, paths, files, check_point, info_dict, encoder_p
     frame_count = 1 # Counter of frames for homography update
     text_size = 1
     homography = None # Homography matrix
-    
 
     # Set home position from dictionary on startup
     control_pipe.send(RcData(RcCommand.SET_HOME_POS_SH))
@@ -362,12 +422,14 @@ def main_multi_packets(rob_dict, paths, files, check_point, info_dict, encoder_p
 
         # STATE MACHINE
         ###############
+
         # Robot ready when programs are fully finished and it isn't moving
         is_rob_ready = prog_done and (rob_stopped or not stop_active)  
         stateMachine.run(homography, is_rob_ready, registered_packets, encoder_vel, pos)
 
         # FRAME GRAPHICS
         ################
+
         draw_frame(image_frame, registered_packets, encoder_pos, text_size, toggles_dict, info_dict, colorized_depth, start_time, frame_width, frame_height)
         
         # Keyboard inputs
