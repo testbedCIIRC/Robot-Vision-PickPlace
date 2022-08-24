@@ -144,6 +144,7 @@ while True:
         print(f"Objects:")
         for e, s in enumerate(OBJECTS):
             print(f"\t{e} - {s}")
+            
 
     # Print trackbar values to terminal
     if key == ord('i'):
