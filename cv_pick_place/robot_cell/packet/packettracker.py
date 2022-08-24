@@ -1,26 +1,27 @@
+import copy
+
+import numpy as np
 from scipy.spatial import distance as dist
 from collections import OrderedDict
-import copy
-import numpy as np
 
-# Crop guard region
-# When packet depth is cropped, the resulting crop will have 'guard' extra pixels on each side
-#guard = 250
-
-# Maximal distance which packet can travel when it disappears in frame pixels
-# When a distance is greater than this, new packet is created instead
-#maxCentroidDistance = 100
+from robot_cell.packet.packet_object import Packet
 
 
 class PacketTracker:
-    def __init__(self, maxDisappeared, guard = 250, maxCentroidDistance = 100):
+    """
+    Class for tracking packets between frames.
+    """
+
+    def __init__(self, maxDisappeared: int, guard: int = 250, maxCentroidDistance: int = 100):
         """
         PacketTracker object constructor.
     
-        Parameters:
-        maxDisappeared (int): Maximum number of frames before deregister.
-
+        Args:
+            maxDisappeared (int): Maximum number of frames before deregister.
+            guard (int): When packet depth is cropped, the resulting crop will have 'guard' extra pixels on each side.
+            maxCentroidDistance (int): Maximal distance which packet can travel when it disappears in frame pixels.
         """
+
         self.nextObjectID = 0
         self.packets = OrderedDict()
 
@@ -30,15 +31,15 @@ class PacketTracker:
         # Maximum consecutive frames a given object is allowed to be marked as "disappeared"
         self.maxDisappeared = maxDisappeared
 
-    def register(self, packet, frame):
+    def register(self, packet: Packet, frame: np.ndarray):
         """
-        CRegisters input item.
+        Registers input item.
     
-        Parameters:
-        packet (object): packet object to be registered.
-        frame (numpy.ndarray): image frame.
-
+        Args:
+            packet (Packet): Packet object to be registered.
+            frame (np.ndarray): Image frame.
         """
+
         # When registering an object we use the next available object
         # ID to store the packet
         self.packets[self.nextObjectID] = packet
@@ -49,39 +50,51 @@ class PacketTracker:
         self.packets[self.nextObjectID].id = self.nextObjectID      # ! only for itemObject
         self.nextObjectID += 1
 
-    def deregister(self, objectID):
+    def deregister(self, objectID: str):
         """
         Deregisters object based on id.
     
-        Parameters:
-        objectID (str): Key to deregister items in the objects dict.
-
+        Args:
+            objectID (str): Key to deregister items in the objects dict.
         """
+
         # Save and return copy of deregistered packet data
         deregistered_packet = copy.deepcopy(self.packets[objectID])
         # To deregister an object ID we delete the object ID from our dictionary
         del self.packets[objectID]
         return deregistered_packet
 
-    def get_crop_from_frame(self, packet, frame):
+    def get_crop_from_frame(self, packet: Packet, frame: np.ndarray):
+        """
+        Cuts packet out of the image frame.
+
+        Args:
+            packet (Packet): Packet object to be cut out.
+            frame (np.ndarray): Image frame from which the packet should be cut out.
+
+        Returns:
+            np.ndarray: Packet cutout.
+        """
+
         # Get packet specific crop from frame
         crop = frame[(packet.centroid[1] - int(packet.height / 2) - self.guard):(packet.centroid[1] + int(packet.height / 2) + self.guard),
                (packet.centroid[0] - int(packet.width / 2) - self.guard):(packet.centroid[0] + int(packet.width / 2) + self.guard)]
         crop = np.expand_dims(crop, axis=2)
         return crop
 
-    def update(self, detected_packets, frame):
+    def update(self, detected_packets: list[Packet], frame: np.ndarray) -> tuple[OrderedDict, list[Packet]]:
         """
         Updates the currently tracked detections.
     
-        Parameters:
-        detected_packets (list): List containing detected packet objects to be tracked.
+        Args:
+            detected_packets (list[Packet]): List containing detected packet objects to be tracked.
+            frame (np.ndarray): Image frame.
     
         Returns:
-        OrderedDict: Ordered dictionary with tracked detections.
-        list: packets that were deregistered.
-
+            OrderedDict: Ordered dictionary with tracked detections.
+            list[Packet]: List of packets that were deregistered.
         """
+
         deregistered_packets = []
         # check to see if the list of input bounding box rectangles
         # is empty
