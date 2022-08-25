@@ -179,7 +179,7 @@ if __name__ == "__main__":
     }
 
     # Define robot positions dictionaries from json file
-    file = open("robot_positions.json")
+    file = open(os.path.join("config", "robot_positions.json"))
     robot_poses = json.load(file)
     Pick_place_dict_conv_mov_slow = robot_poses["Pick_place_dict_conv_mov_slow"]
     Pick_place_dict_conv_mov = robot_poses["Pick_place_dict_conv_mov"]

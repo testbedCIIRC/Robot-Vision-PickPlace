@@ -1,5 +1,6 @@
 import json
 import time
+import os
 
 import cv2
 import numpy as np
@@ -98,7 +99,7 @@ class DepthCamera:
 
     def __init__(
         self,
-        config_path="D435_camera_config_defaults.json",
+        config_path=os.path.join("config", "D435_camera_config_defaults.json"),
         recording_path="recording_2022_07_13.npy",
         recording_fps=5,
     ):

@@ -66,7 +66,7 @@ frame_bounds = 0
 freeze_frame = False
 
 dc = DepthCamera(
-    config_path="D435_camera_config.json",
+    config_path=os.path.join("config", "D435_camera_config.json"),
     recording_path="recording_2022_05_20.npy",
     recording_fps=5,
 )

@@ -1,4 +1,5 @@
 # Standard library
+import os
 import time
 import multiprocessing
 import multiprocessing.connection
@@ -307,9 +308,9 @@ def main_multi_packets(
 
     # Inititalize objects
     apriltag = ProcessingApriltag()
-    apriltag.load_world_points("conveyor_points.json")
+    apriltag.load_world_points(os.path.join("config", "conveyor_points.json"))
     pt = ItemTracker(max_disappeared_frames=20, guard=50, max_item_distance=400)
-    dc = DepthCamera(config_path="D435_camera_config.json")
+    dc = DepthCamera(config_path=os.path.join("config", "D435_camera_config.json"))
     gripper_pose_estimator = GripPositionEstimation(
         visualize=False,
         verbose=True,
