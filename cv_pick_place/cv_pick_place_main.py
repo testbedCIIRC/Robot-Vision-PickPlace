@@ -14,6 +14,8 @@ from robot_cell.control.robot_communication import RobotCommunication
 def program_mode(demos: RobotDemos, r_control: RobotControl, r_comm_info: RobotCommunication, r_comm_encoder: RobotCommunication) -> None:
     """
     Program selection function.
+    Allows user to select a demo and starts appropriate functions.
+    At the end this function starts again, recursively.
 
     Args:
         demos (RobotDemos): RobotDemos object containing pick and place demo functions.

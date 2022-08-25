@@ -1,8 +1,12 @@
-import cv2
-import numpy as np
+# Standard library
 import time
 import multiprocessing
 
+# Third party
+import cv2
+import numpy as np
+
+# Local
 from robot_cell.control.control_state_machine import RobotStateMachine
 from robot_cell.control.robot_control import RcCommand
 from robot_cell.control.robot_control import RcData
@@ -13,7 +17,6 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.packet.packet_object import Packet
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.packet.grip_position_estimation import GripPositionEstimation
-from robot_cell.functions import *
 
 # Selection of object detector (uncomment selected detector)
 # DETECTOR_TYPE = 'deep_1'

@@ -1,10 +1,7 @@
-from struct import pack
 import numpy as np
 import cv2
 
-from robot_cell.packet.item_object import Item
 from robot_cell.packet.packet_object import Packet
-from robot_cell.functions import *
 
 # Workstation with json camera config
 # White:
