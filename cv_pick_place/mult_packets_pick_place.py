@@ -146,7 +146,7 @@ def draw_frame(image_frame: np.ndarray,
                encoder_pos: int,
                text_size: float,
                toggles_dict: dict,
-               info_dict: multiprocessing.dict,
+               info_dict: dict,
                colorized_depth: np.ndarray,
                start_time: float,
                frame_width: int,
@@ -160,7 +160,7 @@ def draw_frame(image_frame: np.ndarray,
         encoder_pos (int): Encoder position value.
         text_size (float): Size modifier of the text.
         toggles_dict (dict): Dictionary of variables toggling various drawing functions.
-        info_dict (multiprocessing.dict): Dictionary of variables containing information about the cell.
+        info_dict (dict): Dictionary of variables containing information about the cell.
         colorized_depth (np.ndarray): Frame containing colorized depth values.
         start_time (float): Start time of current frame. Should be measured at start of every while loop.
         frame_width (int): Width of the camera frame in pixels.
@@ -292,7 +292,7 @@ def main_multi_packets(rob_dict: dict,
                        paths: dict,
                        files: dict,
                        check_point: str,
-                       info_dict: multiprocessing.dict,
+                       info_dict: dict,
                        encoder_pos_m: multiprocessing.value,
                        control_pipe: multiprocessing.pipe) -> None:
     """
@@ -303,7 +303,7 @@ def main_multi_packets(rob_dict: dict,
         paths (dict): Deep detector parameter.
         files (dict): Deep detector parameter.
         check_point (string): Deep detector parameter.
-        info_dict (multiprocessing.dict): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
+        info_dict (dict): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
         encoder_pos_m (multiprocessing.value): Value object from multiprocessing Manager for reading encoder value from another process.
         control_pipe (multiprocessing.pipe): Multiprocessing pipe object for sending commands to RobotControl object process.
     """

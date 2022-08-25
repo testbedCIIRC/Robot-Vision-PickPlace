@@ -333,7 +333,7 @@ class RobotDemos:
                 print('Program Aborted: ',abort)
                 time.sleep(0.5)
                 
-    def main_pick_place(self, rc: RobotControl, paths: dict, files: dict, check_point: str, info_dict: multiprocessing.dict):
+    def main_pick_place(self, rc: RobotControl, paths: dict, files: dict, check_point: str, info_dict: dict):
         """
         Pick and place with static conveyor and multithreading.
 
@@ -342,7 +342,7 @@ class RobotDemos:
             paths (dict): Dictionary with annotation and checkpoint paths.
             files (dict): Dictionary with pipeline and config paths.
             checkpt (str): string with chepoint to load for CNN.
-            info_dict (multiprocessing.dict): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
+            info_dict (dict): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
         """
 
         apriltag = ProcessingApriltag()
@@ -505,7 +505,7 @@ class RobotDemos:
                 time.sleep(0.5)
                 break
 
-    def main_pick_place_conveyor_w_point_cloud(self, rc: RobotControl, paths: dict, files: dict, check_point: str, info_dict: multiprocessing.dict):
+    def main_pick_place_conveyor_w_point_cloud(self, rc: RobotControl, paths: dict, files: dict, check_point: str, info_dict: dict):
         """
         Thread for pick and place with moving conveyor and point cloud operations.
 
@@ -514,7 +514,7 @@ class RobotDemos:
             paths (dict): Dictionary with annotation and checkpoint paths.
             files (dict): Dictionary with pipeline and config paths.
             checkpt (str): string with chepoint to load for CNN.
-            info_dict (multiprocessing.dict): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
+            info_dict (dict): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
         """
 
         # Inititalize objects.
