@@ -296,7 +296,7 @@ class RobotStateMachine:
             # Choose a item for picking
             if self.pick_list and pick_list_positions.max() > self.constants['MIN_PICK_DISTANCE']:
                 # Select packet and start pick place opration
-                self.packet_to_pick, self.trajectory_dict = self._start_program(pick_list_positions, homography)
+                self.packet_to_pick, self.trajectory_dict = self._start_program(pick_list_positions)
                 if self.trajectory_dict:
                     # Save prepick position for use in TO_PREPICK state
                     self.prepick_xyz_coords = np.array([self.trajectory_dict['x'], self.trajectory_dict['y'], self.trajectory_dict['pack_z'] + self.constants['Z_OFFSET']])
