@@ -1,0 +1,126 @@
+{
+    "PATHS": {
+        "//": "Path to file with predefined robot positions",
+        "ROBOT_POSITIONS_FILE": "config/robot_positions.json",
+
+        "//": "Path to file defining world coordinates of april tags",
+        "HOMOGRAPHY_POINTS_FILE": "config/conveyor_points.json",
+
+        "//": "Path to file containing camera configuration",
+        "CAMERA_CONFIG_FILE": "config/D435_camera_config.json"
+    },
+
+    "CELL": {
+        "//": "Selection of object detector. Valid values are 'deep_1', 'deep_2' and 'hsv'",
+        "DETECTOR_TYPE": "hsv",
+
+        "//": "If extra information should be printed to the console",
+        "VERBOSE": true,
+
+        "//": "Number of frames between homography updates",
+        "MAX_FRAME_COUNT": 500,
+
+        "//": "Number of frames object must be tracked for to start pick & place",
+        "FRAMES_LIM": 10,
+
+        "//": "Predefined packet depths, index corresponds to type of packet",
+        "PACK_DEPTHS": [
+            10.0,
+            3.0,
+            5.0,
+            5.0
+        ],
+
+        "//": "Minimal x position in mm for packet picking",
+        "MIN_PICK_DISTANCE": 600,
+
+        "//": "Maximal x position in mm for packet picking",
+        "MAX_PICK_DISTANCE": 1900,
+
+        "//": "Z height offset from pick height for all positions except for pick position",
+        "Z_OFFSET": 50.0,
+
+        "//": "X offset between prepick and pick position",
+        "X_PICK_OFFSET": 140,
+
+        "//": "X offset from current packet position to prepick position",
+        "GRIP_TIME_OFFSET": 400,
+
+        "//": "Offset between robot and packet for starting the pick move",
+        "PICK_START_X_OFFSET": 25,
+
+        "//": "",
+        "MAX_Z": 500,
+
+        "//": "",
+        "MIN_Y": 45.0,
+
+        "//": "",
+        "MAX_Y": 470.0
+    },
+
+    "STATE_MACHINE": {
+        "//": "",
+        "MAX_Z": 0
+
+
+    },
+
+    "TRACKER": {
+        "//": "Maximum number of frames before packet is deregistered",
+        "MAX_DISAPPEARED_FRAMES": 20,
+
+        "//": "When packet depth is cropped, the resulting crop will have this many extra pixels on each side",
+        "GUARD": 50,
+
+        "//": "Maximal distance which packet can travel when it disappears in frame pixels",
+        "MAX_ITEM_DISTANCE": 400
+    },
+
+    "HSV_DETECTOR": {
+
+    },
+
+    "POSITION_ESTIMATOR": {
+        "//": "If results should be visualized",
+        "VISUALIZE": false,
+
+        "//": "Defines the center of the gripper. Valid values are 'mass' and 'height'",
+        "CENTER_SWITCH": "mass",
+
+        "//": "Radius of the gripper in meters",
+        "GRIPPER_RADIUS": 0.08,
+
+        "//": "Ratio of gripper radius for dettecting the gripper annulus",
+        "MAX_NUM_TRIES": 100,
+
+        "//": "Maximal number of tries to estimate the optimal position",
+        "HEIGHT_TH": -0.76,
+
+        "//": "Distance between camera and belt",
+        "NUM_BINS": 20,
+
+        "//": "Number of bins for height thresholding (20 is good enough, 10 works as well)",
+        "BLACK_LIST_RADIUS": 0.01,
+
+        "//": "Distance for blacklisting points",
+        "SAVE_DEPTH_ARRAY": false
+    },
+
+    "MODEL": {
+        "//": "Model parameter paths",
+        "PATHS": {
+            "ANNOTATION_PATH": "Tensorflow/workspace/annotations",
+            "CHECKPOINT_PATH": "Tensorflow/workspace/models/my_ssd_mobnet"
+        },
+
+        "//": "Model files",
+        "FILES": {
+            "PIPELINE_CONFIG": "Tensorflow/workspace/models/my_ssd_mobnet/pipeline.config",
+            "LABELMAP": "Tensorflow/workspace/annotations/label_map.pbtxt"
+        },
+
+        "//": "Model checkpoint name",
+        "CHECK_POINT": "ckpt-3"
+    }
+}

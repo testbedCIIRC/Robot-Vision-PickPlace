@@ -10,12 +10,15 @@ from mult_packets_pick_place import main_multi_packets
 from robot_cell.control.robot_control import RobotControl
 from robot_cell.control.robot_communication import RobotCommunication
 
+ROB_CONFIG_FILE = os.path.join("config", "robot_config.json")
+
 
 def program_mode(
     demos: RobotDemos,
     r_control: RobotControl,
     r_comm_info: RobotCommunication,
     r_comm_encoder: RobotCommunication,
+    rob_config: dict,
 ) -> None:
     """
     Program selection function.
@@ -27,6 +30,7 @@ def program_mode(
         r_control (RobotControl): RobotControl for controlling the robot cell with commands.
         r_comm_info (RobotCommunication): RobotCommunication object for reading robot cell information.
         r_comm_encoder (RobotCommunication): RobotCommunication object for reading encoder values.
+        rob_config (dict): Dictionary with parameters setting the behaviour of the cell.
     """
 
     # Show message about robot programs
@@ -91,10 +95,8 @@ def program_mode(
                 main_proc = Process(
                     target=robot_prog,
                     args=(
+                        rob_config,
                         r_control.rob_dict,
-                        paths,
-                        files,
-                        check_point,
                         info_dict,
                         encoder_pos,
                         control_pipe_1,
@@ -135,7 +137,13 @@ def program_mode(
                 # Create and start processes
                 main_proc = Process(
                     target=robot_prog,
-                    args=(r_control, paths, files, check_point, info_dict),
+                    args=(
+                        r_control,
+                        rob_config["MODEL"]["PATHS"],
+                        rob_config["MODEL"]["FILES"],
+                        rob_config["MODEL"]["CHECK_POINT"],
+                        info_dict,
+                    ),
                 )
                 info_server_proc = Process(
                     target=r_comm_info.robot_server,
@@ -154,33 +162,18 @@ def program_mode(
         exit()
 
     # Return function recursively
-    return program_mode(demos, r_control, r_comm_info, r_comm_encoder)
+    return program_mode(demos, r_control, r_comm_info, r_comm_encoder, rob_config)
 
 
 if __name__ == "__main__":
-    # Define model parameters
-    CUSTOM_MODEL_NAME = "my_ssd_mobnet"
-    check_point = "ckpt-3"
-    LABEL_MAP_NAME = "label_map.pbtxt"
-
-    # Define model paths
-    paths = {
-        "ANNOTATION_PATH": os.path.join("Tensorflow", "workspace", "annotations"),
-        "CHECKPOINT_PATH": os.path.join(
-            "Tensorflow", "workspace", "models", CUSTOM_MODEL_NAME
-        ),
-    }
-
-    files = {
-        "PIPELINE_CONFIG": os.path.join(
-            "Tensorflow", "workspace", "models", CUSTOM_MODEL_NAME, "pipeline.config"
-        ),
-        "LABELMAP": os.path.join(paths["ANNOTATION_PATH"], LABEL_MAP_NAME),
-    }
+    # Read robot configuration
+    with open(ROB_CONFIG_FILE) as file:
+        rob_config = json.load(file)
 
     # Define robot positions dictionaries from json file
-    file = open(os.path.join("config", "robot_positions.json"))
-    robot_poses = json.load(file)
+    with open(rob_config["PATHS"]["ROBOT_POSITIONS_FILE"]) as file:
+        robot_poses = json.load(file)
+
     Pick_place_dict_conv_mov_slow = robot_poses["Pick_place_dict_conv_mov_slow"]
     Pick_place_dict_conv_mov = robot_poses["Pick_place_dict_conv_mov"]
     Pick_place_dict = robot_poses["Pick_place_dict"]
@@ -190,7 +183,11 @@ if __name__ == "__main__":
     r_control = RobotControl(None)
     r_comm_info = RobotCommunication()
     r_comm_encoder = RobotCommunication()
-    demos = RobotDemos(paths, files, check_point)
+    demos = RobotDemos(
+        rob_config["MODEL"]["PATHS"],
+        rob_config["MODEL"]["FILES"],
+        rob_config["MODEL"]["CHECK_POINT"],
+    )
 
     # Start program mode selection
-    program_mode(demos, r_control, r_comm_info, r_comm_encoder)
+    program_mode(demos, r_control, r_comm_info, r_comm_encoder, rob_config)

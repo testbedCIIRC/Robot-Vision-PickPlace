@@ -12,26 +12,6 @@ from robot_cell.packet.grip_position_estimation import GripPositionEstimation
 from robot_cell.graphics_functions import drawText
 from robot_cell.graphics_functions import colorizeDepthFrame
 
-# Default pick place constants
-CONSTANTS = {
-    "FRAMES_LIM": 10,  # Max frames object must be tracked to start pick & place
-    "PACK_DEPTHS": [
-        10.0,
-        3.0,
-        5.0,
-        5.0,
-    ],  # Predefined packet depths, index corresponds to type of packet.
-    "MIN_PICK_DISTANCE": 600,  # Minimal x position in mm for packet picking
-    "MAX_PICK_DISTANCE": 1900,  # Maximal x position in mm for packet picking
-    "Z_OFFSET": 50.0,  # Z height offset from pick height for all positions except for pick position
-    "X_PICK_OFFSET": 140,  # X offset between prepick and pick position
-    "GRIP_TIME_OFFSET": 400,  # X offset from current packet position to prepick position
-    "PICK_START_X_OFFSET": 25,  # Offset between robot and packet for starting the pick move
-    "MAX_Z": 500,
-    "MIN_Y": 45.0,
-    "MAX_Y": 470.0,
-}
-
 
 class RobotStateMachine:
     """
@@ -44,7 +24,7 @@ class RobotStateMachine:
         gripper_pose_estimator: GripPositionEstimation,
         encoder_pos_m: multiprocessing.managers.ValueProxy,
         home_xyz_coords: np.array,
-        constants: dict = CONSTANTS,
+        constants: dict,
         verbose: bool = False,
     ) -> None:
         """
