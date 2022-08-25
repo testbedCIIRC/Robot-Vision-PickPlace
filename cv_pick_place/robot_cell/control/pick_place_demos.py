@@ -1,5 +1,5 @@
 import time
-
+import os
 import cv2
 import numpy as np
 from opcua import ua
@@ -123,7 +123,7 @@ class RobotDemos:
         ct = CentroidTracker()
         dc = DepthCamera()
         apriltag = ProcessingApriltag()
-        apriltag.load_world_points("conveyor_points.json")
+        apriltag.load_world_points(os.path.join("config", "conveyor_points.json"))
         pack_detect = PacketDetector(self.paths, self.files, self.checkpt)
         homography = None
         while True:
@@ -362,7 +362,7 @@ class RobotDemos:
         """
 
         apriltag = ProcessingApriltag()
-        apriltag.load_world_points("conveyor_points.json")
+        apriltag.load_world_points(os.path.join("config", "conveyor_points.json"))
         ct = CentroidTracker()
         dc = DepthCamera()
         rc.show_boot_screen("STARTING NEURAL NET...")
@@ -552,7 +552,7 @@ class RobotDemos:
 
         # Inititalize objects.
         apriltag = ProcessingApriltag()
-        apriltag.load_world_points("conveyor_points.json")
+        apriltag.load_world_points(os.path.join("config", "conveyor_points.json"))
         pt = PacketTracker(maxDisappeared=10, guard=50)
         dc = DepthCamera()
         rc.show_boot_screen("STARTING NEURAL NET...")

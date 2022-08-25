@@ -1,4 +1,5 @@
 # Standard library
+import os
 import time
 import multiprocessing
 import multiprocessing.connection
@@ -22,35 +23,6 @@ from robot_cell.packet.grip_position_estimation import GripPositionEstimation
 from robot_cell.graphics_functions import drawText
 from robot_cell.graphics_functions import colorizeDepthFrame
 from robot_cell.graphics_functions import show_boot_screen
-
-# Selection of object detector (uncomment selected detector)
-# DETECTOR_TYPE = "deep_1"
-# DETECTOR_TYPE = "deep_2"
-DETECTOR_TYPE = "hsv"
-
-# CONSTANTS
-MAX_FRAME_COUNT = 500  # Number of frames between homography updates
-PACK_DEPTHS = [
-    10.0,
-    3.0,
-    5.0,
-    5.0,
-]  # Predefined packet depths, index corresponds to type of packet
-
-# Constants for pick place operation
-PP_CONSTS = {
-    "FRAMES_LIM": 10,  # Max frames object must be tracked to start pick & place
-    "PACK_DEPTHS": PACK_DEPTHS,  # Predefined packet depths, index corresponds to type of packet
-    "MIN_PICK_DISTANCE": 600,  # Minimal x position in mm for packet picking
-    "MAX_PICK_DISTANCE": 1900,  # Maximal x position in mm for packet picking
-    "Z_OFFSET": 50.0,  # Z height offset from pick height for all positions except for pick position
-    "X_PICK_OFFSET": 140,  # X offset between prepick and pick position
-    "GRIP_TIME_OFFSET": 400,  # X offset from current packet position to prepick position
-    "PICK_START_X_OFFSET": 25,  # Offset between robot and packet for starting the pick move
-    "MAX_Z": 500,
-    "MIN_Y": 45.0,
-    "MAX_Y": 470.0,
-}
 
 
 def packet_tracking(
@@ -275,10 +247,8 @@ def process_key_input(
 
 
 def main_multi_packets(
+    rob_config: dict,
     rob_dict: dict,
-    paths: dict,
-    files: dict,
-    check_point: str,
     info_dict: multiprocessing.managers.DictProxy,
     encoder_pos_m: multiprocessing.managers.ValueProxy,
     control_pipe: multiprocessing.connection.PipeConnection,
@@ -287,10 +257,8 @@ def main_multi_packets(
     Process for pick and place with moving conveyor and point cloud operations.
 
     Args:
+        rob_config (dict): Dictionary with parameters setting the behaviour of the cell.
         rob_dict (dict): Dictionary of predefined points.
-        paths (dict): Deep detector parameter.
-        files (dict): Deep detector parameter.
-        check_point (string): Deep detector parameter.
         info_dict (multiprocessing.managers.DictProxy): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
         encoder_pos_m (multiprocessing.managers.ValueProxy): Value object from multiprocessing Manager for reading encoder value from another process.
         control_pipe (multiprocessing.connection.PipeConnection): Multiprocessing pipe object for sending commands to RobotControl object process.
@@ -307,44 +275,58 @@ def main_multi_packets(
 
     # Inititalize objects
     apriltag = ProcessingApriltag()
-    apriltag.load_world_points("conveyor_points.json")
-    pt = ItemTracker(max_disappeared_frames=20, guard=50, max_item_distance=400)
-    dc = DepthCamera(config_path="D435_camera_config.json")
-    gripper_pose_estimator = GripPositionEstimation(
-        visualize=False,
-        verbose=True,
-        center_switch="mass",
-        gripper_radius=0.08,
-        max_num_tries=100,
-        height_th=-0.76,
-        num_bins=20,
-        black_list_radius=0.01,
-        save_depth_array=False,
+    apriltag.load_world_points(rob_config["PATHS"]["HOMOGRAPHY_POINTS_FILE"])
+
+    pt = ItemTracker(
+        max_disappeared_frames=rob_config["TRACKER"]["MAX_DISAPPEARED_FRAMES"],
+        guard=rob_config["TRACKER"]["GUARD"],
+        max_item_distance=rob_config["TRACKER"]["MAX_ITEM_DISTANCE"],
     )
+
+    dc = DepthCamera(config_path=rob_config["PATHS"]["CAMERA_CONFIG_FILE"])
+
+    gripper_pose_estimator = GripPositionEstimation(
+        visualize=rob_config["POSITION_ESTIMATOR"]["VISUALIZE"],
+        verbose=rob_config["CELL"]["VERBOSE"],
+        center_switch=rob_config["POSITION_ESTIMATOR"]["CENTER_SWITCH"],
+        gripper_radius=rob_config["POSITION_ESTIMATOR"]["GRIPPER_RADIUS"],
+        max_num_tries=rob_config["POSITION_ESTIMATOR"]["MAX_NUM_TRIES"],
+        height_th=rob_config["POSITION_ESTIMATOR"]["HEIGHT_TH"],
+        num_bins=rob_config["POSITION_ESTIMATOR"]["NUM_BINS"],
+        black_list_radius=rob_config["POSITION_ESTIMATOR"]["BLACK_LIST_RADIUS"],
+        save_depth_array=rob_config["POSITION_ESTIMATOR"]["SAVE_DEPTH_ARRAY"],
+    )
+
     stateMachine = RobotStateMachine(
         control_pipe,
         gripper_pose_estimator,
         encoder_pos_m,
         home_xyz_coords,
-        constants=PP_CONSTS,
-        verbose=True,
+        constants=rob_config["CELL"],
+        verbose=rob_config["CELL"]["VERBOSE"],
     )
 
-    if DETECTOR_TYPE == "deep_1":
+    if rob_config["CELL"]["DETECTOR_TYPE"] == "deep_1":
         show_boot_screen("STARTING NEURAL NET...")
-        pack_detect = PacketDetector(paths, files, check_point, 3)
-    elif DETECTOR_TYPE == "deep_2":
+        pack_detect = PacketDetector(
+            rob_config["MODEL"]["PATHS"],
+            rob_config["MODEL"]["FILES"],
+            rob_config["MODEL"]["CHECK_POINT"],
+            rob_config["MODEL"]["MAX_DETECTIONS"],
+            rob_config["MODEL"]["DETECTION_THRESHOLD"],
+        )
+    elif rob_config["CELL"]["DETECTOR_TYPE"] == "deep_2":
         # TODO Implement new deep detector
         pass
-    elif DETECTOR_TYPE == "hsv":
+    elif rob_config["CELL"]["DETECTOR_TYPE"] == "hsv":
         pack_detect = ThresholdDetector(
-            ignore_vertical_px=133,
-            ignore_horizontal_px=50,
-            max_ratio_error=0.15,
-            white_lower=[60, 0, 85],
-            white_upper=[179, 255, 255],
-            brown_lower=[0, 33, 57],
-            brown_upper=[60, 255, 178],
+            ignore_vertical_px=rob_config["HSV_DETECTOR"]["IGNORE_VERTICAL"],
+            ignore_horizontal_px=rob_config["HSV_DETECTOR"]["IGNORE_HORIZONTAL"],
+            max_ratio_error=rob_config["HSV_DETECTOR"]["MAX_RATIO_ERROR"],
+            white_lower=rob_config["HSV_DETECTOR"]["WHITE_LOWER"],
+            white_upper=rob_config["HSV_DETECTOR"]["WHITE_UPPER"],
+            brown_lower=rob_config["HSV_DETECTOR"]["BROWN_LOWER"],
+            brown_upper=rob_config["HSV_DETECTOR"]["BROWN_UPPER"],
         )
 
     # Toggles
@@ -399,7 +381,10 @@ def main_multi_packets(
         image_frame = rgb_frame.copy()
 
         # Draw HSV mask over screen if enabled
-        if toggles_dict["show_hsv_mask"] and DETECTOR_TYPE == "hsv":
+        if (
+            toggles_dict["show_hsv_mask"]
+            and rob_config["CELL"]["DETECTOR_TYPE"] == "hsv"
+        ):
             image_frame = pack_detect.draw_hsv_mask(image_frame)
 
         # HOMOGRAPHY UPDATE
@@ -416,18 +401,18 @@ def main_multi_packets(
         if isinstance(homography, np.ndarray):
             # Increase counter for homography update
             frame_count += 1
-            if frame_count >= MAX_FRAME_COUNT:
+            if frame_count >= rob_config["CELL"]["MAX_FRAME_COUNT"]:
                 frame_count = 1
 
             # Set homography in HSV detector
-            if DETECTOR_TYPE == "hsv":
+            if rob_config["CELL"]["DETECTOR_TYPE"] == "hsv":
                 pack_detect.set_homography(homography)
 
         # PACKET DETECTION
         ##################
 
         # Detect packets using neural network
-        if DETECTOR_TYPE == "deep_1":
+        if rob_config["CELL"]["DETECTOR_TYPE"] == "deep_1":
             image_frame, detected_packets = pack_detect.deep_pack_obj_detector(
                 rgb_frame,
                 depth_frame,
@@ -441,13 +426,13 @@ def main_multi_packets(
                 packet.height = packet.height * frame_height
 
         # Detect packets using neural network
-        elif DETECTOR_TYPE == "deep_2":
+        elif rob_config["CELL"]["DETECTOR_TYPE"] == "deep_2":
             # TODO Implement new deep detector
             detected_packets = []
             pass
 
         # Detect packets using neural HSV thresholding
-        elif DETECTOR_TYPE == "hsv":
+        elif rob_config["CELL"]["DETECTOR_TYPE"] == "hsv":
             image_frame, detected_packets, mask = pack_detect.detect_packet_hsv(
                 rgb_frame,
                 encoder_pos,

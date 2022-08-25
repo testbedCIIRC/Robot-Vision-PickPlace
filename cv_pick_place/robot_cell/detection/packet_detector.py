@@ -26,7 +26,7 @@ class PacketDetector:
             paths (dict): Dictionary with annotation and checkpoint paths.
             files (dict): Dictionary with pipeline and config paths.
             checkpt (str): Name of training checkpoint to be restored.
-            max_detect (int): Maximal ammount fo consecutive detections in an image.
+            max_detect (int): Maximal ammount of concurrent detections in an image.
             detect_thres (float): Minimal confidence for detected object to be labeled as a packet.
         """
 
