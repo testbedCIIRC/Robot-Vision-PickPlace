@@ -1,5 +1,7 @@
 import time
 import multiprocessing
+import multiprocessing.connection
+import multiprocessing.managers
 
 from opcua import Client
 
@@ -292,14 +294,14 @@ class RobotCommunication:
 
         return position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done, speed_override 
 
-    def robot_server(self, info_dict: dict):
+    def robot_server(self, info_dict: multiprocessing.managers.DictProxy):
         """
         Process to get values from PLC server.
         Periodically reads robot info from PLC and writes it into 'info_dict',
         which is dictionary read at the same time in the main process.
 
         Args:
-            info_dict (dict): Dictionary which is used to pass data between threads.
+            info_dict (multiprocessing.managers.DictProxy): Dictionary which is used to pass data between threads.
         """
 
         # Connect server and get nodes

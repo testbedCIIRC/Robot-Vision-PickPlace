@@ -1,4 +1,6 @@
 import multiprocessing
+import multiprocessing.connection
+import multiprocessing.managers
 
 import numpy as np
 import cv2

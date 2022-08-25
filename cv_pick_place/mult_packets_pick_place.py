@@ -1,6 +1,8 @@
 # Standard library
 import time
 import multiprocessing
+import multiprocessing.connection
+import multiprocessing.managers
 
 # Third party
 import cv2

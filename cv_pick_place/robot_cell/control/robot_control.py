@@ -1,5 +1,6 @@
 import time
 import multiprocessing
+import multiprocessing.connection
 from enum import Enum
 from collections import OrderedDict
 
