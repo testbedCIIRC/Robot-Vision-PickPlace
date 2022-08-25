@@ -2,6 +2,7 @@ import numpy as np
 from scipy.spatial import distance as dist
 from collections import OrderedDict
 
+
 class CentroidTracker:
     """
     Class for tracking packets between frames.
@@ -10,7 +11,7 @@ class CentroidTracker:
     def __init__(self, maxDisappeared: int = 20) -> None:
         """
         CentroidTracker object constructor.
-    
+
         Args:
             maxDisappeared (int): Maximum number of frames before deregister.
         """
@@ -31,7 +32,7 @@ class CentroidTracker:
     def register(self, item: np.ndarray):
         """
         Registers input item.
-    
+
         Args:
             item (np.ndarray): Numpy array with items to be registered.
         """
@@ -45,7 +46,7 @@ class CentroidTracker:
     def deregister(self, objectID: str):
         """
         Deregisters object based on ID.
-    
+
         Args:
             objectID (str): Key to deregister items in the objects dict.
         """
@@ -58,10 +59,10 @@ class CentroidTracker:
     def update(self, rects: list) -> OrderedDict:
         """
         Updates the currently tracked centroids.
-    
+
         Args:
             rects (list): List containing boundig box points to be tracked.
-    
+
         Returns:
             OrderedDict: Ordered dictionary with tracked centroids.
         """
@@ -71,7 +72,7 @@ class CentroidTracker:
             # loop overobjects and mark them as disappeared
             for objectID in list(self.disappeared.keys()):
                 self.disappeared[objectID] += 1
-            #deregister if maximum number of consecutive frames where missing
+                # deregister if maximum number of consecutive frames where missing
                 if self.disappeared[objectID] > self.maxDisappeared:
                     self.deregister(objectID)
             # return early as there are no centroids or tracking info
@@ -81,7 +82,7 @@ class CentroidTracker:
         inputCentroids = np.zeros((len(rects), 2), dtype="int")
         # inputCentroids = centroid
         # # loop over the bounding box rectangles
-        for i in range(0,len(rects)):
+        for i in range(0, len(rects)):
             # # use the bounding box coordinates to derive the centroid
             inputCentroids[i] = rects[i][1]
         # if not tracking any objects take input centroids, register them
@@ -163,10 +164,10 @@ class CentroidTracker:
     def update_detected(self, detected: list) -> OrderedDict:
         """
         Updates the currently tracked detections.
-    
+
         Args:
             detected (list): List containing detections to be tracked.
-    
+
         Returns:
             OrderedDict: Ordered dictionary with tracked detections.
         """
@@ -177,19 +178,21 @@ class CentroidTracker:
                 if self.disappeared[objectID] > self.maxDisappeared:
                     self.deregister(objectID)
             return self.objects
-        inputData = np.zeros((len(detected),4))
+        inputData = np.zeros((len(detected), 4))
 
-        for i in range(0,len(detected)):
-            inputData[i,:2] = detected[i][1]
-            inputData[i,2] = detected[i][2]
-            inputData[i,3] = detected[i][3]
+        for i in range(0, len(detected)):
+            inputData[i, :2] = detected[i][1]
+            inputData[i, 2] = detected[i][2]
+            inputData[i, 3] = detected[i][3]
         if len(self.objects) == 0:
             for i in range(0, len(inputData)):
                 self.register(inputData[i])
         else:
             objectIDs = list(self.objects.keys())
-            objectCentroids = [element[:2] for i,element in enumerate(list(self.objects.values()))]
-            D = dist.cdist(np.array(objectCentroids), inputData[:,:2])
+            objectCentroids = [
+                element[:2] for i, element in enumerate(list(self.objects.values()))
+            ]
+            D = dist.cdist(np.array(objectCentroids), inputData[:, :2])
             rows = D.min(axis=1).argsort()
             cols = D.argmin(axis=1)[rows]
             usedRows = set()
@@ -210,7 +213,7 @@ class CentroidTracker:
                 for row in unusedRows:
                     objectID = objectIDs[row]
                     self.disappeared[objectID] += 1
-                    
+
                     if self.disappeared[objectID] > self.maxDisappeared:
                         self.deregister(objectID)
             else:

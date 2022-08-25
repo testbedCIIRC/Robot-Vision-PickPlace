@@ -19,10 +19,9 @@ def colorizeDepthFrame(depth_frame: np.ndarray) -> np.ndarray:
     return colorized_depth_frame
 
 
-def drawText(frame: np.ndarray,
-             text: str,
-             position: tuple[int, int],
-             size: float = 1) -> None:
+def drawText(
+    frame: np.ndarray, text: str, position: tuple[int, int], size: float = 1
+) -> None:
     """
     Draws white text with black border to the frame.
 
@@ -33,14 +32,10 @@ def drawText(frame: np.ndarray,
         size (float): Size modifier of the text.
     """
 
-    cv2.putText(frame,
-                text,
-                position,
-                cv2.FONT_HERSHEY_SIMPLEX, size, (0, 0, 0), 4)
-    cv2.putText(frame,
-                text,
-                position,
-                cv2.FONT_HERSHEY_SIMPLEX, size, (255, 255, 255), 2)
+    cv2.putText(frame, text, position, cv2.FONT_HERSHEY_SIMPLEX, size, (0, 0, 0), 4)
+    cv2.putText(
+        frame, text, position, cv2.FONT_HERSHEY_SIMPLEX, size, (255, 255, 255), 2
+    )
 
 
 def show_boot_screen(message: str, resolution: tuple[int, int] = (540, 960)):
@@ -53,9 +48,15 @@ def show_boot_screen(message: str, resolution: tuple[int, int] = (540, 960)):
     """
 
     boot_screen = np.zeros(resolution)
-    cv2.namedWindow('Frame')
-    cv2.putText(boot_screen, message, 
-                ((resolution[1] // 2) - 150, resolution[0] // 2),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+    cv2.namedWindow("Frame")
+    cv2.putText(
+        boot_screen,
+        message,
+        ((resolution[1] // 2) - 150, resolution[0] // 2),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.7,
+        (255, 255, 0),
+        2,
+    )
     cv2.imshow("Frame", boot_screen)
     cv2.waitKey(1)

@@ -8,23 +8,25 @@ class Packet:
     Class wrapping relevant information about packets together.
     """
 
-    def __init__(self,
-                 box: np.ndarray = np.empty(()),
-                 pack_type: int = None,
-                 centroid: tuple[int, int] = (0, 0), 
-                 centroid_depth: int = 0,
-                 angle: float = 0,
-                 width: int = 0,
-                 height: int = 0,
-                 ymin: int = 0,
-                 ymax: int = 0,
-                 xmin: int = 0,
-                 xmax: int = 0,
-                 encoder_position: float = 0,
-                 crop_border_px: int = 50):
+    def __init__(
+        self,
+        box: np.ndarray = np.empty(()),
+        pack_type: int = None,
+        centroid: tuple[int, int] = (0, 0),
+        centroid_depth: int = 0,
+        angle: float = 0,
+        width: int = 0,
+        height: int = 0,
+        ymin: int = 0,
+        ymax: int = 0,
+        xmin: int = 0,
+        xmax: int = 0,
+        encoder_position: float = 0,
+        crop_border_px: int = 50,
+    ):
         """
         Packet object constructor.
-    
+
         Args:
             box (np.ndarray): Packet bounding box.
             pack_type (bool): Class of detected packet.
@@ -33,17 +35,17 @@ class Packet:
             angle (float): Angle of bounding box.
             width (int): Width of bounding box.
             height (int): Height of bounding box.
-            ymin (int): 
-            ymax (int): 
-            xmin (int): 
-            xmax (int): 
+            ymin (int):
+            ymax (int):
+            xmin (int):
+            xmax (int):
             encoder_position (float): Position of encoder.
             crop_border_px (int): Border around the packet that is included in the depth crop.
         """
 
         # NAMED TUPLES
         ##############
-        self.PointTuple = namedtuple('Point', ['x', 'y'])
+        self.PointTuple = namedtuple("Point", ["x", "y"])
 
         # NEW PACKET PARAMETERS
         #######################
@@ -90,8 +92,7 @@ class Packet:
         # First detected position of encoder in pixels
         self.encoder_initial_position = None
         # Number of frames item has been tracked
-        self.track_frame = 0        
-
+        self.track_frame = 0
 
         self.in_pick_list = False
 
@@ -132,7 +133,6 @@ class Packet:
         # Used for offsetting centroid position calculated using encoder
         self.first_centroid_position = centroid
 
-
     def set_id(self, id: int) -> None:
         """
         Sets packet ID.
@@ -142,15 +142,21 @@ class Packet:
         """
 
         if not isinstance(id, int):
-            print("[WARNING] Tried to set packet ID to {} (Should be integer)".format(id))
+            print(
+                "[WARNING] Tried to set packet ID to {} (Should be integer)".format(id)
+            )
             return
 
         if id < 0:
-            print("[WARNING] Tried to set packet ID to {} (Should be greater than or equal to 0)".format(id))
+            print(
+                "[WARNING] Tried to set packet ID to {} (Should be greater than or equal to 0)".format(
+                    id
+                )
+            )
             return
 
         self.id = id
-    
+
     def set_type(self, type: int) -> None:
         """
         Sets packet type.
@@ -161,7 +167,11 @@ class Packet:
 
         # Check input validity
         if not isinstance(type, int):
-            print("[WARNING] Tried to set packet TYPE to {} (Should be integer)".format(type))
+            print(
+                "[WARNING] Tried to set packet TYPE to {} (Should be integer)".format(
+                    type
+                )
+            )
             return
 
         # Set parameter
@@ -170,7 +180,9 @@ class Packet:
         # OBSOLETE PARAM
         self.pack_type = type
 
-    def set_centroid(self, x: int, y: int, homography: np.ndarray = None, encoder_pos: int = None) -> None:
+    def set_centroid(
+        self, x: int, y: int, homography: np.ndarray = None, encoder_pos: int = None
+    ) -> None:
         """
         Sets packet centroid.
 
@@ -183,7 +195,11 @@ class Packet:
 
         # Check input validity
         if not isinstance(x, int) or not isinstance(y, int):
-            print("[WARNING] Tried to set packet CENTROID to ({}, {}) (Should be integers)".format(x, y))
+            print(
+                "[WARNING] Tried to set packet CENTROID to ({}, {}) (Should be integers)".format(
+                    x, y
+                )
+            )
             return
 
         # Set parameter
@@ -197,18 +213,26 @@ class Packet:
         # Compute parameter in world coordinates
         if homography is not None:
             if not isinstance(homography, np.ndarray):
-                print("[WARNING] Tried to compute packet CENTROID with homography \n{} \n(Not a np.ndarray)".format(homography))
+                print(
+                    "[WARNING] Tried to compute packet CENTROID with homography \n{} \n(Not a np.ndarray)".format(
+                        homography
+                    )
+                )
                 return
 
             transformed_centroid = np.matmul(homography, np.array([x, y, 1]))
-            self.centroid_mm = self.PointTuple(transformed_centroid[0] * 10, transformed_centroid[1] * 10)
+            self.centroid_mm = self.PointTuple(
+                transformed_centroid[0] * 10, transformed_centroid[1] * 10
+            )
         else:
             self.centroid_mm = self.PointTuple(None, None)
 
         # OBSOLETE PARAM
         self.centroid = (x, y)
 
-    def set_bounding_size(self, width: int, height: int, homography: np.ndarray = None) -> None:
+    def set_bounding_size(
+        self, width: int, height: int, homography: np.ndarray = None
+    ) -> None:
         """
         Sets width and height of packet bounding box.
 
@@ -220,11 +244,19 @@ class Packet:
 
         # Check input validity
         if not isinstance(width, int) or not isinstance(height, int):
-            print("[WARNING] Tried to set packet WIDTH and HEIGHT to ({}, {}) (Should be integers)".format(width, height))
+            print(
+                "[WARNING] Tried to set packet WIDTH and HEIGHT to ({}, {}) (Should be integers)".format(
+                    width, height
+                )
+            )
             return
 
         if width <= 0 or height <= 0:
-            print("[WARNING] Tried to set packet WIDTH and HEIGHT to ({}, {}) (Should be greater than 0)".format(width, height))
+            print(
+                "[WARNING] Tried to set packet WIDTH and HEIGHT to ({}, {}) (Should be greater than 0)".format(
+                    width, height
+                )
+            )
             return
 
         # Set parameters
@@ -234,11 +266,19 @@ class Packet:
         # Compute parameter in world coordinates
         if homography is not None:
             if not isinstance(homography, np.ndarray):
-                print("[WARNING] Tried to compute packet WIDTH and HEIGHT with homography \n{} \n(Not a np.ndarray)".format(homography))
+                print(
+                    "[WARNING] Tried to compute packet WIDTH and HEIGHT with homography \n{} \n(Not a np.ndarray)".format(
+                        homography
+                    )
+                )
                 return
-            
-            self.width_bnd_mm = width * sqrt(homography[0, 0] ** 2 + homography[1, 0] ** 2) * 10
-            self.height_bnd_mm = height * sqrt(homography[0, 1] ** 2 + homography[1, 1] ** 2) * 10
+
+            self.width_bnd_mm = (
+                width * sqrt(homography[0, 0] ** 2 + homography[1, 0] ** 2) * 10
+            )
+            self.height_bnd_mm = (
+                height * sqrt(homography[0, 1] ** 2 + homography[1, 1] ** 2) * 10
+            )
         else:
             self.width_bnd_mm = None
             self.height_bnd_mm = None
@@ -251,14 +291,16 @@ class Packet:
         """
         Sets the inner rectangle (params mask of the packet).
 
-        Args: 
+        Args:
             mask (tuple): Center(x, y), (width, height), angle of rotation.
         """
 
-        if not isinstance(mask, np.ndarray):  
-            print(f"[WARN]: Tried to crop packet mask of type {type(mask)} (Not a np.ndarray)")
-            return 
-        
+        if not isinstance(mask, np.ndarray):
+            print(
+                f"[WARN]: Tried to crop packet mask of type {type(mask)} (Not a np.ndarray)"
+            )
+            return
+
         # Update the mask
         if self.mask is None:
             self.mask = mask
@@ -278,19 +320,29 @@ class Packet:
 
         # Check input validity
         if not isinstance(angle, int) and not isinstance(angle, float):
-            print("[WARNING] Tried to add packet ANGLE with value {} (Should be float or integer)".format(angle))
+            print(
+                "[WARNING] Tried to add packet ANGLE with value {} (Should be float or integer)".format(
+                    angle
+                )
+            )
             return
 
         if not -90 <= angle <= 90:
-            print("[WARNING] Tried to add packet ANGLE with value {} (Should be between -90 and 90)".format(angle))
+            print(
+                "[WARNING] Tried to add packet ANGLE with value {} (Should be between -90 and 90)".format(
+                    angle
+                )
+            )
             return
 
         # Update average
         if self.avg_angle_deg is None:
             self.avg_angle_deg = angle
         else:
-            self.avg_angle_deg = (self.num_avg_angles * self.avg_angle_deg + angle) / (self.num_avg_angles + 1)
-        
+            self.avg_angle_deg = (self.num_avg_angles * self.avg_angle_deg + angle) / (
+                self.num_avg_angles + 1
+            )
+
         self.num_avg_angles += 1
 
     def add_depth_crop_to_average(self, depth_crop: np.ndarray) -> None:
@@ -303,7 +355,11 @@ class Packet:
 
         # Check input validity
         if not isinstance(depth_crop, np.ndarray):
-            print("[WARNING] Tried to add packet CROP of type {} (Not a np.ndarray)".format(type(depth_crop)))
+            print(
+                "[WARNING] Tried to add packet CROP of type {} (Not a np.ndarray)".format(
+                    type(depth_crop)
+                )
+            )
             return
 
         # Update average
@@ -311,10 +367,16 @@ class Packet:
             self.avg_depth_crop = depth_crop
         else:
             if not self.avg_depth_crop.shape == depth_crop.shape:
-                print("[WARNING] Tried to average two depth maps with incompatible shape together: {} VS {}".format(self.avg_depth_crop.shape, depth_crop.shape))
+                print(
+                    "[WARNING] Tried to average two depth maps with incompatible shape together: {} VS {}".format(
+                        self.avg_depth_crop.shape, depth_crop.shape
+                    )
+                )
                 return
-            self.avg_depth_crop = (self.num_avg_depths * self.avg_depth_crop + depth_crop) / (self.num_avg_depths + 1)
-        
+            self.avg_depth_crop = (
+                self.num_avg_depths * self.avg_depth_crop + depth_crop
+            ) / (self.num_avg_depths + 1)
+
         self.num_avg_depths += 1
 
     def get_crop_from_frame(self, frame: np.ndarray) -> np.ndarray:
@@ -331,41 +393,63 @@ class Packet:
 
         # Check input validity
         if not isinstance(frame, np.ndarray):
-            print("[WARNING] Tried to crop frame of type {} (Not a np.ndarray)".format(type(frame)))
+            print(
+                "[WARNING] Tried to crop frame of type {} (Not a np.ndarray)".format(
+                    type(frame)
+                )
+            )
             return None
 
         # Compute crop
         if self.num_avg_depths == 0:
-            crop = frame[int(self.centroid_px.y - self.height // 2 - self.crop_border_px):int(self.centroid_px.y + self.height // 2 + self.crop_border_px),
-                        int(self.centroid_px.x - self.width // 2 - self.crop_border_px):int(self.centroid_px.x + self.width // 2 + self.crop_border_px)]
+            crop = frame[
+                int(self.centroid_px.y - self.height // 2 - self.crop_border_px) : int(
+                    self.centroid_px.y + self.height // 2 + self.crop_border_px
+                ),
+                int(self.centroid_px.x - self.width // 2 - self.crop_border_px) : int(
+                    self.centroid_px.x + self.width // 2 + self.crop_border_px
+                ),
+            ]
         else:
-            crop = frame[int(self.centroid_px.y - self.avg_depth_crop.shape[0] // 2):int(self.centroid_px.y + self.avg_depth_crop.shape[0] // 2),
-                        int(self.centroid_px.x - self.avg_depth_crop.shape[1] // 2):int(self.centroid_px.x + self.avg_depth_crop.shape[1] // 2)]
-        
+            crop = frame[
+                int(self.centroid_px.y - self.avg_depth_crop.shape[0] // 2) : int(
+                    self.centroid_px.y + self.avg_depth_crop.shape[0] // 2
+                ),
+                int(self.centroid_px.x - self.avg_depth_crop.shape[1] // 2) : int(
+                    self.centroid_px.x + self.avg_depth_crop.shape[1] // 2
+                ),
+            ]
+
         return crop
 
     def getCentroidFromEncoder(self, encoder_position: float) -> tuple[float, float]:
         """
         Computes actual centroid of packet from the encoder data.
-    
+
         Args:
             encoder_position (float): current encoder position.
-        
+
         Returns:
             tuple[float, float]: Updated x, y packet centroid.
-    
+
         """
         # k = 0.8299  # 640 x 480
         # k = 1.2365  # 1280 x 720
         k = 1.8672  # 1440 x 1080
         # k = 1.2365  # 1080 x 720
-        return (int(k * (encoder_position - self.encoder_initial_position) + self.centroid_initial_px.x), self.centroid_px.y)
+        return (
+            int(
+                k * (encoder_position - self.encoder_initial_position)
+                + self.centroid_initial_px.x
+            ),
+            self.centroid_px.y,
+        )
 
     # OBSOLETE
     def getCentroidInWorldFrame(self, homography: np.ndarray) -> float:
         """
         Converts centroid from image coordinates to real world coordinates.
-    
+
         Args:
             homography (np.ndarray): homography matrix.
 
@@ -373,7 +457,9 @@ class Packet:
             float: Updated x, y packet centroid in world coordinates.
         """
 
-        centroid_robot_frame = np.matmul(homography, np.array([self.centroid[0], self.centroid[1], 1]))
+        centroid_robot_frame = np.matmul(
+            homography, np.array([self.centroid[0], self.centroid[1], 1])
+        )
 
         packet_x = centroid_robot_frame[0] * 10
         packet_y = centroid_robot_frame[1] * 10

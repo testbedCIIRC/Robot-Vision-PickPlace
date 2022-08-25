@@ -15,22 +15,23 @@ class RobotCommunication:
         """
         RobotCommunication object constructor.
         """
-        
+
     def connect_OPCUA_server(self):
         """
         Connects OPCUA Client to Server on PLC.
 
         """
         password = "CIIRC"
-        self.client = Client("opc.tcp://user:"+str(password)+"@10.35.91.101:4840/")
+        self.client = Client("opc.tcp://user:" + str(password) + "@10.35.91.101:4840/")
         self.client.connect()
-        print('[INFO]: Client connected.')
+        print("[INFO]: Client connected.")
 
     def get_nodes(self):
         """
         Using the client.get_node method, it gets nodes from OPCUA Server on PLC.
         """
 
+        # fmt: off
         self.Start_Prog = self.client.get_node(
             'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."start"')
         self.Conti_Prog = self.client.get_node(
@@ -238,14 +239,15 @@ class RobotCommunication:
             'ns=3;s="InstPickPlace"."instPrePickPos"."Done"')
         self.Place_Done =  self.client.get_node(
             'ns=3;s="InstPickPlace"."instPlacePos"."Done"')
-            
+        # fmt: on
+
     def get_robot_info(self) -> tuple:
         """
         Reads periodically needed values from the PLC.
         To add new nodes, append requied node to the end of 'nodes' list,
         'val' list will then contain new value at the end corresponding to the values of the new node.
         Acess new values with val[15] and so on.
-    
+
         Returns:
             tuple: Tuple of detected variables
         """
@@ -267,7 +269,7 @@ class RobotCommunication:
             self.Rob_Stopped,
             self.Stop_Active,
             self.Prog_Done,
-            self.Robot_speed_override
+            self.Robot_speed_override,
         ]
 
         # Get values from defined nodes
@@ -275,14 +277,16 @@ class RobotCommunication:
         val = self.client.get_values(nodes)
 
         # Assign values from returned list to variables
-        position = (round(val[0], 2),
-                    round(val[1], 2),
-                    round(val[2], 2),
-                    round(val[3], 2),
-                    round(val[4], 2),
-                    round(val[5], 2),
-                    val[6],
-                    val[7])
+        position = (
+            round(val[0], 2),
+            round(val[1], 2),
+            round(val[2], 2),
+            round(val[3], 2),
+            round(val[4], 2),
+            round(val[5], 2),
+            val[6],
+            val[7],
+        )
         encoder_vel = round(val[8], 2)
         encoder_pos = round(val[9], 2)
         start = val[10]
@@ -292,7 +296,17 @@ class RobotCommunication:
         prog_done = val[14]
         speed_override = val[15]
 
-        return position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done, speed_override 
+        return (
+            position,
+            encoder_vel,
+            encoder_pos,
+            start,
+            abort,
+            rob_stopped,
+            stop_active,
+            prog_done,
+            speed_override,
+        )
 
     def robot_server(self, info_dict: multiprocessing.managers.DictProxy):
         """
@@ -310,19 +324,29 @@ class RobotCommunication:
         time.sleep(0.5)
         while True:
             try:
-                position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done, speed_override  = self.get_robot_info()
-                info_dict['pos'] = position
-                info_dict['encoder_vel'] = encoder_vel
-                info_dict['encoder_pos'] = encoder_pos
-                info_dict['start'] = start
-                info_dict['abort'] = abort
-                info_dict['rob_stopped'] = rob_stopped
-                info_dict['stop_active'] = stop_active
-                info_dict['prog_done'] = prog_done
-                info_dict['speed_override'] = speed_override
+                (
+                    position,
+                    encoder_vel,
+                    encoder_pos,
+                    start,
+                    abort,
+                    rob_stopped,
+                    stop_active,
+                    prog_done,
+                    speed_override,
+                ) = self.get_robot_info()
+                info_dict["pos"] = position
+                info_dict["encoder_vel"] = encoder_vel
+                info_dict["encoder_pos"] = encoder_pos
+                info_dict["start"] = start
+                info_dict["abort"] = abort
+                info_dict["rob_stopped"] = rob_stopped
+                info_dict["stop_active"] = stop_active
+                info_dict["prog_done"] = prog_done
+                info_dict["speed_override"] = speed_override
             except Exception as e:
-                print('[ERROR]', e)
-                print('[INFO] OPCUA disconnected')
+                print("[ERROR]", e)
+                print("[INFO] OPCUA disconnected")
                 break
 
     def encoder_server(self, encoder_pos: multiprocessing.managers.ValueProxy):
@@ -343,6 +367,6 @@ class RobotCommunication:
             try:
                 encoder_pos.value = round(self.Encoder_Pos.get_value(), 2)
             except Exception as e:
-                print('[ERROR]', e)
-                print('[INFO] OPCUA disconnected')
+                print("[ERROR]", e)
+                print("[INFO] OPCUA disconnected")
                 break

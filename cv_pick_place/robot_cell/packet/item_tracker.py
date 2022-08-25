@@ -9,7 +9,12 @@ class ItemTracker:
     Class for tracking packets between frames.
     """
 
-    def __init__(self, max_disappeared_frames: int = 10, guard: int = 250, max_item_distance: int = 200):
+    def __init__(
+        self,
+        max_disappeared_frames: int = 10,
+        guard: int = 250,
+        max_item_distance: int = 200,
+    ):
         """
         ItemTracker object constructor.
 
@@ -59,7 +64,7 @@ class ItemTracker:
         Args:
             new_item (Packet): New packet object whose parameters are transferred.
             tracked_item (Packet): Packet object whose parameters are updated.
-        
+
         Returns:
             tracked_item (Packet): Updated tracked packet object.
         """
@@ -67,7 +72,7 @@ class ItemTracker:
         if tracked_item.id != new_item.id:
             print("[WARNING] Tried to update two items with different IDs together")
             return
-        
+
         # NEW parameters
         tracked_item.centroid_px = new_item.centroid_px
         tracked_item.centroid_mm = new_item.centroid_mm
@@ -111,9 +116,11 @@ class ItemTracker:
             # Update exitsing item data
             for tracked_item_index, tracked_item in enumerate(self.item_database):
                 if labeled_item.id == tracked_item.id:
-                    self.item_database[tracked_item_index] = self.update_item(labeled_item, tracked_item)
+                    self.item_database[tracked_item_index] = self.update_item(
+                        labeled_item, tracked_item
+                    )
                     break
-        
+
         # Check for items ready to be deregistered
         for tracked_item in self.item_database:
             if tracked_item.disappeared > self.max_disappeared_frames:
@@ -139,7 +146,9 @@ class ItemTracker:
             trackedCentroids = [item.centroid_px for item in self.item_database]
             detectCentroids = [item.centroid_px for item in detected_item_list]
             # Compute the distance between each pair of items
-            distances = dist.cdist(np.array(trackedCentroids), np.array(detectCentroids))
+            distances = dist.cdist(
+                np.array(trackedCentroids), np.array(detectCentroids)
+            )
             # Sort tracked items (rows) by minimal distance
             tracked = distances.min(axis=1).argsort()
             # Sort detected items (columns) by minimal distance
