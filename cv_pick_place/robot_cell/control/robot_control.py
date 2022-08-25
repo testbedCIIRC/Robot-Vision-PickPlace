@@ -27,11 +27,12 @@ class RcCommand(Enum):
     SET_HOME_POS_SH = 12
 
 
-class RcData():
-    def __init__(self, command, data = None):
+class RcData:
+    def __init__(self, command, data=None):
         self.command = command
         self.data = data
-    
+
+
 class RobotControl(RobotCommunication):
     """
     Class for sending commands to robot using OPCUA. Inherits RobotCommunication.
@@ -40,9 +41,9 @@ class RobotControl(RobotCommunication):
     def __init__(self, rob_dict: dict, verbose: bool = False):
         """
         RobotControl object constructor.
-    
+
         Args:
-            rob_dict (dict): Dictionary with robot points for program. 
+            rob_dict (dict): Dictionary with robot points for program.
             verbose (bool): If extra information should be printed to the console.
         """
 
@@ -62,10 +63,16 @@ class RobotControl(RobotCommunication):
         """
 
         boot_screen = np.zeros(resolution)
-        cv2.namedWindow('Frame')
-        cv2.putText(boot_screen, message, 
-                    (resolution[0] // 2 - 150, resolution[1] // 2),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+        cv2.namedWindow("Frame")
+        cv2.putText(
+            boot_screen,
+            message,
+            (resolution[0] // 2 - 150, resolution[1] // 2),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 255, 0),
+            2,
+        )
         cv2.imshow("Frame", boot_screen)
         cv2.waitKey(1)
 
@@ -77,7 +84,8 @@ class RobotControl(RobotCommunication):
         self.Conti_Prog.set_value(ua.DataValue(True))
         time.sleep(0.5)
         self.Conti_Prog.set_value(ua.DataValue(False))
-        if self.verbose : print('[INFO]: Program continued.')
+        if self.verbose:
+            print("[INFO]: Program continued.")
 
     def stop_program(self):
         """
@@ -85,7 +93,7 @@ class RobotControl(RobotCommunication):
         """
 
         self.Stop_Prog.set_value(ua.DataValue(True))
-        print('[INFO]: Program interrupted.')
+        print("[INFO]: Program interrupted.")
         time.sleep(0.5)
         self.Stop_Prog.set_value(ua.DataValue(False))
 
@@ -95,10 +103,10 @@ class RobotControl(RobotCommunication):
         """
 
         self.Abort_Prog.set_value(ua.DataValue(True))
-        print('[INFO]: Program aborted.')
+        print("[INFO]: Program aborted.")
         time.sleep(0.5)
         self.Abort_Prog.set_value(ua.DataValue(False))
-        
+
     def start_program(self, mode: bool = False):
         """
         Start robot program.
@@ -109,7 +117,8 @@ class RobotControl(RobotCommunication):
 
         self.Pick_Place_Select.set_value(ua.DataValue(mode))
         self.Start_Prog.set_value(ua.DataValue(True))
-        if self.verbose : print('[INFO]: Program started.')
+        if self.verbose:
+            print("[INFO]: Program started.")
         time.sleep(0.5)
         self.Start_Prog.set_value(ua.DataValue(False))
         time.sleep(0.5)
@@ -120,11 +129,11 @@ class RobotControl(RobotCommunication):
         """
 
         self.Abort_Prog.set_value(ua.DataValue(True))
-        print('[INFO]: Program aborted.')
+        print("[INFO]: Program aborted.")
         self.Abort_Prog.set_value(ua.DataValue(False))
         self.Conti_Prog.set_value(ua.DataValue(False))
         self.client.disconnect()
-        print('[INFO]: Client disconnected.')
+        print("[INFO]: Client disconnected.")
         time.sleep(0.5)
 
     def change_gripper_state(self, state: bool):
@@ -136,9 +145,10 @@ class RobotControl(RobotCommunication):
         """
 
         self.Gripper_State.set_value(ua.DataValue(state))
-        if self.verbose : print('[INFO]: Gripper state is {}.'.format(state))
+        if self.verbose:
+            print("[INFO]: Gripper state is {}.".format(state))
         time.sleep(0.1)
-    
+
     def change_conveyor_right(self, conv_right: bool):
         """
         Switch conveyor right direction on/off.
@@ -150,7 +160,7 @@ class RobotControl(RobotCommunication):
         self.Conveyor_Left.set_value(ua.DataValue(False))
         self.Conveyor_Right.set_value(ua.DataValue(conv_right))
         time.sleep(0.4)
-    
+
     def change_conveyor_left(self, conv_left: bool):
         """
         Switch conveyor left direction on/off.
@@ -162,28 +172,31 @@ class RobotControl(RobotCommunication):
         self.Conveyor_Right.set_value(ua.DataValue(False))
         self.Conveyor_Left.set_value(ua.DataValue(conv_left))
         time.sleep(0.4)
-    
+
     def go_to_home(self):
         """
         Send robot to home position.
         """
 
         self.Go_to_home.set_value(ua.DataValue(True))
-        if self.verbose : print('[INFO]: Sent robot to home pos.')
+        if self.verbose:
+            print("[INFO]: Sent robot to home pos.")
         time.sleep(0.4)
         self.Go_to_home.set_value(ua.DataValue(False))
         time.sleep(0.4)
 
-    def change_trajectory(self,
-                          x: float,
-                          y: float,
-                          rot: float,
-                          packet_type: int,
-                          x_offset: float = 0.0,
-                          pack_z: int = 5):
+    def change_trajectory(
+        self,
+        x: float,
+        y: float,
+        rot: float,
+        packet_type: int,
+        x_offset: float = 0.0,
+        pack_z: int = 5,
+    ):
         """
         Updates the trajectory points for the robot program.
-    
+
         Args:
             x (float): The pick x coordinate of the packet.
             y (float): The pick y coordinate of the packet.
@@ -196,6 +209,7 @@ class RobotControl(RobotCommunication):
         nodes = []
         values = []
 
+        # fmt: off
         nodes.append(self.Home_X)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['x'], ua.VariantType.Float)))
         nodes.append(self.Home_Y)
@@ -263,26 +277,29 @@ class RobotControl(RobotCommunication):
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['status'], ua.VariantType.Int16)))
         nodes.append(self.Place_Pos_Turn)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
+        # fmt: on
 
         self.client.set_values(nodes, values)
 
         time.sleep(0.7)
 
-    def change_trajectory_short(self,
-                                x: float,
-                                y: float,
-                                angle: float,
-                                packet_type: int,
-                                x_offset: float = 0.0,
-                                pack_z: float = 5.0,
-                                post_pick_y_offset: float = 470,
-                                z_offset: float = 50.0,
-                                a: float = 90.0,
-                                b: float = 0.0,
-                                c: float = 180.0):
+    def change_trajectory_short(
+        self,
+        x: float,
+        y: float,
+        angle: float,
+        packet_type: int,
+        x_offset: float = 0.0,
+        pack_z: float = 5.0,
+        post_pick_y_offset: float = 470,
+        z_offset: float = 50.0,
+        a: float = 90.0,
+        b: float = 0.0,
+        c: float = 180.0,
+    ):
         """
         Updates the trajectory points for the robot program.
-    
+
         Args:
             x (float): The pick x coordinate of the packet.
             y (float): The pick y coordinate of the packet.
@@ -301,6 +318,7 @@ class RobotControl(RobotCommunication):
         values = []
         rot = self.compute_reverse_gripper_rot(angle)
 
+        # fmt: off
         nodes.append(self.ShPrePick_Pos_X)
         values.append(ua.DataValue(ua.Variant(x, ua.VariantType.Float)))
         nodes.append(self.ShPrePick_Pos_Y)
@@ -368,6 +386,7 @@ class RobotControl(RobotCommunication):
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['status'], ua.VariantType.Int16)))
         nodes.append(self.ShPlace_Pos_Turn)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
+        # fmt: on
 
         self.client.set_values(nodes, values)
 
@@ -381,6 +400,7 @@ class RobotControl(RobotCommunication):
         nodes = []
         values = []
 
+        # fmt: off
         nodes.append(self.ShHome_Pos_X)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['x'], ua.VariantType.Float)))
         nodes.append(self.ShHome_Pos_Y)
@@ -397,6 +417,7 @@ class RobotControl(RobotCommunication):
         values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['status'], ua.VariantType.Int16)))
         nodes.append(self.ShHome_Pos_Turn)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['turn'], ua.VariantType.Int16)))
+        # fmt: on
 
         self.client.set_values(nodes, values)
 
@@ -405,10 +426,10 @@ class RobotControl(RobotCommunication):
     def compute_gripper_rot(self, angle: float):
         """
         Computes the gripper rotation based on the detected packet angle. For rotating at picking.
-    
+
         Args:
             angle (float): Detected angle of packet.
-    
+
         Returns:
             float: Gripper rotation.
         """
@@ -423,10 +444,10 @@ class RobotControl(RobotCommunication):
     def compute_reverse_gripper_rot(self, angle: float):
         """
         Computes the gripper rotation based on the detected packet angle. For rotating at placing.
-    
+
         Args:
             angle (float): Detected angle of packet.
-    
+
         Returns:
             float: Gripper rotation.
         """
@@ -441,19 +462,19 @@ class RobotControl(RobotCommunication):
     def compute_mean_packet_z(self, packet: Packet, pack_z_fixed: float):
         """
         Computes depth of packet based on average of stored depth frames.
-    
+
         Args:
             packet (Packet): Packet object for which centroid depth should be found.
             pack_z_fixed (float): Constant depth value to fall back to.
         """
 
-        conv2cam_dist = 777.0 # mm
+        conv2cam_dist = 777.0  # mm
         # range 25 - 13
-        depth_mean = np.mean(packet.depth_maps, axis = 2)
+        depth_mean = np.mean(packet.depth_maps, axis=2)
         d_rows, d_cols = depth_mean.shape
 
         print(d_rows, d_cols)
-        
+
         # If depth frames are present
         try:
             if d_rows > 0:
@@ -465,29 +486,35 @@ class RobotControl(RobotCommunication):
 
                 # Get centroid from depth mean crop
                 centroid_depth = depth_mean[y_depth, x_depth]
-                if self.verbose : print('Centroid_depth:',centroid_depth)
+                if self.verbose:
+                    print("Centroid_depth:", centroid_depth)
 
                 # Compute packet z position with respect to conveyor base
                 pack_z = abs(conv2cam_dist - centroid_depth)
 
                 # Return pack_z if in acceptable range, set to default if not
-                pack_z_in_range = (pack_z > pack_z_fixed) and (pack_z < pack_z_fixed + 17.0)
+                pack_z_in_range = (pack_z > pack_z_fixed) and (
+                    pack_z < pack_z_fixed + 17.0
+                )
 
                 if pack_z_in_range:
-                    if self.verbose : print('[INFO]: Pack z in range')
+                    if self.verbose:
+                        print("[INFO]: Pack z in range")
                     return pack_z
-                else: return pack_z_fixed
+                else:
+                    return pack_z_fixed
 
             # When depth frames unavailable
-            else: return pack_z_fixed
-        
+            else:
+                return pack_z_fixed
+
         except:
             return pack_z_fixed
 
     def objects_update(self, objects: OrderedDict, image: np.ndarray):
         """
         Draws the IDs of tracked objects.
-    
+
         Args:
             objects (OrderedDict): Ordered dictionary with currently tracked objects.
             image (np.ndarray): Image where the objects will be drawn.
@@ -497,23 +524,32 @@ class RobotControl(RobotCommunication):
         for (objectID, centroid) in objects.items():
             # Draw both the ID and centroid of objects.
             text = "ID {}".format(objectID)
-            cv2.putText(image, text, (centroid[0] , centroid[1] - 40),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(
+                image,
+                text,
+                (centroid[0], centroid[1] - 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 0),
+                2,
+            )
             cv2.circle(image, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
 
-    def single_pack_tracking_update(self,
-                                    objects: OrderedDict,
-                                    img: np.ndarray,
-                                    homog: np.ndarray,
-                                    enable: bool,
-                                    x_fixed: float,
-                                    track_frame: int,
-                                    frames_lim: int,
-                                    encoder_pos: float,
-                                    track_list = []) -> tuple[float, float, float, Packet]:
+    def single_pack_tracking_update(
+        self,
+        objects: OrderedDict,
+        img: np.ndarray,
+        homog: np.ndarray,
+        enable: bool,
+        x_fixed: float,
+        track_frame: int,
+        frames_lim: int,
+        encoder_pos: float,
+        track_list=[],
+    ) -> tuple[float, float, float, Packet]:
         """
         Computes distance to packet and updated x, mean y packet positions of tracked moving packets.
-    
+
         Args:
             objects (OrderedDict): Ordered Dictionary with currently tracked packet objects.
             img (np.ndarray): Image where the objects will be drawn.
@@ -533,46 +569,61 @@ class RobotControl(RobotCommunication):
         for (objectID, packet) in objects.items():
             # Draw both the ID and centroid of packet objects
             centroid_tup = packet.centroid
-            centroid = np.array([centroid_tup[0],centroid_tup[1]]).astype('int')
+            centroid = np.array([centroid_tup[0], centroid_tup[1]]).astype("int")
             text = "ID {}".format(objectID)
-            cv2.putText(img, text, (centroid[0] , centroid[1] - 40), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(
+                img,
+                text,
+                (centroid[0], centroid[1] - 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 0),
+                2,
+            )
             cv2.circle(img, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
-            cv2.circle(img, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1)
+            cv2.circle(
+                img, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1
+            )
 
             # Compute homography if it isn't None
             if homog is not None:
-                new_centroid = np.append(centroid,1)
+                new_centroid = np.append(centroid, 1)
                 world_centroid = homog.dot(new_centroid)
                 world_centroid = world_centroid[0], world_centroid[1]
-                cv2.putText(img, 
-                            str(round(world_centroid[0],2)) +','+ 
-                            str(round(world_centroid[1],2)), centroid, 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+                cv2.putText(
+                    img,
+                    str(round(world_centroid[0], 2))
+                    + ","
+                    + str(round(world_centroid[1], 2)),
+                    centroid,
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (255, 255, 0),
+                    2,
+                )
 
                 # If objects are being detected
                 if enable:
                     # Append object id, and centroid id world coordinates to list
-                    track_list.append([objectID,world_centroid[0],world_centroid[1]])
-                    
+                    track_list.append([objectID, world_centroid[0], world_centroid[1]])
+
                     # If max number of traking frames has been reached
                     if track_frame == frames_lim:
 
                         # Find the most repeated packet according to id
                         track_array = np.array(track_list)
-                        track_IDs = track_array[:,0]
+                        track_IDs = track_array[:, 0]
                         max_ID = np.max(track_IDs)
                         track_data = track_array[track_IDs == max_ID]
-                        
-                        
+
                         # Find last recorded x pos and compute mean y
-                        last_x = float(track_data[-1,1])
-                        mean_y = float(np.mean(track_data[:,2]))
-                        
+                        last_x = float(track_data[-1, 1])
+                        mean_y = float(np.mean(track_data[:, 2]))
+
                         # Set world x to fixed value, convert to milimeters and round
                         world_x = x_fixed
-                        world_y = round(mean_y * 10.0,2)
-                        world_last_x = round(last_x * 10.0,2)
+                        world_y = round(mean_y * 10.0, 2)
+                        world_last_x = round(last_x * 10.0, 2)
 
                         # Compute distance to packet
                         dist_to_pack = world_x - world_last_x
@@ -583,7 +634,7 @@ class RobotControl(RobotCommunication):
 
                         elif world_y > 470.0:
                             world_y = 470.0
-                            
+
                         # Empty list for tracking and reset mean variables
                         track_list.clear()
                         last_x = 0
@@ -594,17 +645,19 @@ class RobotControl(RobotCommunication):
         # If max number of traking frames hasn't been reached return None
         return None, None, None, None
 
-    def single_pack_tracking_program_start(self,
-                                           track_result: tuple,
-                                           packet: Packet,
-                                           encoder_pos: float,
-                                           encoder_vel: float,
-                                           is_rob_ready: bool,
-                                           pack_x_offsets: list,
-                                           pack_depths: list):
+    def single_pack_tracking_program_start(
+        self,
+        track_result: tuple,
+        packet: Packet,
+        encoder_pos: float,
+        encoder_vel: float,
+        is_rob_ready: bool,
+        pack_x_offsets: list,
+        pack_depths: list,
+    ):
         """
         Triggers start of the program based on track result and robot status.
-    
+
         Args:
             track_result (tuple): Updated x, mean y packet pick positions and distance to packet.
             packet (Packet): Final tracked packet object used for program start.
@@ -619,11 +672,11 @@ class RobotControl(RobotCommunication):
         if None not in track_result:
             # Compute distance to packet and delay required to continue program
             dist_to_pack = track_result[2]
-            delay = dist_to_pack/(abs(encoder_vel)/10)
-            delay = round(delay,2)
+            delay = dist_to_pack / (abs(encoder_vel) / 10)
+            delay = round(delay, 2)
 
             # If the robot is ready
-            if  is_rob_ready:
+            if is_rob_ready:
                 # Define packet pos based on track result data
                 packet_x = track_result[0]
                 packet_y = track_result[1]
@@ -636,16 +689,17 @@ class RobotControl(RobotCommunication):
                 # Compute packet z based on depth frame
                 pack_z_fixed = pack_depths[packet_type]
                 packet_z = self.compute_mean_packet_z(packet, pack_z_fixed)
-                
+
                 print(packet_z, pack_z_fixed)
                 # Change end points of robot
                 self.change_trajectory(
-                                packet_x,
-                                packet_y, 
-                                gripper_rot, 
-                                packet_type,
-                                x_offset = pack_x_offsets[packet_type],
-                                pack_z = packet_z)
+                    packet_x,
+                    packet_y,
+                    gripper_rot,
+                    packet_type,
+                    x_offset=pack_x_offsets[packet_type],
+                    pack_z=packet_z,
+                )
 
                 # Start robot program
                 self.start_program()
@@ -706,35 +760,39 @@ class RobotControl(RobotCommunication):
                     self.start_program(data)
 
                 elif command == RcCommand.CHANGE_TRAJECTORY:
-                    self.change_trajectory(data['x'], 
-                                            data['y'],
-                                            data['rot'],
-                                            data['packet_type'],
-                                            x_offset=data['x_offset'],
-                                            pack_z=data['pack_z'])
+                    self.change_trajectory(
+                        data["x"],
+                        data["y"],
+                        data["rot"],
+                        data["packet_type"],
+                        x_offset=data["x_offset"],
+                        pack_z=data["pack_z"],
+                    )
 
                 elif command == RcCommand.CHANGE_SHORT_TRAJECTORY:
-                    self.change_trajectory_short(data['x'], 
-                                            data['y'],
-                                            data['rot'],
-                                            data['packet_type'],
-                                            x_offset=data['x_offset'],
-                                            pack_z=data['pack_z'],
-                                            a = data['a'],
-                                            b = data['b'],
-                                            c = data['c'],
-                                            z_offset=data['z_offset'])
-                
+                    self.change_trajectory_short(
+                        data["x"],
+                        data["y"],
+                        data["rot"],
+                        data["packet_type"],
+                        x_offset=data["x_offset"],
+                        pack_z=data["pack_z"],
+                        a=data["a"],
+                        b=data["b"],
+                        c=data["c"],
+                        z_offset=data["z_offset"],
+                    )
+
                 elif command == RcCommand.SET_HOME_POS_SH:
                     self.set_home_pos_short()
-            
+
                 elif command == RcCommand.GO_TO_HOME:
                     self.go_to_home()
 
                 else:
-                    print('[WARNING]: Wrong command send to control server')
+                    print("[WARNING]: Wrong command send to control server")
 
             except Exception as e:
-                print('[ERROR]', e)
-                print('[INFO] OPCUA disconnected')
+                print("[ERROR]", e)
+                print("[INFO] OPCUA disconnected")
                 break

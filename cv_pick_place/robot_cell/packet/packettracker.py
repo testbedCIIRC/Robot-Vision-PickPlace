@@ -12,10 +12,12 @@ class PacketTracker:
     Class for tracking packets between frames.
     """
 
-    def __init__(self, maxDisappeared: int, guard: int = 250, maxCentroidDistance: int = 100):
+    def __init__(
+        self, maxDisappeared: int, guard: int = 250, maxCentroidDistance: int = 100
+    ):
         """
         PacketTracker object constructor.
-    
+
         Args:
             maxDisappeared (int): Maximum number of frames before deregister.
             guard (int): When packet depth is cropped, the resulting crop will have 'guard' extra pixels on each side.
@@ -34,7 +36,7 @@ class PacketTracker:
     def register(self, packet: Packet, frame: np.ndarray):
         """
         Registers input item.
-    
+
         Args:
             packet (Packet): Packet object to be registered.
             frame (np.ndarray): Image frame.
@@ -47,13 +49,13 @@ class PacketTracker:
 
         crop = self.get_crop_from_frame(self.packets[self.nextObjectID], frame)
         self.packets[self.nextObjectID].depth_maps = crop
-        self.packets[self.nextObjectID].id = self.nextObjectID      # ! only for itemObject
+        self.packets[self.nextObjectID].id = self.nextObjectID  # ! only for itemObject
         self.nextObjectID += 1
 
     def deregister(self, objectID: str):
         """
         Deregisters object based on id.
-    
+
         Args:
             objectID (str): Key to deregister items in the objects dict.
         """
@@ -77,19 +79,27 @@ class PacketTracker:
         """
 
         # Get packet specific crop from frame
-        crop = frame[(packet.centroid[1] - int(packet.height / 2) - self.guard):(packet.centroid[1] + int(packet.height / 2) + self.guard),
-               (packet.centroid[0] - int(packet.width / 2) - self.guard):(packet.centroid[0] + int(packet.width / 2) + self.guard)]
+        crop = frame[
+            (packet.centroid[1] - int(packet.height / 2) - self.guard) : (
+                packet.centroid[1] + int(packet.height / 2) + self.guard
+            ),
+            (packet.centroid[0] - int(packet.width / 2) - self.guard) : (
+                packet.centroid[0] + int(packet.width / 2) + self.guard
+            ),
+        ]
         crop = np.expand_dims(crop, axis=2)
         return crop
 
-    def update(self, detected_packets: list[Packet], frame: np.ndarray) -> tuple[OrderedDict, list[Packet]]:
+    def update(
+        self, detected_packets: list[Packet], frame: np.ndarray
+    ) -> tuple[OrderedDict, list[Packet]]:
         """
         Updates the currently tracked detections.
-    
+
         Args:
             detected_packets (list[Packet]): List containing detected packet objects to be tracked.
             frame (np.ndarray): Image frame.
-    
+
         Returns:
             OrderedDict: Ordered dictionary with tracked detections.
             list[Packet]: List of packets that were deregistered.
@@ -125,7 +135,9 @@ class PacketTracker:
         else:
             # grab the set of object IDs and corresponding centroids
             objectIDs = list(self.packets.keys())
-            objectCentroids = [self.packets[key].centroid for key in list(self.packets.keys())]
+            objectCentroids = [
+                self.packets[key].centroid for key in list(self.packets.keys())
+            ]
             inputCentroids = [packet.centroid for packet in detected_packets]
             # compute the distance between each pair of object
             # centroids and input centroids, respectively -- our
@@ -171,7 +183,9 @@ class PacketTracker:
                 crop = self.get_crop_from_frame(self.packets[objectID], frame)
 
                 if crop.shape[0:2] == self.packets[objectID].depth_maps[:, :, 0].shape:
-                    self.packets[objectID].depth_maps = np.concatenate((self.packets[objectID].depth_maps, crop), axis=2)
+                    self.packets[objectID].depth_maps = np.concatenate(
+                        (self.packets[objectID].depth_maps, crop), axis=2
+                    )
 
                 # indicate that we have examined each of the row and
                 # column indexes, respectively
