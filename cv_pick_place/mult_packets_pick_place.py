@@ -216,7 +216,7 @@ def draw_frame(image_frame: np.ndarray,
 
 
 def process_key_input(key: int,
-                      control_pipe: multiprocessing.Pipe,
+                      control_pipe: multiprocessing.connection.PipeConnection,
                       toggles_dict: dict,
                       is_rob_ready: bool) -> tuple[bool, dict]:
     """
@@ -224,7 +224,7 @@ def process_key_input(key: int,
 
     Args:
         key (int): ID of pressed key.
-        control_pipe (multiprocessing.Pipe): Multiprocessing pipe object for sending commands to RobotControl object process.
+        control_pipe (multiprocessing.connection.PipeConnection): Multiprocessing pipe object for sending commands to RobotControl object process.
         toggles_dict (dict): Dictionary of toggle variables for indication and control.
         is_rob_ready (bool): Shows if robot is ready.
 
@@ -292,9 +292,9 @@ def main_multi_packets(rob_dict: dict,
                        paths: dict,
                        files: dict,
                        check_point: str,
-                       info_dict: dict,
-                       encoder_pos_m: multiprocessing.value,
-                       control_pipe: multiprocessing.pipe) -> None:
+                       info_dict: multiprocessing.managers.DictProxy,
+                       encoder_pos_m: multiprocessing.managers.ValueProxy,
+                       control_pipe: multiprocessing.connection.PipeConnection) -> None:
     """
     Process for pick and place with moving conveyor and point cloud operations.
     
@@ -303,9 +303,9 @@ def main_multi_packets(rob_dict: dict,
         paths (dict): Deep detector parameter.
         files (dict): Deep detector parameter.
         check_point (string): Deep detector parameter.
-        info_dict (dict): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
-        encoder_pos_m (multiprocessing.value): Value object from multiprocessing Manager for reading encoder value from another process.
-        control_pipe (multiprocessing.pipe): Multiprocessing pipe object for sending commands to RobotControl object process.
+        info_dict (multiprocessing.managers.DictProxy): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
+        encoder_pos_m (multiprocessing.managers.ValueProxy): Value object from multiprocessing Manager for reading encoder value from another process.
+        control_pipe (multiprocessing.connection.PipeConnection): Multiprocessing pipe object for sending commands to RobotControl object process.
     """
 
     # Load home position from dictionary

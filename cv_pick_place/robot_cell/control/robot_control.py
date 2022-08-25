@@ -1,4 +1,5 @@
 import time
+import multiprocessing
 from enum import Enum
 from collections import OrderedDict
 
@@ -648,7 +649,7 @@ class RobotControl(RobotCommunication):
                 # Start robot program
                 self.start_program()
 
-    def control_server(self, pipe):
+    def control_server(self, pipe: multiprocessing.connection.PipeConnection):
         """
         Process to set values on PLC server.
         Periodically check for input commands from main process.
@@ -662,7 +663,7 @@ class RobotControl(RobotCommunication):
         (example: control_pipe.send(RcData(RcCommand.NEW_COMMAND, data)))
 
         Args:
-            pipe (multiprocessing.Pipe): Sends data to another thread.
+            pipe (multiprocessing.connection.PipeConnection): Sends data to another thread.
         """
 
         # Connect server and get nodes

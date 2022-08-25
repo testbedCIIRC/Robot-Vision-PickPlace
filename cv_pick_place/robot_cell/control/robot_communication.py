@@ -323,14 +323,14 @@ class RobotCommunication:
                 print('[INFO] OPCUA disconnected')
                 break
 
-    def encoder_server(self, encoder_pos: multiprocessing.value):
+    def encoder_server(self, encoder_pos: multiprocessing.managers.ValueProxy):
         """
         Process to get encoder value from PLC server.
         Periodically reads encoder value from PLC and writes it into 'encoder_pos.value',
         which is variable read at the same time in the main process.
 
         Args:
-            encoder_pos (multiprocessing.value): Value which is used to pass data between threads.
+            encoder_pos (multiprocessing.managers.ValueProxy): Value which is used to pass data between threads.
         """
 
         # Connect server and get nodes

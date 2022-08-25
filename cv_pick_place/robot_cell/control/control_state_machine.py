@@ -32,9 +32,9 @@ class RobotStateMachine:
     """
     
     def __init__(self,
-                 control_pipe: multiprocessing.pipe,
+                 control_pipe: multiprocessing.connection.PipeConnection,
                  gripper_pose_estimator: GripPositionEstimation,
-                 encoder_pos_m: multiprocessing.value,
+                 encoder_pos_m: multiprocessing.managers.ValueProxy,
                  home_xyz_coords: np.array,
                  constants: dict = CONSTANTS,
                  verbose: bool = False) -> None:
@@ -42,9 +42,9 @@ class RobotStateMachine:
         RobotStateMachine object constructor.
 
         Args:
-            control_pipe (multiprocessing.pipe): Multiprocessing pipe object for sending commands to RobotControl object process.
+            control_pipe (multiprocessing.connection.PipeConnection): Multiprocessing pipe object for sending commands to RobotControl object process.
             gripper_pose_estimator (GripPositionEstimation): Object for estimating best gripping positions of detected objects.
-            encoder_pos_m (multiprocessing.value): Value object from multiprocessing Manager for reading encoder value from another process.
+            encoder_pos_m (multiprocessing.managers.ValueProxy): Value object from multiprocessing Manager for reading encoder value from another process.
             home_xyz_coords (np.array): Numpy array of home position coordinates.
             constants (dict): Dictionary of constants defining behaviour of the state machine.
             verbose (bool): If extra information should be printed to the console.
