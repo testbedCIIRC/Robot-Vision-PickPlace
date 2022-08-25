@@ -9,8 +9,8 @@ from robot_cell.control.robot_control import RcData
 from robot_cell.control.robot_control import RcCommand
 from robot_cell.packet.packet_object import Packet
 from robot_cell.packet.grip_position_estimation import GripPositionEstimation
-from mult_packets_pick_place import drawText
-from mult_packets_pick_place import colorizeDepthFrame
+from robot_cell.graphics_functions import drawText
+from robot_cell.graphics_functions import colorizeDepthFrame
 
 # Default pick place constants
 CONSTANTS = {
