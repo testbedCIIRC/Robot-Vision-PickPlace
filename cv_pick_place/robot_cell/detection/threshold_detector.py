@@ -1,10 +1,7 @@
-from struct import pack
 import numpy as np
 import cv2
 
-from robot_cell.packet.item_object import Item
 from robot_cell.packet.packet_object import Packet
-from robot_cell.functions import *
 
 # Workstation with json camera config
 # White:
@@ -17,9 +14,31 @@ from robot_cell.functions import *
 # Frame bounds: 133
 
 class ThresholdDetector:
-    def __init__(self, ignore_vertical_px = 60, ignore_horizontal_px = 10, max_ratio_error = 0.1,
-                       white_lower = [40, 0, 90], white_upper = [140, 255, 255],
-                       brown_lower = [5, 20, 70], brown_upper = [35, 255, 255]):
+    """
+    Detects white and brown packets in image using HSV threasholding.
+    """
+
+    def __init__(self,
+                 ignore_vertical_px: int = 60,
+                 ignore_horizontal_px: int = 10,
+                 max_ratio_error: float = 0.1,
+                 white_lower: list[int] = [40, 0, 90],
+                 white_upper: list[int] = [140, 255, 255],
+                 brown_lower: list[int] = [5, 20, 70],
+                 brown_upper: list[int] = [35, 255, 255]) -> None:
+        """
+        ThresholdDetector object constructor.
+
+        Args:
+            ignore_vertical_px (int): Number of rows of pixels ignored from top and bottom of the image frame.
+            ignore_horizontal_px (int): Number of columns of pixels ignored from left and right of the image frame.
+            max_ratio_error (float): Checking squareness of the packet allows the ratio of packet sides to be off by this ammount.
+            white_lower (list[int]): List of 3 values representing Hue, Saturation, Value bottom threshold for white color.
+            white_upper (list[int]): List of 3 values representing Hue, Saturation, Value top threshold for white color.
+            brown_lower (list[int]): List of 3 values representing Hue, Saturation, Value bottom threshold for brown color.
+            brown_upper (list[int]): List of 3 values representing Hue, Saturation, Value top threshold for brown color.
+        """
+
         self.detected_objects = []
         self.homography_matrix = None
         self.homography_determinant = None
@@ -35,11 +54,30 @@ class ThresholdDetector:
         self.brown_lower = np.array([brown_lower])
         self.brown_upper = np.array([brown_upper])
         
-    def set_homography(self, homography_matrix):
+    def set_homography(self, homography_matrix: np.ndarray) -> None:
+        """
+        Sets the homography matrix and calculates its determinant.
+
+        Args:
+            homography_matrix(np.ndarray): Homography matrix.
+        """
+
         self.homography_matrix = homography_matrix
         self.homography_determinant = np.linalg.det(homography_matrix[0:2, 0:2])
         
-    def get_packet_from_contour(self, contour, type, encoder_pos):
+    def get_packet_from_contour(self, contour: np.array, type: int, encoder_pos: float) -> Packet:
+        """
+        Creates Packet object from a contour.
+
+        Args:
+            contour (np.array): Array of x, y coordinates making up the contour of some area.
+            type (int): Type of the packet.
+            encoder_pos (float): Position of the encoder.
+
+        Returns:
+            Packet: Created Packet object
+        """
+
         rectangle = cv2.minAreaRect(contour)
         centroid = (int(rectangle[0][0]), int(rectangle[0][1]))
         box = np.int0(cv2.boxPoints(rectangle))
@@ -62,7 +100,23 @@ class ThresholdDetector:
 
         return packet
 
-    def draw_packet_info(self, image_frame, packet, encoder_position, draw_box = True):
+    def draw_packet_info(self,
+                         image_frame: np.ndarray,
+                         packet: Packet,
+                         encoder_position: float,
+                         draw_box: bool = True) -> np.ndarray:
+        """
+        Draws information about a packet into image.
+
+        Args:
+            image_frame (np.ndarray): Image into which the information should be drawn.
+            packet (Packet): Packet object whose information should be drawn.
+            encoder_position (float): Position of the encoder.
+            draw_box (bool): If bounding and min area boxes should be drawn.
+
+        Returns:
+            np.ndarray: Image frame with information drawn into it.
+        """
         if draw_box:
             # Draw bounding rectangle
             cv2.rectangle(image_frame, 
@@ -83,7 +137,26 @@ class ThresholdDetector:
 
         return image_frame
         
-    def detect_packet_hsv(self, rgb_frame, encoder_position, draw_box = True, image_frame = None):
+    def detect_packet_hsv(self,
+                          rgb_frame: np.ndarray,
+                          encoder_position: float,
+                          draw_box: bool = True,
+                          image_frame: np.ndarray = None) -> tuple[np.ndarray, list[Packet], np.ndarray]:
+        """
+        Detects packets using HSV thresholding in an image.
+
+        Args:
+            rgb_frame (np.ndarray): RGB frame in which packets should be detected.
+            encoder_position (float): Position of the encoder.
+            draw_box (bool): If bounding and min area boxes should be drawn.
+            image_frame (np.ndarray): Image frame into which information should be drawn.
+
+        Returns:
+            np.ndarray: Image frame with information drawn into it.
+            list[Packet]: List of detected packets.
+            np.ndarray: Binary detection mask.
+        """
+
         self.detected_objects = []
         
         if self.homography_determinant is None:
@@ -173,7 +246,16 @@ class ThresholdDetector:
         bin_mask = mask.astype(bool)
         return image_frame, self.detected_objects, bin_mask
 
-    def draw_hsv_mask(self, image_frame):
+    def draw_hsv_mask(self, image_frame: np.ndarray) -> np.ndarray:
+        """
+        Draws binary HSV mask into image frame.
+
+        Args:
+            image_frame (np.ndarray): Image frame into which the mask should be drawn.
+
+        Returns:
+            np.ndarray: Image frame with information drawn into it.
+        """
         frame_height = image_frame.shape[0]
         frame_width = image_frame.shape[1]
         

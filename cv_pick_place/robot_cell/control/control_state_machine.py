@@ -1,120 +1,157 @@
+import multiprocessing
+import multiprocessing.connection
+import multiprocessing.managers
+
 import numpy as np
-from robot_cell.functions import *
+import cv2
+
 from robot_cell.control.robot_control import RcData
 from robot_cell.control.robot_control import RcCommand
-from numpy.linalg import inv
+from robot_cell.packet.packet_object import Packet
+from robot_cell.packet.grip_position_estimation import GripPositionEstimation
+from robot_cell.graphics_functions import drawText
+from robot_cell.graphics_functions import colorizeDepthFrame
 
 # Default pick place constants
 CONSTANTS = {
-                'FRAMES_LIM' : 10, # Max frames object must be tracked to start pick & place
-                'PACK_DEPTHS' : [10.0, 3.0, 5.0, 5.0], # Predefined packet depths, index corresponds to type of packet.
-                'MIN_PICK_DISTANCE' : 600,  # Minimal x position in mm for packet picking
-                'MAX_PICK_DISTANCE' : 1900, # Maximal x position in mm for packet picking
-                'Z_OFFSET' : 50.0, # Z height offset from pick height for all positions except for pick position
-                'X_PICK_OFFSET' : 140, # X offset between prepick and pick position
-                'GRIP_TIME_OFFSET' : 400,  # X offset from current packet position to prepick position
-                'PICK_START_X_OFFSET' : 25, # Offset between robot and packet for starting the pick move
-                'MAX_Z' : 500,
-                'MIN_Y' : 45.0,
-                'MAX_Y' : 470.0
-            }
+    'FRAMES_LIM' : 10, # Max frames object must be tracked to start pick & place
+    'PACK_DEPTHS' : [10.0, 3.0, 5.0, 5.0], # Predefined packet depths, index corresponds to type of packet.
+    'MIN_PICK_DISTANCE' : 600,  # Minimal x position in mm for packet picking
+    'MAX_PICK_DISTANCE' : 1900, # Maximal x position in mm for packet picking
+    'Z_OFFSET' : 50.0, # Z height offset from pick height for all positions except for pick position
+    'X_PICK_OFFSET' : 140, # X offset between prepick and pick position
+    'GRIP_TIME_OFFSET' : 400,  # X offset from current packet position to prepick position
+    'PICK_START_X_OFFSET' : 25, # Offset between robot and packet for starting the pick move
+    'MAX_Z' : 500,
+    'MIN_Y' : 45.0,
+    'MAX_Y' : 470.0
+}
+
 
 class RobotStateMachine:
-    """ State machine for robot control
     """
-    def __init__(self, control_pipe, gripper_pose_estimator, encoder_pos_m, home_xyz_coords, constants = CONSTANTS, verbose = False):
-            # input
-            self.cp = control_pipe
-            self.gpe = gripper_pose_estimator # Class for estimating gripper angles
-            self.enc_pos = encoder_pos_m
-            self.home_xyz_coords = home_xyz_coords
-            self.verbose = verbose
-            self.constants = constants
-            # init
-            self.state = 'READY'
-            self.pick_list = []
-            self.prepick_xyz_coords = []
-            self.is_in_home_pos = False
-            self.packet_to_pick = None
-            self.trajectory_dict = {}            
-
-
-    def _add_to_pick_list(self, registered_packets, encoder_vel):
-        """Add packets which have been tracked for FRAMES_LIM frames to the pick list
+    State machine for robot control.
+    """
+    
+    def __init__(self,
+                 control_pipe: multiprocessing.connection.PipeConnection,
+                 gripper_pose_estimator: GripPositionEstimation,
+                 encoder_pos_m: multiprocessing.managers.ValueProxy,
+                 home_xyz_coords: np.array,
+                 constants: dict = CONSTANTS,
+                 verbose: bool = False) -> None:
+        """
+        RobotStateMachine object constructor.
 
         Args:
-            pick_list (list[packets]): list of packets ready to be picked
-            registered_packets (list[packet_object]): List of tracked packet objects
-            encoder_vel (double): encoder velocity
+            control_pipe (multiprocessing.connection.PipeConnection): Multiprocessing pipe object for sending commands to RobotControl object process.
+            gripper_pose_estimator (GripPositionEstimation): Object for estimating best gripping positions of detected objects.
+            encoder_pos_m (multiprocessing.managers.ValueProxy): Value object from multiprocessing Manager for reading encoder value from another process.
+            home_xyz_coords (np.array): Numpy array of home position coordinates.
+            constants (dict): Dictionary of constants defining behaviour of the state machine.
+            verbose (bool): If extra information should be printed to the console.
         """
+
+        # Init variables
+        self.state = 'READY'
+        self.pick_list = []
+        self.prepick_xyz_coords = []
+        self.is_in_home_pos = False
+        self.packet_to_pick = None
+        self.trajectory_dict = {}
+
+        # Init variables from inputs
+        self.cp = control_pipe
+        self.gpe = gripper_pose_estimator
+        self.enc_pos = encoder_pos_m
+        self.home_xyz_coords = home_xyz_coords
+        self.verbose = verbose
+        self.constants = constants
+
+    def _add_to_pick_list(self, registered_packets: list[Packet], encoder_vel: float) -> None:
+        """
+        Add packets which have been tracked for FRAMES_LIM frames to the pick list.
+
+        Args:
+            registered_packets (list[Packet]): List of tracked packet objects.
+            encoder_vel (float): Encoder velocity.
+        """
+
         # When speed of conveyor more than -100 it is moving to the left
         is_conv_mov = encoder_vel < - 100.0
 
-        # Add to pick list
-        # If packets are being tracked.
+        # If at least one packet is being tracked
         if registered_packets:
-            # If the conveyor is moving to the left direction.
+            # If the conveyor is moving to the left direction
             if is_conv_mov:
-                # Increase counter of frames with detections.
+                # Increase counter of frames with detections
                 for packet in registered_packets:
                     packet.track_frame += 1
-                    # If counter larger than limit, and packet not already in pick list.
+                    # If number of frames the packet is tracked for is larger than limit, and packet is not already in pick list
                     if packet.track_frame > self.constants['FRAMES_LIM'] and not packet.in_pick_list:
                         print("[INFO]: Add packet ID: {} to pick list".format(str(packet.id)))
-                        # Add to pick list.
+                        # Add packet to pick list
                         packet.in_pick_list = True
                         self.pick_list.append(packet)
 
-
-    def _prep_pick_list(self, homography):
+    def _prep_pick_list(self, homography: np.ndarray) -> list[int]:
         """
         Prepare the list for choosing a packet by updating packet positions
         and removing packets which are too far.
 
         Args:
-            pick_list (list): List of packets ready to be picked, contains packet type objects
-            homography (numpy.ndarray): Homography matrix
+            homography (np.ndarray): Homography matrix.
+        
         Returns:
-            pick_list: (list): Updated pick list
-            pick_list_positions (list[int]): List of current position of packets
+            pick_list_positions (list[int]): List of current positions of packets.
         """
+
+        # Read and check encoder position
         encoder_pos = self.enc_pos.value
         if encoder_pos is None:
-            return [], []
+            return []
+
         # Update pick list to current positions
         for packet in self.pick_list:
             x, y  = packet.getCentroidFromEncoder(encoder_pos)
             packet.set_centroid(x, y, homography)
+
         # Get list of current world x coordinates
         pick_list_positions = np.array([packet.centroid_mm.x for packet in self.pick_list])
+
         # If item is too far remove it from list
         is_valid_position = pick_list_positions < self.constants['MAX_PICK_DISTANCE'] - self.constants['GRIP_TIME_OFFSET'] - 1.5*self.constants['X_PICK_OFFSET']
         self.pick_list = np.ndarray.tolist(np.asanyarray(self.pick_list)[is_valid_position])     
         pick_list_positions = pick_list_positions[is_valid_position]
+
         return pick_list_positions
 
-
-    def _offset_packet_depth_by_x(self, pick_pos_x, packet_z):
+    def _offset_packet_depth_by_x(self, pick_pos_x: int, packet_z: int) -> float:
         """
         Change the z position for picking based on the position on the belt, because the conveyor belt is tilted.
 
         Args:
-            pick_pos_x (int): X coordinate for picking in mm
-            packet_z (int): Callculated depth
+            pick_pos_x (int): X coordinate for picking in millimeters.
+            packet_z (int): Calculated distance of packet from camera.
+
+        Returns:
+            offset_z (float): Offset z position.
         """
-        offset = 6e-6*(pick_pos_x*pick_pos_x)  - 0.0107*pick_pos_x + 4.2933
-        return packet_z + offset
 
+        offset = 6e-6 * (pick_pos_x ** 2) - 0.0107 * pick_pos_x + 4.2933
+        offset_z = packet_z + offset
+        return offset_z
 
-    def _draw_depth_map(self, packet, depth, pick_point):
+    def _draw_depth_map(self, packet: Packet, depth: float, pick_point: tuple[float, float]) -> None:
         """ 
-        Draw depth map used for grip estimation. And position and depth of the grip.
+        Draw depth map, position and depth of the grip used for grip estimation.
 
         Args:
-            packet (Packet): Used packet object
-            depth (float): Pick depth
-            pick_point (tuple(floats)): relative pick position in image
+            packet (Packet): Used packet object.
+            depth (float): Pick depth.
+            pick_point (tuple[float, float]): Relative pick position in image.
         """
+
         if packet.avg_depth_crop is not None:
             image_frame = colorizeDepthFrame(packet.avg_depth_crop)
             img_height, img_width, frame_channel_count = image_frame.shape
@@ -131,17 +168,17 @@ class RobotStateMachine:
             image_frame = cv2.resize(image_frame, (500, 500))
             cv2.imshow("Pick Pos", image_frame)
 
-
-    def _get_pick_positions(self, packet_to_pick, homography):
+    def _get_pick_positions(self, packet_to_pick: Packet) -> dict:
         """
-        Get dictionary of parameters for changing trajectory
+        Get dictionary of parameters for changing trajectory.
 
         Args:
-            packet_to_pick (packet): Packet choosen for picking
-            homography (numpy.ndarray): Homography matrix.
+            packet_to_pick (Packet): Packet choosen for picking.
+
         Returns:
-            trajectory_dict (dict): Dictionary of parameters for changing trajectory 
+            trajectory_dict (dict): Dictionary of parameters for changing trajectory .
         """
+
         # Set positions and Start robot
         packet_x,pick_pos_y = packet_to_pick.centroid_mm
         pick_pos_x = packet_x + self.constants['GRIP_TIME_OFFSET']
@@ -161,7 +198,7 @@ class RobotStateMachine:
                     \n\tz position: {pick_pos_z:.2f}\n\tRPY angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}")
             pick_pos_y += shift_y
         else: 
-            # no pick position has been found, skip packet
+            # No pick position has been found, skip packet
             return None
 
         # Check if x is range
@@ -172,7 +209,7 @@ class RobotStateMachine:
         pick_pos_z = self._offset_packet_depth_by_x(pick_pos_x, pick_pos_z)
         
         self._draw_depth_map(packet_to_pick, pick_pos_z, pick_point)
-        # Change end points of robot.   
+        # Change end points of robot
         trajectory_dict = {
             'x': pick_pos_x,
             'y': pick_pos_y,
@@ -185,103 +222,111 @@ class RobotStateMachine:
             'c': yaw,
             'z_offset': self.constants['Z_OFFSET'],
             'shift_x': shift_x
-            }
+        }
 
         return trajectory_dict
 
-
-    def _start_program(self, pick_list_positions, homography):
+    def _start_program(self, pick_list_positions: np.ndarray) -> tuple[Packet, dict]:
         """
-        Choose a packet from pick list, set trajectory and start programm.
+        Choose a packet from pick list, set trajectory and start program.
         
         Args:
-            pick_list_positions (numpy.ndarray[float64]): List of current x positions for items in pick list
-            homography (numpy.ndarray): Homography matrix.
-            control_pipe (Pipe): Communication pipe between processes
+            pick_list_positions (np.ndarray): List of current x positions for items in pick list.
+
         Returns:
-            packet_to_pick (packet): Packet choosen for picking
-            trajectory_dict (dict): Dictionary of parameters for changing trajectory 
+            packet_to_pick (Packet): Packet chosen for picking.
+            trajectory_dict (dict): Dictionary of parameters for changing trajectory.
         """
+
         # Chose farthest item on belt
         pick_ID = pick_list_positions.argmax()
         packet_to_pick = self.pick_list.pop(pick_ID)
         print("[INFO]: Chose packet ID: {} to pick".format(str(packet_to_pick.id)))
 
-        trajectory_dict = self._get_pick_positions(packet_to_pick, homography)
+        trajectory_dict = self._get_pick_positions(packet_to_pick)
         if trajectory_dict: 
             # Set trajectory
             self.cp.send(RcData(RcCommand.CHANGE_SHORT_TRAJECTORY, trajectory_dict))
-            # Start robot program.
+            # Start robot program
             self.cp.send(RcData(RcCommand.START_PROGRAM, True))
 
         return packet_to_pick, trajectory_dict
 
-        
-    def _is_rob_in_pos(self, rob_pos, desired_pos):
-        """ Check if robot is in desired position
-        Args:
-            rob_pos (np.array[6]): Array of current robot positions
-            desired_pos (np.array[3]): Array of desired x,y,z position
-        Returns:
-            _type_: _description_
+    def _is_rob_in_pos(self, rob_pos: np.array, desired_pos: np.array) -> bool:
         """
-        curr_xyz_coords = np.array(rob_pos[0:3])        # get x,y,z coordinates
-        robot_dist = np.linalg.norm(desired_pos-curr_xyz_coords)
-        return robot_dist < 3
-
-
-    def run(self, homography, is_rob_ready, registered_packets, encoder_vel, pos):
-        """Run the state machine
+        Check if robot is in desired position.
 
         Args:
-            homography (numpy.ndarray): Homography matrix.
-            is_rob_ready (bool): indication if robot is ready to start
-            registered_packets (list[packets]): _description_
-            encoder_vel (double): encoder velocity
-            pos (np.ndarray): current robot position
+            rob_pos (np.array[6]): Array of current robot positions.
+            desired_pos (np.array[3]): Array of desired x, y, z position.
+
         Returns:
-            state (string): current state
+            is_in_pos (bool): True if robot is in position
+        """
+        curr_xyz_coords = np.array(rob_pos[0:3])  # Get x, y, z coordinates
+        robot_dist = np.linalg.norm(desired_pos - curr_xyz_coords)
+        is_in_pos = robot_dist < 3
+        return is_in_pos
+
+    def run(self,
+            homography: np.ndarray,
+            is_rob_ready: bool,
+            registered_packets: list[Packet],
+            encoder_vel: float,
+            pos: np.ndarray) -> str:
+        """
+        Run one iteration of the state machine.
+
+        Args:
+            homography (np.ndarray): Homography matrix.
+            is_rob_ready (bool): Indication if robot is ready to start.
+            registered_packets (list[Packet]): List of tracked packet objects.
+            encoder_vel (float): Encoder velocity.
+            pos (np.ndarray): Current robot position.
+
+        Returns:
+            state (str): Current state.
         """
         
         self._add_to_pick_list(registered_packets, encoder_vel) 
 
-        # robot is ready to recieve commands
+        # Robot is ready to recieve commands
         if self.state == "READY" and is_rob_ready and homography is not None:
             pick_list_positions = self._prep_pick_list(homography)
             # Choose a item for picking
             if self.pick_list and pick_list_positions.max() > self.constants['MIN_PICK_DISTANCE']:
                 # Select packet and start pick place opration
-                self.packet_to_pick, self.trajectory_dict = self._start_program(pick_list_positions, homography)
+                self.packet_to_pick, self.trajectory_dict = self._start_program(pick_list_positions)
                 if self.trajectory_dict:
                     # Save prepick position for use in TO_PREPICK state
                     self.prepick_xyz_coords = np.array([self.trajectory_dict['x'], self.trajectory_dict['y'], self.trajectory_dict['pack_z'] + self.constants['Z_OFFSET']])
                     self.is_in_home_pos = False
                     self.state = "TO_PREPICK"
                     if self.verbose : print("[INFO]: State: TO_PREPICK")
-            # send robot to home position if it itsn't already
+            # Send robot to home position if it isn't home already
             elif not self.is_in_home_pos:
                 self.cp.send(RcData(RcCommand.GO_TO_HOME))
                 self.state = "TO_HOME_POS"
                 if self.verbose : print("[INFO]: State: TO_HOME_POS")
 
-        # moving to home position
+        # Moving to home position
         if self.state == "TO_HOME_POS":
             if is_rob_ready and self._is_rob_in_pos(pos, self.home_xyz_coords):
                 self.is_in_home_pos = True
                 self.state = "READY"
                 if self.verbose : print("[INFO]: State: READY")
 
-        # moving to prepick position
+        # Moving to prepick position
         if self.state == "TO_PREPICK":
-            # check if robot arrived to prepick position
+            # Check if robot arrived to prepick position
             if self._is_rob_in_pos(pos, self.prepick_xyz_coords):
                 self.state = "WAIT_FOR_PACKET"
                 if self.verbose : print("[INFO]: State: WAIT_FOR_PACKET")
 
-        # waiting for packet
+        # Waiting for packet
         if self.state == "WAIT_FOR_PACKET":
             encoder_pos = self.enc_pos.value
-            # check encoder and activate robot 
+            # Check encoder and activate robot 
             x, y = self.packet_to_pick.getCentroidFromEncoder(encoder_pos)
             self.packet_to_pick.set_centroid(x, y, homography)
             packet_pos_x = self.packet_to_pick.centroid_mm.x
@@ -298,7 +343,7 @@ class RobotStateMachine:
                 self.state = "PLACING"
                 if self.verbose : print("[INFO]: State: PLACING")
 
-        # placing packet
+        # Placing packet
         if self.state == "PLACING":
             if is_rob_ready:
                 self.state = "READY"

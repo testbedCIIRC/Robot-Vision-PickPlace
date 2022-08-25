@@ -1,19 +1,24 @@
 import time
-import numpy as np
-from opcua import ua
+import multiprocessing
+import multiprocessing.connection
+import multiprocessing.managers
+
 from opcua import Client
 
 
 class RobotCommunication:
+    """
+    Class for OPCUA communication with the PLC.
+    """
+
     def __init__(self):
         """
         RobotCommunication object constructor.
-
         """
         
     def connect_OPCUA_server(self):
         """
-        Connects OPC UA Client to Server on PLC.
+        Connects OPCUA Client to Server on PLC.
 
         """
         password = "CIIRC"
@@ -24,8 +29,8 @@ class RobotCommunication:
     def get_nodes(self):
         """
         Using the client.get_node method, it gets nodes from OPCUA Server on PLC.
-
         """
+
         self.Start_Prog = self.client.get_node(
             'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."start"')
         self.Conti_Prog = self.client.get_node(
@@ -234,7 +239,7 @@ class RobotCommunication:
         self.Place_Done =  self.client.get_node(
             'ns=3;s="InstPickPlace"."instPlacePos"."Done"')
             
-    def get_robot_info(self):
+    def get_robot_info(self) -> tuple:
         """
         Reads periodically needed values from the PLC.
         To add new nodes, append requied node to the end of 'nodes' list,
@@ -242,9 +247,9 @@ class RobotCommunication:
         Acess new values with val[15] and so on.
     
         Returns:
-        tuple: Tuple of detected variables
-
+            tuple: Tuple of detected variables
         """
+
         # Define list of nodes
         nodes = [
             self.Act_Pos_X,
@@ -289,16 +294,16 @@ class RobotCommunication:
 
         return position, encoder_vel, encoder_pos, start, abort, rob_stopped, stop_active, prog_done, speed_override 
 
-    def robot_server(self, info_dict):
+    def robot_server(self, info_dict: multiprocessing.managers.DictProxy):
         """
         Process to get values from PLC server.
         Periodically reads robot info from PLC and writes it into 'info_dict',
         which is dictionary read at the same time in the main process.
 
-        Parameters:
-        pipe (multiprocessing.Pipe): Sends data to another thread
-
+        Args:
+            info_dict (multiprocessing.managers.DictProxy): Dictionary which is used to pass data between threads.
         """
+
         # Connect server and get nodes
         self.connect_OPCUA_server()
         self.get_nodes()
@@ -315,23 +320,21 @@ class RobotCommunication:
                 info_dict['stop_active'] = stop_active
                 info_dict['prog_done'] = prog_done
                 info_dict['speed_override'] = speed_override
-                
-
             except Exception as e:
                 print('[ERROR]', e)
                 print('[INFO] OPCUA disconnected')
                 break
 
-    def encoder_server(self, encoder_pos):
+    def encoder_server(self, encoder_pos: multiprocessing.managers.ValueProxy):
         """
         Process to get encoder value from PLC server.
         Periodically reads encoder value from PLC and writes it into 'encoder_pos.value',
         which is variable read at the same time in the main process.
 
-        Parameters:
-        pipe (multiprocessing.Pipe): Sends data to another thread
-
+        Args:
+            encoder_pos (multiprocessing.managers.ValueProxy): Value which is used to pass data between threads.
         """
+
         # Connect server and get nodes
         self.connect_OPCUA_server()
         self.get_nodes()

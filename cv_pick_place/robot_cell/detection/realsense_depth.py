@@ -1,16 +1,35 @@
-import pyrealsense2 as rs
-import numpy as np
 import json
 import time
+
 import cv2
+import numpy as np
+import pyrealsense2 as rs
 
 
 class IntelConfig:
-    def __init__(self, config_path):
+    """
+    Class for loading json config file into depth camera.
+    """
+
+    def __init__(self, config_path: str):
+        """
+        IntelConfig object constructor.
+
+        Args:
+            config_path (str): Path to the config file.
+        """
+
         self.DS5_product_ids = ["0AD1", "0AD2", "0AD3", "0AD4", "0AD5", "0AF6", "0AFE", "0AFF", "0B00", "0B01", "0B03", "0B07", "0B3A", "0B5C"]
         self.config_path = config_path
 
     def find_device_that_supports_advanced_mode(self):
+        """
+        Searches devices connected to the PC for one compatible with advanced mode.
+
+        Returns:
+            rs.device: RealSense device.
+        """
+
         ctx = rs.context()
         devices = ctx.query_devices()
         for dev in devices:
@@ -22,6 +41,13 @@ class IntelConfig:
         raise Exception("No device that supports advanced mode was found")
 
     def open_camera(self):
+        """
+        Loads json config file into the camera.
+
+        Returns:
+            rs.pipeline: Pipeline object which can be used to reads frames from camera.
+        """
+
         # Open camera in advanced mode
         dev = self.find_device_that_supports_advanced_mode()
         advnc_mode = rs.rs400_advanced_mode(dev)
@@ -46,7 +72,20 @@ class IntelConfig:
 
 
 class DepthCamera:
+    """
+    Class for connecting to and reading images from Inteal RealSense depth camera.
+    """
+
     def __init__(self, config_path = 'D435_camera_config_defaults.json', recording_path = 'recording_2022_07_13.npy', recording_fps = 5):
+        """
+        IntelConfig object constructor.
+
+        Args:
+            config_path (str): Path to the config file.
+            recording_path (str): Path to a recording file, in case no camera is detected.
+            recording_fps (int): FPS of the recording.
+        """
+        
         # Check if any RealSense camera is connected
         ctx = rs.context()
         devices = ctx.query_devices()
@@ -108,6 +147,16 @@ class DepthCamera:
             self.clahe = cv2.createCLAHE(clipLimit=20.0, tileGridSize=(5, 5))
 
     def get_frame(self):
+        """
+        Reads and processes frame from connected camera.
+
+        Returns:
+            bool: True if frame was succesfully read
+            np.ndarray: RGB frame
+            np.ndarray: Depth frame
+            np.ndarray: Colorized depth frame
+        """
+
         frames = self.pipeline.wait_for_frames()
 
         depth_frame = frames.get_depth_frame()
@@ -127,12 +176,31 @@ class DepthCamera:
         return True, depth_image, color_image, colorized_depth
 
     def get_aligned_frame(self):
+        """
+        Gets a frame from either a camera or a recording, if no camera was found.
+
+        Returns:
+            bool: True if frame was succesfully read
+            np.ndarray: RGB frame
+            np.ndarray: Depth frame
+            np.ndarray: Colorized depth frame
+        """
         if self.is_camera_connected:
             return self.camera_frame_function()
         else:
             return self.recorded_frame_function()
 
     def camera_frame_function(self):
+        """
+        Reads and processes frame from connected camera.
+
+        Returns:
+            bool: True if frame was succesfully read
+            np.ndarray: RGB frame
+            np.ndarray: Depth frame
+            np.ndarray: Colorized depth frame
+        """
+
         frameset = self.pipeline.wait_for_frames()
         frameset = self.align.process(frameset)
 
@@ -154,6 +222,16 @@ class DepthCamera:
         return True, depth_frame, color_frame, colorized_depth_frame
 
     def recorded_frame_function(self):
+        """
+        Reads and processes frame from a recording.
+
+        Returns:
+            bool: True if frame was succesfully read
+            np.ndarray: RGB frame
+            np.ndarray: Depth frame
+            np.ndarray: Colorized depth frame
+        """
+
         # Block until time is right
         while time.time_ns() - self.last_time_ns < self.frame_delay_ns:
             time.sleep(0.001)
@@ -177,5 +255,9 @@ class DepthCamera:
         return True, depth_frame, rgb_frame, colorized_depth_frame
 
     def release(self):
+        """
+        Disconnects the camera.
+        """
+
         if self.is_camera_connected:
             self.pipeline.stop()

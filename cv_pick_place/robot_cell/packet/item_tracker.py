@@ -1,19 +1,24 @@
-from math import sqrt
-from scipy.spatial import distance as dist
-from collections import OrderedDict
 import numpy as np
+from scipy.spatial import distance as dist
+
+from robot_cell.packet.packet_object import Packet
+
 
 class ItemTracker:
-    def __init__(self, max_disappeared_frames = 10, guard = 250, max_item_distance = 200):
+    """
+    Class for tracking packets between frames.
+    """
+
+    def __init__(self, max_disappeared_frames: int = 10, guard: int = 250, max_item_distance: int = 200):
         """
         ItemTracker object constructor.
-    
-        Parameters:
-        max_disappeared_frames (int): Maximum number of frames before deregister.
-        guard (int): When packet depth is cropped, the resulting crop will have 'guard' extra pixels on each side
-        max_item_distance (int): Maximal distance which packet can travel when it disappears in frame pixels
 
+        Args:
+            max_disappeared_frames (int): Maximum number of frames before deregister.
+            guard (int): When packet depth is cropped, the resulting crop will have 'guard' extra pixels on each side.
+            max_item_distance (int): Maximal distance which packet can travel when it disappears in frame pixels.
         """
+
         self.item_database = []
         self.next_item_id = 0
 
@@ -21,44 +26,44 @@ class ItemTracker:
         self.max_disappeared_frames = max_disappeared_frames
         self.guard = guard
 
-    def register_item(self, item):
+    def register_item(self, item: Packet):
         """
-        Adds new item into database
+        Adds new item into database.
 
-        Parameters:
-        item (Item): New item object which should be added to the database
-
+        Args:
+            item (Packet): New packet object which should be added to the database.
         """
+
         item.id = self.next_item_id
         item.disappeared = 0
         self.next_item_id += 1
         self.item_database.append(item)
 
-    def deregister_item(self, id):
+    def deregister_item(self, id: int):
         """
-        Removes item with matching id from tracking database
+        Removes item with matching id from tracking database.
 
-        Parameters:
-        id (int): New item object whose parameters are transferred
-
+        Args:
+            id (int): New item object whose parameters are transferred.
         """
+
         for tracked_item_index, tracked_item in enumerate(self.item_database):
             if tracked_item.id == id:
                 del self.item_database[tracked_item_index]
                 break
 
-    def update_item(self, new_item, tracked_item):
+    def update_item(self, new_item: Packet, tracked_item: Packet) -> Packet:
         """
-        Updates parameters of single tracked item with those of new item
+        Updates parameters of single tracked packet with those of a new packet.
 
-        Parameters:
-        new_item (Item): New item object whose parameters are transferred
-        tracked_item (Item): Item object whose parameters are updated
+        Args:
+            new_item (Packet): New packet object whose parameters are transferred.
+            tracked_item (Packet): Packet object whose parameters are updated.
         
-        Output:
-        tracked_item (Item): Updated tracked item object
-
+        Returns:
+            tracked_item (Packet): Updated tracked packet object.
         """
+
         if tracked_item.id != new_item.id:
             print("[WARNING] Tried to update two items with different IDs together")
             return
@@ -83,15 +88,14 @@ class ItemTracker:
 
         return tracked_item
 
-    def update_item_database(self, labeled_item_list):
+    def update_item_database(self, labeled_item_list: list[Packet]):
         """
         Update tracked item database using labeled detected items.
         When item has id of None, it is registered as new item.
         When item has same id already tracked item, the tracked item is updated with detected parameters.
 
-        Parameters:
-        labeled_item_list (List[Item]): List of detected Item objects with id == id of nearest tracked item
-        
+        Args:
+            labeled_item_list (list[Packet]): List of detected Packet objects with id == id of nearest tracked item.
         """
 
         # Increment disappeared frame on all items
@@ -115,46 +119,46 @@ class ItemTracker:
             if tracked_item.disappeared > self.max_disappeared_frames:
                 self.deregister_item(tracked_item.id)
 
-    def track_items(self, detected_item_list):
+    def track_items(self, detected_item_list: list[Packet]) -> list[Packet]:
         """
         Labels input items with IDs from tracked item database, depending on distance.
 
-        Parameters:
-        detected_item_list (List[Item]): List of detected Item objects with id == None
+        Args:
+            detected_item_list (list[Packet]): List of detected Item objects with id == None.
 
-        Output:
-        labeled_item_list (List[Item]): List of detected Item objects with id == id of nearest tracked item
-
+        Returns:
+            labeled_item_list (list[Packet]): List of detected Item objects with id == id of nearest tracked item.
         """
+
         labeled_item_list = detected_item_list
-        # if no packets are being detected or tracked
+        # If no packets are being detected or tracked
         if len(detected_item_list) == 0 or len(self.item_database) == 0:
             return labeled_item_list
         else:
-            # create a list of tracked and detected centroids
+            # Create a list of tracked and detected centroids
             trackedCentroids = [item.centroid_px for item in self.item_database]
             detectCentroids = [item.centroid_px for item in detected_item_list]
-            # compute the distance between each pair of items
+            # Compute the distance between each pair of items
             distances = dist.cdist(np.array(trackedCentroids), np.array(detectCentroids))
-            # sort tracked items (rows) by minimal distance
+            # Sort tracked items (rows) by minimal distance
             tracked = distances.min(axis=1).argsort()
-            # sort detected items (columns) by minimal distance
+            # Sort detected items (columns) by minimal distance
             detected = distances.argmin(axis=1)[tracked]
 
             usedTracked = set()
             usedDetected = set()
-            # loop over the combination of the (row, column) index, starting from minimal distances
+            # Loop over the combination of the (row, column) index, starting from minimal distances
             for (trac, det) in zip(tracked, detected):
-                # ignore already used items
+                # Ignore already used items
                 if trac in usedTracked or det in usedDetected:
                     continue
-                # if assigned distance is too far, ignore it
+                # If assigned distance is too far, ignore it
                 if distances[trac, det] > self.max_item_distance:
                     continue
-                # assign id to detected item
+                # Assign id to detected item
                 labeled_item_list[det].id = self.item_database[trac].id
 
-                # indicate which items were used
+                # Indicate which items were used
                 usedTracked.add(trac)
                 usedDetected.add(det)
 

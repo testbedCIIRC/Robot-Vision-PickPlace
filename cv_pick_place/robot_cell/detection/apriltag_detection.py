@@ -1,13 +1,18 @@
 import json
-import cv2 
+
+import cv2
 import numpy as np
 
 
 class ProcessingApriltag:
+    """
+    Class for finding April Tags in image and calculating a homography matrix
+    which transforms coordinates in pixels to coordinates defined by detected April Tags.
+    """
+    
     def __init__(self):
         """
-        ProcessingApriltag object constructor. Initializes data containers.
-        
+        ProcessingApriltag object constructor.
         """
         
         self.image_points = {}
@@ -18,25 +23,25 @@ class ProcessingApriltag:
         self.tag_corner_list = None
         self.tag_id_list = None
     
-    def load_world_points(self, file_path):
+    def load_world_points(self, file_path: str):
         """
         Loads conveyor world points from a json file.
 
-        Parameters:
-        file_path (string): Path to a json file containing coordinates
-        
+        Args:
+            file_path (str): Path to a json file containing coordinates.
         """
+
         with open(file_path, 'r') as f:
             self.world_points = json.load(f) 
 
-    def compute_homog(self):
+    def compute_homog(self) -> np.ndarray:
         """
         Computes homography matrix using image and conveyor world points.
 
         Returns:
-        numpy.ndarray: Homography matrix as numpy array
-        
+            np.ndarray: Homography matrix as numpy array.
         """
+
         for tag_id in self.image_points:
             if tag_id in self.world_points:
                 self.world_points_detect.append(self.world_points[tag_id])
@@ -53,14 +58,14 @@ class ProcessingApriltag:
         
         return self.homography
 
-    def detect_tags(self, color_frame):
+    def detect_tags(self, color_frame: np.ndarray):
         """
         Detects april tags in the input image.
         
-        Parameters:
-        color_image (numpy.ndarray): Image where apriltags are to be detected
-        
+        Args:
+            color_image (np.ndarray): Image where apriltags are to be detected.
         """
+
         gray_frame = cv2.cvtColor(color_frame, cv2.COLOR_BGR2GRAY)
         (corners, ids, rejected) = cv2.aruco.detectMarkers(gray_frame,
                                                            cv2.aruco.Dictionary_get(cv2.aruco.DICT_APRILTAG_36h11),
@@ -90,17 +95,17 @@ class ProcessingApriltag:
             # Store detected points for homography computation
             self.image_points[str(int(tag_id))] = [cX, cY]
 
-    def draw_tags(self, image_frame):
+    def draw_tags(self, image_frame: np.ndarray) -> np.ndarray:
         """
         Draws detected april tags into image frame.
         
-        Parameters:
-        image_frame (numpy.ndarray): Image where apriltags are to be drawn
+        Args:
+            image_frame (np.ndarray): Image where apriltags are to be drawn.
 
         Returns:
-        numpy.ndarray: Image with drawn april tags
-
+            np.ndarray: Image with drawn april tags.
         """
+
         if not isinstance(image_frame, np.ndarray):
             print("[WARNING] Tried to draw AprilTags into something which is not numpy.ndarray image frame")
             return image_frame

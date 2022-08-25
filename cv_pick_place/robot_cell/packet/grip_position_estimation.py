@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from PIL import Image
-import cv2
 from scipy import signal
 import math 
 
@@ -14,6 +13,7 @@ from robot_cell.packet.packet_object import Packet
 M2MM = 1000.0
 EPS = 0.000000001
 
+
 class GripPositionEstimation():
     def __init__(self, visualize: bool = False, verbose: bool = False, 
                  center_switch: str = "mass", gripper_radius: float = 0.05,
@@ -21,20 +21,21 @@ class GripPositionEstimation():
                  height_th: float = -0.76, num_bins: int = 20,
                  black_list_radius:float=0.01, save_depth_array:bool = False):
         """
-        Initializes class for predicting optimal position for the gripper
-        Every unit is in meters 
+        Initializes class for predicting optimal position for the gripper.
+        Every unit is in meters.
 
-        Parameters:
-        visualize (bool): if True will visualize the results
-        verbose (bool): if True  will write some explanetions of whats happening
-        center_switch (str): "mass" or "height" - defines the center of the gripper
-        gripper_radius (float): radius of the gripper in meters
-        gripper_ration (float): ratio of gripper radius for dettecting the gripper annulus
-        max_num_tries (int): maximal number of tries to estimate the optimal position
-        height_th (float): distance between camera and belt
-        num_bins (int): number of bins for height thresholding (20 is good enough, 10 works as well)
-        black_list_radius (float): Distance for blacklisting points
+        Args:
+            visualize (bool): If True will visualize the results.
+            verbose (bool): If True will write some explanetions of whats happening.
+            center_switch (str): "mass" or "height" - defines the center of the gripper.
+            gripper_radius (float): Radius of the gripper in meters.
+            gripper_ration (float): Ratio of gripper radius for dettecting the gripper annulus.
+            max_num_tries (int): Maximal number of tries to estimate the optimal position.
+            height_th (float): Distance between camera and belt.
+            num_bins (int): Number of bins for height thresholding (20 is good enough, 10 works as well).
+            black_list_radius (float): Distance for blacklisting points.
         """
+
         self.visualization = visualize
         if self.visualization:
             print(f"[WARN]: Visualization while computing the pointcloud breaks the flow in real time")
@@ -68,16 +69,16 @@ class GripPositionEstimation():
     def _create_pcd_from_rgb_depth_frames(self, rgb_name: str, depth_name: str,
                                       path: str = "") -> o3d.geometry.PointCloud:
         """
-        Loads open3d PointCloud from rgb image and depth image stored in path into self.pcd
-        Used for development
+        Loads open3d PointCloud from rgb image and depth image stored in path into self.pcd.
+        Used for development.
 
-        Parameters:
-        rgb_name (str): name of the rgb image(.jpg)
-        depth_name (str): name of the depth image(.png)
-        path (str): path to the images
+        Args:
+            rgb_name (str): Name of the rgb image(.jpg).
+            depth_name (str): Name of the depth image(.png).
+            path (str): Path to the images.
 
         Returns: 
-        o3d.geometry.PointCloud: pointcloud
+            o3d.geometry.PointCloud: Pointcloud.
         """
 
         rgb = o3d.io.read_image(os.path.join(path, rgb_name))
@@ -93,15 +94,16 @@ class GripPositionEstimation():
 
     def _load_numpy_depth_array_from_png(self, depth_name:str) -> np.ndarray:
         """
-        Load png image and converts it to the numpy ndarray
-        Used for development
+        Load png image and converts it to the numpy ndarray.
+        Used for development.
 
-        Parameters:
-        depth_name (str): Path to the png. file with depth
+        Args:
+            depth_name (str): Path to the png file with depth.
 
         Returns:
-        np.ndarray: Depth stored in 2D numpy ndarray
+            np.ndarray: Depth stored in 2D numpy ndarray.
         """
+
         image = Image.open(depth_name)
         return np.array(image)
 
@@ -109,14 +111,15 @@ class GripPositionEstimation():
     def _create_pcd_from_depth_array(self, depth_frame:np.ndarray
                                    ) -> o3d.geometry.PointCloud:
         """
-        Loads open3d PointCloud from depthframe
+        Loads open3d PointCloud from depthframe.
 
-        Parameters:
-        depth_frame (np.ndarray): Depth values
+        Args:
+            depth_frame (np.ndarray): Depth values.
 
         Returns:
-        o3d.geometry.PointCloud: Pointcloud
+            o3d.geometry.PointCloud: Pointcloud.
         """
+
         depth = o3d.geometry.Image(np.ascontiguousarray(depth_frame).astype(np.uint16))
         pcd = o3d.geometry.PointCloud.create_from_depth_image(depth, o3d.camera.PinholeCameraIntrinsic(
                 o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
@@ -129,11 +132,12 @@ class GripPositionEstimation():
 
     def _pcd_down_sample(self, voxel_size: float = 0.01):
         """
-        Downsample PointCloud with given voxel size
+        Downsample PointCloud with given voxel size.
         
-        Parameters:
-        voxel_size (float): voxel size for downsampling
+        Args:
+            voxel_size (float): Voxel size for downsampling.
         """
+
         pcd = self.pcd.voxel_down_sample(voxel_size=voxel_size)
         self.pcd = pcd
 
@@ -141,11 +145,12 @@ class GripPositionEstimation():
     def _get_points_and_estimate_normals(self) -> tuple[np.ndarray]:
         """
         Estimates normals from PointCloud and reutrns both points coordinates and
-        their respective normals in numpy arrays
+        their respective normals in numpy arrays.
 
         Returns:
-        tuple[np.ndarray, np.ndarray] : vetex points and their normals
+            tuple[np.ndarray, np.ndarray] : Vertex points and their normals.
         """
+
         self.pcd.estimate_normals()
         self.pcd_center = self.pcd.get_center()
         self.max_bound = self.pcd.get_max_bound()
@@ -157,12 +162,13 @@ class GripPositionEstimation():
     def _visualize_frame(self,points_dict:dict, title:str=f"Points 2D") -> None:
         """
         Visualize points in 2D, firstly all points secondly all sets points from
-        points_dict, Uses key as legend and plots the numpy array values,
+        points_dict, Uses key as legend and plots the numpy array values.
 
-        Parameters:
-        points_dict (dict): Dictionary with keys used as legend and values numpy:ndarrays
-        title (str): Title of the plot
+        Args:
+            points_dict (dict): Dictionary with keys used as legend and values as numpy ndarrays.
+            title (str): Title of the plot.
         """
+
         plt.figure(2)
         plt.scatter(self.points[:, 0], self.points[:, 1])
         legend = ('All points',)
@@ -181,10 +187,10 @@ class GripPositionEstimation():
 
     def _visualize_histogram(self, n_bins:int) -> None:
         """
-        Visualizes histogram with selected threshold
+        Visualizes histogram with selected threshold.
 
-        Parameters:
-        n_bins (int): Number of bins for histogram
+        Args:
+            n_bins (int): Number of bins for histogram.
         """
         
         fig, ax = plt.subplots()
@@ -202,15 +208,17 @@ class GripPositionEstimation():
 
     def _hist_first_peak(self, th_count: int = 50) -> int:
         """
-        Finds first peak in histogram. NOT SMART
+        Finds first peak in histogram.
+        NOT SMART
         
-        Parameters:
-        th_count (int): threshold value for finding the first peak with 
-        atleast 50 count
+        Args:
+            th_count (int): Threshold value for finding the first peak with 
+                            at least 50 count.
 
         Returns:
-        float: Height threshold between belt and object
+            float: Height threshold between belt and object.
         """
+
         # assert len(self.hist.shape) == 1, "only 1D histogram"
         old = - np.inf
         s = 0
@@ -222,15 +230,16 @@ class GripPositionEstimation():
 
     def _histogram_peaks(self, num_total: int = 50) -> int:
         """
-        Finds first peak in histogram
+        Finds first peak in histogram.
         
-        Parameters:
-        th_count (int): threshold value for finding the first peak with 
-        atleast 50 count
+        Args:
+            th_count (int): Threshold value for finding the first peak with 
+                            atleast 50 count.
 
         Returns:
-        int: Height threshold between belt and object
+            int: Height threshold between belt and object.
         """
+
         peaks, _ = signal.find_peaks(self.hist[0])
         old = self.hist[0][peaks[0]]
         best_idx = peaks[0]
@@ -255,13 +264,13 @@ class GripPositionEstimation():
     def _compute_histogram_threshold(self, values: np.ndarray,
                                      number_of_bins: int = 20) -> None:
         """
-        Finds height threshold via histogram stores it in itself
+        Finds height threshold via histogram stores it in itself.
 
-        Parameters:
-        values (np.ndarray): values to be binned
-        number_of_bins (int): number of bins to be used in histogram
-
+        Args:
+            values (np.ndarray): Values to be binned.
+            number_of_bins (int): Number of bins to be used in histogram.
         """
+
         # assert len(values.shape) == 1, "Values should be 1D"
         h = np.histogram(values, bins=number_of_bins)
         self.hist = h
@@ -274,14 +283,15 @@ class GripPositionEstimation():
 
     def _get_center_of_mass(self, points: np.ndarray) -> np.ndarray:
         """
-        Get center of mass from points via approximation of mass with height (z axis)
+        Get center of mass from points via approximation of mass with height (z axis).
 
-        Parameters:
-        points (np.ndarray): 3D points for computation
+        Args:
+            points (np.ndarray): 3D points for computation.
 
         Returns:
-        np.ndarray: center of mass
+            np.ndarray: Center of mass.
         """
+
         c_mass = np.average(points[:, :2], axis=0, weights=points[:, 2]-np.min(points[:, 2]))
         dists = np.linalg.norm(points[:, :2] - c_mass, axis=1)
         idx = np.argmin(dists)
@@ -293,15 +303,16 @@ class GripPositionEstimation():
     def _project_points2plane(self, center: np.ndarray, normal:np.ndarray
                               ) -> np.ndarray:
         """
-        Projects points into the plane given by center and normal(unit normal)
+        Projects points into the plane given by center and normal (unit normal).
 
-        Parameters:
-        center (np.ndarray): center, origin of the plane, point on the plane
-        normal (np.ndarray): normal of the plane
+        Args:
+            center (np.ndarray): Center, origin of the plane, point on the plane.
+            normal (np.ndarray): Normal of the plane.
 
         Returns:
-        np.ndarray: Points projected into the plane
+            np.ndarray: Points projected into the plane.
         """
+
         dp = self.points - center
         dists = np.dot(dp, normal).reshape((-1,1))
         projected = self.points - dists*normal
@@ -310,14 +321,14 @@ class GripPositionEstimation():
     def _anuluss_mask(self, center: np.ndarray, normal:np.ndarray) -> np.ndarray:
         """
         Returns mask of pointes which are in annulus. Annulus is given by center
-        and gripper radius
+        and gripper radius.
 
-        Parameters:
-        center (np.ndarray): Center point of the annulus
-        normal (np.ndarray): Normal in the center point
+        Args:
+            center (np.ndarray): Center point of the annulus.
+            normal (np.ndarray): Normal in the center point.
         
         Returns:
-        np.ndarray: binary mask
+            np.ndarray: Binary mask.
         """
         projected = self._project_points2plane(center, normal)
         l2 = np.linalg.norm(projected-center, axis=1)
@@ -329,14 +340,14 @@ class GripPositionEstimation():
     def _circle_mask(self, center: np.ndarray, radius:float = 0.05
                      ) -> np.ndarray:
         """
-        Returns binary mask of points which are are closer to center than radius
+        Returns binary mask of points which are are closer to center than radius.
 
-        Parameters:
-        center (np.ndarray): ceneter point 
-        radius (float): radius of the circle
+        Args:
+            center (np.ndarray): Ceneter point.
+            radius (float): Radius of the circle.
 
         Returns:
-        np.ndarray: binary mask
+            np.ndarray: Binary mask.
         """
         l2 = np.linalg.norm(self.points-center, axis=1)
         return l2 <= radius
@@ -344,13 +355,13 @@ class GripPositionEstimation():
 
     def _fit_plane(self, points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
-        Fits plane to given points
+        Fits plane to given points.
         
-        Parameters:
-        points (np.ndarray): points to be fitted to plane
+        Args:
+            points (np.ndarray): Points to be fitted to plane.
 
         Returns:
-        tuple[np.ndarray, np.ndarray]: plane center and plane normal
+            tuple[np.ndarray, np.ndarray]: Plane center and plane normal.
         """
         c = points.mean(axis=0)
         A = points - c
@@ -358,12 +369,16 @@ class GripPositionEstimation():
         return c, np.linalg.svd(M)[0][:, -1]
 
 
-    def _get_candidate_point(self, center: np.ndarray, allowed:np.ndarray) -> np.ndarray:
+    def _get_candidate_point(self, center: np.ndarray, allowed:np.ndarray):
         """
-        Selects point closest to center, which is not blacklisted
-        Parameters:
-        center (np.ndarray): center of mass
-        allowed (np.ndarray): binary mask of allowed points
+        Selects point closest to center, which is not blacklisted.
+
+        Args:
+            center (np.ndarray): Center of mass.
+            allowed (np.ndarray): Binary mask of allowed points.
+
+        Returns:
+            TODO
         """
         candidate_points = self.points[allowed, :]
         candidate_normals = self.normals[allowed, :]
@@ -376,16 +391,17 @@ class GripPositionEstimation():
     def _check_point_validity(self, point: np.ndarray, normal: np.ndarray
                               ) -> bool:
         """
-        Checks if point is valid. No height spike in circlic neighborhood,
-        Check if part of the outer circle is not on the conveyer belt
+        Checks if point is valid. No height spike in circlic neighborhood.
+        Check if part of the outer circle is not on the conveyer belt.
         
-        Parameters:
-        point (np.ndarray): point to be checked
-        normal (np.ndarray): Normal in the point for the plane of aproach
+        Args:
+            point (np.ndarray): Point to be checked.
+            normal (np.ndarray): Normal in the point for the plane of aproach.
 
         Returns:
-        bool: True if point is valid, False otherwise
+            bool: True if point is valid, False otherwise.
         """
+
         # l2 (Euclidian) distance betwen point and all points projected into plane
         projected_points = self._project_points2plane(point, normal)
         l2 = np.linalg.norm(projected_points-point[:], axis=1)
@@ -430,15 +446,15 @@ class GripPositionEstimation():
                           ) -> np.ndarray:
         """
         Expands blacklist by points which are closer than radius to the given
-        point
+        point.
 
-        Parameters:
-        point (np.ndarray): center point
-        blacklist (np.ndarray): binary mask, True if it can be used, False if it is blacklisted
-        radius (float): threshold
+        Args:
+            point (np.ndarray): Center point.
+            blacklist (np.ndarray): Binary mask, True if it can be used, False if it is blacklisted.
+            radius (float): Threshold.
 
         Returns:
-        np.ndarray: updated binary mask for blacklist
+            np.ndarray: Updated binary mask for blacklist.
         """
         circle_mask = self._circle_mask(point, self.blacklist_radius)
         bl = np.logical_not(circle_mask)
@@ -451,10 +467,10 @@ class GripPositionEstimation():
         Detects points from point cloud. Firstly calculates center of mass,
         check its validity, if its good returns it, if not blacklist
         neighborhood, and selects clossest point to center of mass.
-        Checks again
+        Checks again.
 
         Returns:
-        tuple[np.ndarray, np.ndarray]: plane center and plane normal (x,y,z)
+            tuple[np.ndarray, np.ndarray]: Plane center and plane normal (x, y, z).
         """
         
         self._pcd_down_sample()
@@ -546,16 +562,17 @@ class GripPositionEstimation():
     def _get_relative_coordinates(self, point: np.ndarray, anchor: np.ndarray
                                   ) -> np.ndarray:
         """
-        Returns relative coordinates of point from center of gripper
+        Returns relative coordinates of point from center of gripper.
 
-        Parameters:
-        point (np.ndarray): point to be transformed
-        anchor (np.ndarray): relative coordinates of anchor point(center(px,py))
+        Args:
+            point (np.ndarray): Point to be transformed.
+            anchor (np.ndarray): Relative coordinates of anchor point(center(px, py)).
 
         Returns: 
-        np.ndarray: relative coordinates of point to anchor and height(px,py,z)
-                    in packet coord system
+            np.ndarray: Relative coordinates of point to anchor and height(px, py, z)
+                        in packet coord system.
         """
+
         max_bound = self.pcd.get_max_bound()
         min_bound = self.pcd.get_min_bound()
         db = max_bound - min_bound
@@ -572,18 +589,19 @@ class GripPositionEstimation():
                         ) -> np.ndarray:
         """
         Compute roll, pitch, yaw angles based on the vector, which is firstly
-        transformed into the actual position coordinates by the rotation matrix
+        transformed into the actual position coordinates by the rotation matrix.
 
-        Parameters:
-        vector (np.ndarray): unit vector of the wanted position
-        rotation_matrix (np.ndarray): Rotation matrix between the packet base and coord base
-                                      Default is that packet and base coords systems are
-                                      rotated 180 degrees around z axis
-        new_y (np.ndarray): direction of new y axis (currently set [1, 0, ?])
+        Args:
+            vector (np.ndarray): Unit vector of the wanted position.
+            rotation_matrix (np.ndarray): Rotation matrix between the packet base and coord base
+                                          Default is that packet and base coords systems are
+                                          rotated 180 degrees around z axis.
+            new_y (np.ndarray): Direction of new y axis (currently set [1, 0, ?]).
 
         Returns:
-        np.ndarray: Angles(roll, pitch, yaw) in degrees
+            np.ndarray: Angles (roll, pitch, yaw) in degrees.
         """
+
         # Transformation of the vector into base coordinates
         new_z = -1 * (rotation_matrix @ vector)
         if self.verbose:
@@ -648,19 +666,20 @@ class GripPositionEstimation():
                              path: str="", anchor: np.array=np.array([.5, .5])
                              ) -> tuple[np.ndarray, np.ndarray]:
         """
-        NOTE: Propably obsolete used for development 
-        Estimates point and normal from given images
+        NOTE: Propably obsolete used for development.
+        Estimates point and normal from given images.
         (The idea is to call this function and it returns everything  needed)
 
-        Parameters:
-        rgb_image_name (str): name of rgb image
-        depth_image_name (str): name of depth image
-        path (str): path to images
-        anchor (np.ndarray): relative coordinates of anchor point(center(px,py))
+        Args:
+            rgb_image_name (str): Name of rgb image.
+            depth_image_name (str): Name of depth image.
+            path (str): Path to images.
+            anchor (np.ndarray): Relative coordinates of anchor point(center(px, py)).
 
         Returns:
-        tuple[np.ndarray, np.ndarray]: point coordinates and its normal
+            tuple[np.ndarray, np.ndarray]: Point coordinates and its normal.
         """
+
         self.pcd = self._create_pcd_from_rgb_depth_frames(rgb_image_name, depth_image_name, path)
         center, normal = self._detect_point_from_pcd()
 
@@ -676,16 +695,17 @@ class GripPositionEstimation():
                                   anchor: np.ndarray = np.array([.5, .5])
                                   ) -> tuple[np.ndarray]:
         """
-        Estimates optimal point from depth array
+        Estimates optimal point from depth array.
 
-        Parameters:
-        depth_array (np.ndarray): Depth values
-        packet_mask (np.ndarray): Binary mask with packet, If None continue with all depths
-        anchor (np.ndarray): Relative coordinates of anchor point(center(px,py))
-        
+        Args:
+            depth_array (np.ndarray): Depth values.
+            packet_mask (np.ndarray): Binary mask with packet, If None continue with all depths.
+            anchor (np.ndarray): Relative coordinates of anchor point(center(px, py)).
+
         Returns:
-        tuple[np.ndarray]: Point and normal for picking
+            tuple[np.ndarray]: Point and normal for picking.
         """
+
         # Sets everything outside of mask as lower
         if packet_mask is not None:
             belt = np.logical_not(packet_mask) * depth_array
@@ -717,20 +737,21 @@ class GripPositionEstimation():
                              conv2cam_dist: float = 777.0, 
                              blacklist_radius:float= 0.01):        
         """
-        Estimates optimal point of the packet
+        Estimates optimal point of the packet.
 
-        Parameters:
-        packet (Packet): Packet for the estimator
-        z_lim (tuple): Limit for the robot gripper for not coliding (z_min, z_max)
-        y_lim (tuple): Limit for the robot gripper conv belt
-        packet_coords (tuple): Cordinates of the packet
-        conv2cam_dist (float): Distance from conveyer to camera in mm
-        black_list_radius(float): Radius for blacklisting
+        Args:
+            packet (Packet): Packet for the estimator.
+            z_lim (tuple): Limit for the robot gripper for not coliding (z_min, z_max).
+            y_lim (tuple): Limit for the robot gripper conv belt.
+            packet_coords (tuple): Cordinates of the packet.
+            conv2cam_dist (float): Distance from conveyer to camera in mm.
+            black_list_radius(float): Radius for blacklisting.
 
         Returns:
-        tuple(float): shift_in_x, shift_in_y, height_in_z,
-                      roll, pitch, yaw
+            tuple[float]: shift_in_x, shift_in_y, height_in_z,
+                          roll, pitch, yaw
         """
+
         self.blacklist_radius = blacklist_radius
         z_min, z_max = z_lim
         y_min, y_max = y_lim
