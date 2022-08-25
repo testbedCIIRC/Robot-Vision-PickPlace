@@ -312,20 +312,21 @@ def main_multi_packets(
             rob_config["MODEL"]["PATHS"],
             rob_config["MODEL"]["FILES"],
             rob_config["MODEL"]["CHECK_POINT"],
-            3,
+            rob_config["MODEL"]["MAX_DETECTIONS"],
+            rob_config["MODEL"]["DETECTION_THRESHOLD"],
         )
     elif rob_config["CELL"]["DETECTOR_TYPE"] == "deep_2":
         # TODO Implement new deep detector
         pass
     elif rob_config["CELL"]["DETECTOR_TYPE"] == "hsv":
         pack_detect = ThresholdDetector(
-            ignore_vertical_px=133,
-            ignore_horizontal_px=50,
-            max_ratio_error=0.15,
-            white_lower=[60, 0, 85],
-            white_upper=[179, 255, 255],
-            brown_lower=[0, 33, 57],
-            brown_upper=[60, 255, 178],
+            ignore_vertical_px=rob_config["HSV_DETECTOR"]["IGNORE_VERTICAL"],
+            ignore_horizontal_px=rob_config["HSV_DETECTOR"]["IGNORE_HORIZONTAL"],
+            max_ratio_error=rob_config["HSV_DETECTOR"]["MAX_RATIO_ERROR"],
+            white_lower=rob_config["HSV_DETECTOR"]["WHITE_LOWER"],
+            white_upper=rob_config["HSV_DETECTOR"]["WHITE_UPPER"],
+            brown_lower=rob_config["HSV_DETECTOR"]["BROWN_LOWER"],
+            brown_upper=rob_config["HSV_DETECTOR"]["BROWN_UPPER"],
         )
 
     # Toggles

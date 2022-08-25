@@ -24,12 +24,7 @@
         "FRAMES_LIM": 10,
 
         "//": "Predefined packet depths, index corresponds to type of packet",
-        "PACK_DEPTHS": [
-            10.0,
-            3.0,
-            5.0,
-            5.0
-        ],
+        "PACK_DEPTHS": [ 10.0, 3.0, 5.0, 5.0 ],
 
         "//": "Minimal x position in mm for packet picking",
         "MIN_PICK_DISTANCE": 600,
@@ -59,13 +54,6 @@
         "MAX_Y": 470.0
     },
 
-    "STATE_MACHINE": {
-        "//": "",
-        "MAX_Z": 0
-
-
-    },
-
     "TRACKER": {
         "//": "Maximum number of frames before packet is deregistered",
         "MAX_DISAPPEARED_FRAMES": 20,
@@ -78,7 +66,26 @@
     },
 
     "HSV_DETECTOR": {
+        "//": "Number of rows of pixels ignored from top and bottom of the image frame",
+        "IGNORE_VERTICAL": 133,
 
+        "//": "Number of columns of pixels ignored from left and right of the image frame",
+        "IGNORE_HORIZONTAL": 50,
+
+        "//": "Checking squareness of the packet allows the ratio of packet sides to be off by this ammount",
+        "MAX_RATIO_ERROR": 0.15,
+
+        "//": "List of 3 values representing Hue, Saturation, Value bottom threshold for white color",
+        "WHITE_LOWER": [ 60, 0, 85 ],
+
+        "//": "List of 3 values representing Hue, Saturation, Value top threshold for white color",
+        "WHITE_UPPER": [ 179, 255, 255 ],
+
+        "//": "List of 3 values representing Hue, Saturation, Value bottom threshold for brown color",
+        "BROWN_LOWER": [ 0, 33, 57 ],
+
+        "//": "List of 3 values representing Hue, Saturation, Value top threshold for brown color",
+        "BROWN_UPPER": [ 60, 255, 178 ]
     },
 
     "POSITION_ESTIMATOR": {
@@ -121,6 +128,12 @@
         },
 
         "//": "Model checkpoint name",
-        "CHECK_POINT": "ckpt-3"
+        "CHECK_POINT": "ckpt-3",
+
+        "//": "Maximal ammount of concurrent detections in an image",
+        "MAX_DETECTIONS": 3,
+
+        "//": "Minimal confidence for detected object to be labeled as a packet",
+        "DETECTION_THRESHOLD": 0.7
     }
 }
