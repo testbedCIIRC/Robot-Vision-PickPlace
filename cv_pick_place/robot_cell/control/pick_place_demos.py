@@ -128,7 +128,7 @@ class RobotDemos:
         homography = None
         while True:
             start_time = time.time()
-            ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
+            ret, depth_frame, rgb_frame, colorized_depth = dc.get_frames()
 
             rgb_frame = rgb_frame[:, 240:1680]
             # rgb_frame = cv2.resize(rgb_frame, (640,480))
@@ -299,8 +299,8 @@ class RobotDemos:
             rgb_frame = cv2.addWeighted(rgb_frame, 0.8, detected_img, 0.4, 0)
             # fmt: on
 
-            cv2.imshow("Frame", cv2.resize(rgb_frame, (960, 540)))
-            cv2.imshow("Object detected", cv2.resize(detected_img, (960, 540)))
+            cv2.imshow("Frame", cv2.resize(rgb_frame, (720, 540)))
+            cv2.imshow("Object detected", cv2.resize(detected_img, (720, 540)))
 
             key = cv2.waitKey(1)
             if key == 27:
@@ -448,7 +448,7 @@ class RobotDemos:
                     2,
                 )
 
-            cv2.imshow("Frame", cv2.resize(img_detect, (960, 540)))
+            cv2.imshow("Frame", cv2.resize(img_detect, (720, 540)))
 
             key = cv2.waitKey(1)
 
@@ -714,7 +714,7 @@ class RobotDemos:
             cv2.setWindowProperty(
                 "Frame", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN
             )
-            cv2.imshow("Frame", cv2.resize(img_detect, (960, 540)))
+            cv2.imshow("Frame", cv2.resize(img_detect, (720, 540)))
 
             # Increase counter for homography update.
             frame_count += 1
