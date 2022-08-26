@@ -170,3 +170,10 @@ class DepthCamera:
         )
 
         return True, depth_frame, color_frame, colorized_depth_frame
+
+    def release(self):
+        """
+        Disconnects the camera.
+        """
+
+        self.pipeline.stop()
