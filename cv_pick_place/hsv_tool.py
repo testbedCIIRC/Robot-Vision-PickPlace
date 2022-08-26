@@ -65,14 +65,10 @@ frame_bounds = 0
 
 freeze_frame = False
 
-dc = DepthCamera(
-    config_path=os.path.join("config", "D435_camera_config.json"),
-    recording_path="recording_2022_05_20.npy",
-    recording_fps=5,
-)
+dc = DepthCamera(config_path=os.path.join("config", "D435_camera_config.json"))
 
 time.sleep(1)
-success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
+success, depth_frame, rgb_frame, colorized_depth = dc.get_frames()
 directory_name = "dataset_capture"
 os.makedirs(directory_name, exist_ok=True)
 obj = OBJECTS[0]
@@ -83,7 +79,7 @@ for e, s in enumerate(OBJECTS):
 while True:
     # Get frames from recording
     if not freeze_frame:
-        success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
+        success, depth_frame, rgb_frame, colorized_depth = dc.get_frames()
 
     if not success:
         print("[WARINING] No camera frames have been read")
@@ -122,8 +118,8 @@ while True:
     output_frame = cv2.bitwise_and(rgb_frame, rgb_frame, mask=mask)
 
     # Display output image
-    output_frame_1 = cv2.resize(rgb_frame, (frame_width // 2, frame_height // 2))
-    output_frame_2 = cv2.resize(output_frame, (frame_width // 2, frame_height // 2))
+    output_frame_1 = cv2.resize(rgb_frame, (960, 540))
+    output_frame_2 = cv2.resize(output_frame, (960, 540))
     cv2.imshow("Frame", np.vstack([output_frame_1, output_frame_2]))
 
     key = cv2.waitKey(10)

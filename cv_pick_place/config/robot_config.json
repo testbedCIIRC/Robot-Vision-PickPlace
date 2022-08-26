@@ -11,6 +11,9 @@
     },
 
     "CELL": {
+        "//": "Resolution of on screen window with camera output",
+        "DISPLAY_RESOLUTION": [ 960, 540 ],
+
         "//": "Selection of object detector. Valid values are 'deep_1', 'deep_2' and 'hsv'",
         "DETECTOR_TYPE": "hsv",
 

@@ -81,6 +81,7 @@ def draw_frame(
     start_time: float,
     frame_width: int,
     frame_height: int,
+    resolution: tuple[int, int],
 ) -> None:
     """
     Draw information on image frame.
@@ -96,6 +97,7 @@ def draw_frame(
         start_time (float): Start time of current frame. Should be measured at start of every while loop.
         frame_width (int): Width of the camera frame in pixels.
         frame_height (int): Height of the camera frame in pixels.
+        resolution (tuple[int, int]): Resolution of the on screen window.
     """
 
     # Draw packet info
@@ -165,7 +167,7 @@ def draw_frame(
         text_robot = str(info_dict)
         drawText(image_frame, text_robot, (10, int(75 * text_size)), text_size)
 
-    image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
+    image_frame = cv2.resize(image_frame, resolution)
 
     # Show frames on cv2 window
     cv2.imshow("Frame", image_frame)
@@ -465,6 +467,10 @@ def main_multi_packets(
             start_time,
             frame_width,
             frame_height,
+            (
+                rob_config["CELL"]["DISPLAY_RESOLUTION"][0],
+                rob_config["CELL"]["DISPLAY_RESOLUTION"][1],
+            ),
         )
 
         # Keyboard inputs
