@@ -112,7 +112,7 @@ class RobotDemos:
             tuple[np.ndarray, list]: Image with detections and detections.
         """
 
-        rc.show_boot_screen("STARTING NEURAL NET...")
+        rc.show_boot_screen("STARTING NEURAL NET...", (540, 720))
         warn_count = 0
         a = 0
         b = 0
@@ -208,11 +208,12 @@ class RobotDemos:
         print(detected)
         return added_image, detected
 
-    def main_robot_control_demo(self, rc: RobotControl):
+    def main_robot_control_demo(self, rob_config: dict, rc: RobotControl):
         """
         Pick and place with static conveyor and hand gestures.
 
         Args:
+            rob_config (dict): Dictionary with parameters setting the behaviour of the cell.
             rc (RobotControl): RobotControl object for program execution.
         """
         self.import_gestures_lib()
@@ -232,7 +233,7 @@ class RobotDemos:
         time.sleep(0.5)
         frame_num = -1
         bpressed = 0
-        dc = DepthCamera()
+        dc = DepthCamera(config_path=rob_config["PATHS"]["CAMERA_CONFIG_FILE_DEMOS"])
         gripper_ON = rc.Gripper_State.get_value()
         cap = cv2.VideoCapture(2)
         detector = self.HandDetector(detectionCon=0.8, maxHands=2)
@@ -344,6 +345,7 @@ class RobotDemos:
 
     def main_pick_place(
         self,
+        rob_config: dict,
         rc: RobotControl,
         paths: dict,
         files: dict,
@@ -354,6 +356,7 @@ class RobotDemos:
         Pick and place with static conveyor and multithreading.
 
         Args:
+            rob_config (dict): Dictionary with parameters setting the behaviour of the cell.
             rc (RobotControl): RobotControl object for program execution.
             paths (dict): Dictionary with annotation and checkpoint paths.
             files (dict): Dictionary with pipeline and config paths.
@@ -364,8 +367,8 @@ class RobotDemos:
         apriltag = ProcessingApriltag()
         apriltag.load_world_points(os.path.join("config", "conveyor_points.json"))
         ct = CentroidTracker()
-        dc = DepthCamera()
-        rc.show_boot_screen("STARTING NEURAL NET...")
+        dc = DepthCamera(config_path=rob_config["PATHS"]["CAMERA_CONFIG_FILE_DEMOS"])
+        rc.show_boot_screen("STARTING NEURAL NET...", (540, 720))
         pack_detect = PacketDetector(paths, files, check_point)
 
         rc.connect_OPCUA_server()
@@ -530,6 +533,7 @@ class RobotDemos:
 
     def main_pick_place_conveyor_w_point_cloud(
         self,
+        rob_config: dict,
         rc: RobotControl,
         paths: dict,
         files: dict,
@@ -540,6 +544,7 @@ class RobotDemos:
         Thread for pick and place with moving conveyor and point cloud operations.
 
         Args:
+            rob_config (dict): Dictionary with parameters setting the behaviour of the cell.
             rc (RobotControl): RobotControl object for program execution.
             paths (dict): Dictionary with annotation and checkpoint paths.
             files (dict): Dictionary with pipeline and config paths.
@@ -551,8 +556,8 @@ class RobotDemos:
         apriltag = ProcessingApriltag()
         apriltag.load_world_points(os.path.join("config", "conveyor_points.json"))
         pt = PacketTracker(maxDisappeared=10, guard=50)
-        dc = DepthCamera()
-        rc.show_boot_screen("STARTING NEURAL NET...")
+        dc = DepthCamera(config_path=rob_config["PATHS"]["CAMERA_CONFIG_FILE_DEMOS"])
+        rc.show_boot_screen("STARTING NEURAL NET...", (540, 720))
         pack_detect = PacketDetector(paths, files, check_point)
 
         rc.connect_OPCUA_server()

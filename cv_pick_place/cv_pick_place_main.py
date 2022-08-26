@@ -79,7 +79,7 @@ def program_mode(
             print(
                 "[INFO]: Starting program: Pick and place with static conveyor and hand gestures"
             )
-            robot_prog(r_control)
+            robot_prog(rob_config, r_control)
 
         # If fourth mode (has extra processes) was selected
         elif mode == "4":
@@ -138,6 +138,7 @@ def program_mode(
                 main_proc = Process(
                     target=robot_prog,
                     args=(
+                        rob_config,
                         r_control,
                         rob_config["MODEL"]["PATHS"],
                         rob_config["MODEL"]["FILES"],

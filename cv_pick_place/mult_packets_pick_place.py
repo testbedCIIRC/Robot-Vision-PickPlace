@@ -467,10 +467,7 @@ def main_multi_packets(
             start_time,
             frame_width,
             frame_height,
-            (
-                rob_config["CELL"]["DISPLAY_RESOLUTION"][0],
-                rob_config["CELL"]["DISPLAY_RESOLUTION"][1],
-            ),
+            (frame_width // 2, frame_height // 2),
         )
 
         # Keyboard inputs
