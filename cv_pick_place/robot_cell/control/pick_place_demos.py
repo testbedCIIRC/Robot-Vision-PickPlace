@@ -112,7 +112,7 @@ class RobotDemos:
             tuple[np.ndarray, list]: Image with detections and detections.
         """
 
-        rc.show_boot_screen("STARTING NEURAL NET...")
+        rc.show_boot_screen("STARTING NEURAL NET...", (540, 720))
         warn_count = 0
         a = 0
         b = 0
@@ -128,7 +128,7 @@ class RobotDemos:
         homography = None
         while True:
             start_time = time.time()
-            ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
+            ret, depth_frame, rgb_frame, colorized_depth = dc.get_frames()
 
             rgb_frame = rgb_frame[:, 240:1680]
             # rgb_frame = cv2.resize(rgb_frame, (640,480))
@@ -208,11 +208,12 @@ class RobotDemos:
         print(detected)
         return added_image, detected
 
-    def main_robot_control_demo(self, rc: RobotControl):
+    def main_robot_control_demo(self, rob_config: dict, rc: RobotControl):
         """
         Pick and place with static conveyor and hand gestures.
 
         Args:
+            rob_config (dict): Dictionary with parameters setting the behaviour of the cell.
             rc (RobotControl): RobotControl object for program execution.
         """
         self.import_gestures_lib()
@@ -232,7 +233,7 @@ class RobotDemos:
         time.sleep(0.5)
         frame_num = -1
         bpressed = 0
-        dc = DepthCamera()
+        dc = DepthCamera(config_path=rob_config["PATHS"]["CAMERA_CONFIG_FILE_DEMOS"])
         gripper_ON = rc.Gripper_State.get_value()
         cap = cv2.VideoCapture(2)
         detector = self.HandDetector(detectionCon=0.8, maxHands=2)
@@ -256,7 +257,7 @@ class RobotDemos:
             prePick_done = rc.PrePick_Done.get_value()
             place_done = rc.Place_Done.get_value()
 
-            ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
+            success, depth_frame, rgb_frame, colorized_depth = dc.get_frames()
             rgb_frame = rgb_frame[:, 240:1680]
             frame_num += 1
             height, width, depth = rgb_frame.shape
@@ -299,8 +300,8 @@ class RobotDemos:
             rgb_frame = cv2.addWeighted(rgb_frame, 0.8, detected_img, 0.4, 0)
             # fmt: on
 
-            cv2.imshow("Frame", cv2.resize(rgb_frame, (1280, 960)))
-            cv2.imshow("Object detected", cv2.resize(detected_img, (1280, 960)))
+            cv2.imshow("Frame", cv2.resize(rgb_frame, (720, 540)))
+            cv2.imshow("Object detected", cv2.resize(detected_img, (720, 540)))
 
             key = cv2.waitKey(1)
             if key == 27:
@@ -344,6 +345,7 @@ class RobotDemos:
 
     def main_pick_place(
         self,
+        rob_config: dict,
         rc: RobotControl,
         paths: dict,
         files: dict,
@@ -354,6 +356,7 @@ class RobotDemos:
         Pick and place with static conveyor and multithreading.
 
         Args:
+            rob_config (dict): Dictionary with parameters setting the behaviour of the cell.
             rc (RobotControl): RobotControl object for program execution.
             paths (dict): Dictionary with annotation and checkpoint paths.
             files (dict): Dictionary with pipeline and config paths.
@@ -364,8 +367,8 @@ class RobotDemos:
         apriltag = ProcessingApriltag()
         apriltag.load_world_points(os.path.join("config", "conveyor_points.json"))
         ct = CentroidTracker()
-        dc = DepthCamera()
-        rc.show_boot_screen("STARTING NEURAL NET...")
+        dc = DepthCamera(config_path=rob_config["PATHS"]["CAMERA_CONFIG_FILE_DEMOS"])
+        rc.show_boot_screen("STARTING NEURAL NET...", (540, 720))
         pack_detect = PacketDetector(paths, files, check_point)
 
         rc.connect_OPCUA_server()
@@ -394,10 +397,14 @@ class RobotDemos:
             except:
                 continue
 
-            ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
-
-            rgb_frame = rgb_frame[:, 240:1680]
+            # Get frames from realsense.
+            success, depth_frame, rgb_frame, colorized_depth = dc.get_frames()
             height, width, depth = rgb_frame.shape
+
+            # Crop frames to 1080x1440x3.
+            rgb_frame = rgb_frame[:, 240:1680]
+            depth_frame = depth_frame[:, 240:1680]
+            colorized_depth = colorized_depth[:, 240:1680]
 
             # Update homography
             if frame_count == 1:
@@ -413,13 +420,6 @@ class RobotDemos:
                 if frame_count >= 500:
                     frame_count = 1
 
-            depth_frame = depth_frame[90:400, 97:507]
-            depth_frame = cv2.resize(depth_frame, (width, height))
-
-            heatmap = colorized_depth
-            heatmap = heatmap[90:400, 97:507, :]
-            heatmap = cv2.resize(heatmap, (width, height))
-
             img_detect, detected = pack_detect.deep_detector(
                 rgb_frame, depth_frame, homography, bnd_box=bbox
             )
@@ -429,7 +429,7 @@ class RobotDemos:
             rc.objects_update(objects, img_detect)
 
             if depth_map:
-                img_detect = cv2.addWeighted(img_detect, 0.8, heatmap, 0.3, 0)
+                img_detect = cv2.addWeighted(img_detect, 0.8, colorized_depth, 0.3, 0)
 
             if f_data:
                 cv2.putText(
@@ -451,7 +451,7 @@ class RobotDemos:
                     2,
                 )
 
-            cv2.imshow("Frame", cv2.resize(img_detect, (1280, 960)))
+            cv2.imshow("Frame", cv2.resize(img_detect, (720, 540)))
 
             key = cv2.waitKey(1)
 
@@ -533,6 +533,7 @@ class RobotDemos:
 
     def main_pick_place_conveyor_w_point_cloud(
         self,
+        rob_config: dict,
         rc: RobotControl,
         paths: dict,
         files: dict,
@@ -543,6 +544,7 @@ class RobotDemos:
         Thread for pick and place with moving conveyor and point cloud operations.
 
         Args:
+            rob_config (dict): Dictionary with parameters setting the behaviour of the cell.
             rc (RobotControl): RobotControl object for program execution.
             paths (dict): Dictionary with annotation and checkpoint paths.
             files (dict): Dictionary with pipeline and config paths.
@@ -554,8 +556,8 @@ class RobotDemos:
         apriltag = ProcessingApriltag()
         apriltag.load_world_points(os.path.join("config", "conveyor_points.json"))
         pt = PacketTracker(maxDisappeared=10, guard=50)
-        dc = DepthCamera()
-        rc.show_boot_screen("STARTING NEURAL NET...")
+        dc = DepthCamera(config_path=rob_config["PATHS"]["CAMERA_CONFIG_FILE_DEMOS"])
+        rc.show_boot_screen("STARTING NEURAL NET...", (540, 720))
         pack_detect = PacketDetector(paths, files, check_point)
 
         rc.connect_OPCUA_server()
@@ -600,20 +602,13 @@ class RobotDemos:
                 continue
 
             # Get frames from realsense.
-            ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
-
-            # Crop frame to rgb frame to 1080x1440x3.
-            rgb_frame = rgb_frame[:, 240:1680]
-
-            # Crop and resize depth frame to match rgb frame.
+            success, depth_frame, rgb_frame, colorized_depth = dc.get_frames()
             height, width, depth = rgb_frame.shape
-            depth_frame = depth_frame[90:400, 97:507]
-            depth_frame = cv2.resize(depth_frame, (width, height))
 
-            # Crop and resize colorized depth frame to match rgb frame.
-            heatmap = colorized_depth
-            heatmap = heatmap[90:400, 97:507, :]
-            heatmap = cv2.resize(heatmap, (width, height))
+            # Crop frames to 1080x1440x3.
+            rgb_frame = rgb_frame[:, 240:1680]
+            depth_frame = depth_frame[:, 240:1680]
+            colorized_depth = colorized_depth[:, 240:1680]
 
             # Update homography
             if frame_count == 1:
@@ -697,7 +692,7 @@ class RobotDemos:
 
             # Show depth frame overlay.
             if depth_map:
-                img_detect = cv2.addWeighted(img_detect, 0.8, heatmap, 0.3, 0)
+                img_detect = cv2.addWeighted(img_detect, 0.8, colorized_depth, 0.3, 0)
 
             # Show robot position data and FPS.
             if f_data:
@@ -724,7 +719,7 @@ class RobotDemos:
             cv2.setWindowProperty(
                 "Frame", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN
             )
-            cv2.imshow("Frame", cv2.resize(img_detect, (1280, 960)))
+            cv2.imshow("Frame", cv2.resize(img_detect, (720, 540)))
 
             # Increase counter for homography update.
             frame_count += 1

@@ -67,7 +67,7 @@ class RobotControl(RobotCommunication):
         cv2.putText(
             boot_screen,
             message,
-            (resolution[0] // 2 - 150, resolution[1] // 2),
+            (resolution[1] // 2 - 150, resolution[0] // 2),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
             (255, 255, 0),

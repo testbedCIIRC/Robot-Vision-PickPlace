@@ -7,7 +7,10 @@
         "HOMOGRAPHY_POINTS_FILE": "config/conveyor_points.json",
 
         "//": "Path to file containing camera configuration",
-        "CAMERA_CONFIG_FILE": "config/D435_camera_config.json"
+        "CAMERA_CONFIG_FILE": "config/D435_camera_config.json",
+
+        "//": "Path to file containing camera configuration for demo functions",
+        "CAMERA_CONFIG_FILE_DEMOS": "config/D435_camera_config_demos.json"
     },
 
     "CELL": {
