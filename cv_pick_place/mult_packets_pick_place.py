@@ -372,7 +372,7 @@ def main_multi_packets(
             continue
 
         # Get frames from realsense
-        success, depth_frame, rgb_frame, colorized_depth = dc.get_aligned_frame()
+        success, depth_frame, rgb_frame, colorized_depth = dc.get_frames()
         if not success:
             continue
 

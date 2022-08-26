@@ -256,7 +256,7 @@ class RobotDemos:
             prePick_done = rc.PrePick_Done.get_value()
             place_done = rc.Place_Done.get_value()
 
-            ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
+            success, depth_frame, rgb_frame, colorized_depth = dc.get_frames()
             rgb_frame = rgb_frame[:, 240:1680]
             frame_num += 1
             height, width, depth = rgb_frame.shape
@@ -394,10 +394,14 @@ class RobotDemos:
             except:
                 continue
 
-            ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
-
-            rgb_frame = rgb_frame[:, 240:1680]
+            # Get frames from realsense.
+            success, depth_frame, rgb_frame, colorized_depth = dc.get_frames()
             height, width, depth = rgb_frame.shape
+
+            # Crop frames to 1080x1440x3.
+            rgb_frame = rgb_frame[:, 240:1680]
+            depth_frame = depth_frame[:, 240:1680]
+            colorized_depth = colorized_depth[:, 240:1680]
 
             # Update homography
             if frame_count == 1:
@@ -413,13 +417,6 @@ class RobotDemos:
                 if frame_count >= 500:
                     frame_count = 1
 
-            depth_frame = depth_frame[90:400, 97:507]
-            depth_frame = cv2.resize(depth_frame, (width, height))
-
-            heatmap = colorized_depth
-            heatmap = heatmap[90:400, 97:507, :]
-            heatmap = cv2.resize(heatmap, (width, height))
-
             img_detect, detected = pack_detect.deep_detector(
                 rgb_frame, depth_frame, homography, bnd_box=bbox
             )
@@ -429,7 +426,7 @@ class RobotDemos:
             rc.objects_update(objects, img_detect)
 
             if depth_map:
-                img_detect = cv2.addWeighted(img_detect, 0.8, heatmap, 0.3, 0)
+                img_detect = cv2.addWeighted(img_detect, 0.8, colorized_depth, 0.3, 0)
 
             if f_data:
                 cv2.putText(
@@ -600,20 +597,13 @@ class RobotDemos:
                 continue
 
             # Get frames from realsense.
-            ret, depth_frame, rgb_frame, colorized_depth = dc.get_frame()
-
-            # Crop frame to rgb frame to 1080x1440x3.
-            rgb_frame = rgb_frame[:, 240:1680]
-
-            # Crop and resize depth frame to match rgb frame.
+            success, depth_frame, rgb_frame, colorized_depth = dc.get_frames()
             height, width, depth = rgb_frame.shape
-            depth_frame = depth_frame[90:400, 97:507]
-            depth_frame = cv2.resize(depth_frame, (width, height))
 
-            # Crop and resize colorized depth frame to match rgb frame.
-            heatmap = colorized_depth
-            heatmap = heatmap[90:400, 97:507, :]
-            heatmap = cv2.resize(heatmap, (width, height))
+            # Crop frames to 1080x1440x3.
+            rgb_frame = rgb_frame[:, 240:1680]
+            depth_frame = depth_frame[:, 240:1680]
+            colorized_depth = colorized_depth[:, 240:1680]
 
             # Update homography
             if frame_count == 1:
@@ -697,7 +687,7 @@ class RobotDemos:
 
             # Show depth frame overlay.
             if depth_map:
-                img_detect = cv2.addWeighted(img_detect, 0.8, heatmap, 0.3, 0)
+                img_detect = cv2.addWeighted(img_detect, 0.8, colorized_depth, 0.3, 0)
 
             # Show robot position data and FPS.
             if f_data:
