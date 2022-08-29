@@ -22,7 +22,8 @@ if __name__ == '__main__':
     
     while cap.isOpened():
         color_frame = cap.read()[1]
-        detected_img = detector.deep_item_detector(color_frame, None, None)
+        detected_img, packets = detector.deep_item_detector(color_frame, None, None)
+        print(packets)
         cv2.imshow('Detection', detected_img)
         key = cv2.waitKey(1)
         if key == 27:

@@ -8,7 +8,7 @@ import torch.utils.data as data
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.nn.functional as F
-# from robot_cell.packet.packet_object import Packet
+from robot_cell.packet.packet_object import Packet
 from neural_nets.torch_yolact.yolact import Yolact
 from neural_nets.torch_yolact.config import get_config, COLORS
 from neural_nets.torch_yolact.augmentations import val_aug
@@ -205,6 +205,49 @@ class ItemsDetector:
                 cv2.putText(img_fused, text_str, (x1, y1 + 15), font, scale, (255, 255, 255), thickness, cv2.LINE_AA)
     
         return img_fused
+    def get_packet_from_contour(
+        self, contour: np.array, type: int, encoder_pos: float
+    ) -> Packet:
+        """
+        TODO: Creates object given the contours from cnn mask.
+
+        Args:
+            contour (np.array): Array of x, y coordinates making up the contour of some area.
+            type (int): Type of the packet.
+            encoder_pos (float): Position of the encoder.
+
+        Returns:
+            Packet: Created Packet object
+        """
+
+        rectangle = cv2.minAreaRect(contour)
+        centroid = (int(rectangle[0][0]), int(rectangle[0][1]))
+        box = np.int0(cv2.boxPoints(rectangle))
+        angle = int(rectangle[2])
+        x, y, w, h = cv2.boundingRect(contour)
+
+        packet = Packet(
+            box=box,
+            pack_type=type,
+            centroid=centroid,
+            angle=angle,
+            ymin=y,
+            ymax=y + w,
+            xmin=x,
+            xmax=x + h,
+            width=w,
+            height=h,
+            encoder_position=encoder_pos,
+        )
+
+        packet.set_type(type)
+        packet.set_centroid(
+            centroid[0], centroid[1], self.homography_matrix, encoder_pos
+        )
+        packet.set_bounding_size(w, h, self.homography_matrix)
+        packet.add_angle_to_average(angle)
+
+        return packet
 
     def deep_item_detector(
         self,
@@ -216,6 +259,10 @@ class ItemsDetector:
         homography: np.ndarray = None,
         image_frame: np.ndarray = None,
     ) -> tuple:
+        scale = 0.6
+        thickness = 1
+        font = cv2.FONT_HERSHEY_DUPLEX
+        detected = []
         img_h, img_w = color_frame.shape[0:2]
         frame_trans = val_aug(color_frame, self.cfg.img_size)
 
@@ -227,7 +274,66 @@ class ItemsDetector:
             class_p, box_p, coef_p, proto_p = self.net.forward(frame_tensor.unsqueeze(0))
         ids_p, class_p, box_p, coef_p, proto_p = self.nms(class_p, box_p, coef_p, proto_p, self.net.anchors, self.cfg)
         ids_p, class_p, boxes_p, masks_p = self.after_nms(ids_p, class_p, box_p, coef_p, proto_p, img_h, img_w, self.cfg)
-        img_np_detect = self.draw_img(ids_p, class_p, boxes_p, masks_p, color_frame, self.cfg)
+        # img_np_detect = self.draw_img(ids_p, class_p, boxes_p, masks_p, color_frame, self.cfg)
+        
+        if ids_p is None:
+            return color_frame,detected
 
-        return img_np_detect
+        if isinstance(ids_p, torch.Tensor):
+            ids_p = ids_p.cpu().numpy()
+            class_p = class_p.cpu().numpy()
+            boxes_p = boxes_p.cpu().numpy()
+            masks_p = masks_p.cpu().numpy()
+
+        num_detected = ids_p.shape[0]
+
+        img_np_detect = color_frame
+        if not self.cfg.hide_mask:
+            masks_semantic = masks_p * (ids_p[:, None, None] + 1)  # expand ids_p' shape for broadcasting
+            # The color of the overlap area is different because of the '%' operation.
+            masks_semantic = masks_semantic.astype('int').sum(axis=0) % (self.cfg.num_classes - 1)
+            color_masks = COLORS[masks_semantic].astype('uint8')
+            img_np_detect = cv2.addWeighted(color_masks, 0.4, color_frame, 0.6, gamma=0)
+        
+        if not self.cfg.hide_bbox:
+            for i in reversed(range(num_detected)):
+                xmin, ymin, xmax, ymax = boxes_p[i, :]
+                w = float((xmax - xmin)) / img_w
+                h = float((ymax - ymin)) / img_h
+                cx, cy = (xmax + xmin) / 2, (ymax + ymin) / 2
+                centroid = (int(cx), int(cy))
+                
+                color = COLORS[ids_p[i] + 1].tolist()
+                cv2.rectangle(img_np_detect, (xmin, ymin), (xmax, ymax), color, thickness)
+
+                class_name = self.cfg.class_names[ids_p[i]]
+                text_str = f'{class_name}: {class_p[i]:.2f}' if not self.cfg.hide_score else class_name
+
+                text_w, text_h = cv2.getTextSize(text_str, font, scale, thickness)[0]
+                cv2.rectangle(img_np_detect, (xmin, ymin), (xmin + text_w, ymin + text_h + 5), color, -1)
+                cv2.putText(img_np_detect, text_str, (xmin, ymin + 15), font, scale, (255, 255, 255), thickness, cv2.LINE_AA)
+    
+                packet = Packet(
+                    box=None,
+                    pack_type=int(class_p[i]),
+                    centroid=centroid,
+                    angle=None,
+                    ymin=ymin,
+                    ymax=ymax,
+                    xmin=xmin,
+                    xmax=xmax,
+                    width=w,
+                    height=h,
+                    encoder_position=None,
+                )
+                detected.append(packet)
+                # packet.set_type(int(class_p[i]))
+                # packet.set_centroid(centroid[0], centroid[1], homography, encoder_pos)
+                # packet.set_bounding_size(int(w * width), int(h * height), homography)
+                # packet.add_angle_to_average(angle)
+                # if centroid[0] - w / 2 > guard and centroid[0] + w / 2 < (
+                #     width - guard
+                # ):
+                #     detected.append(packet)
+        return img_np_detect, detected
 
