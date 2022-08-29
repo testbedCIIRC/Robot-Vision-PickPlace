@@ -23,5 +23,8 @@ if __name__ == '__main__':
     while cap.isOpened():
         color_frame = cap.read()[1]
         detected_img = detector.deep_item_detector(color_frame, None, None)
-        cv2.imshow('Detection', cv2.resize(detected_img,(detected_img.shape[1]*2,detected_img.shape[0]*2)) )
-        cv2.waitKey(1)
+        cv2.imshow('Detection', detected_img)
+        key = cv2.waitKey(1)
+        if key == 27:
+            cap.release()
+            break
