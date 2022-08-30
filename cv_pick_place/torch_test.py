@@ -18,7 +18,7 @@ if __name__ == '__main__':
     parser.add_argument('--visual_thre', default=0.8, type=float,
                         help='Detections with a score under this threshold will be removed.')
     detector = ItemsDetector(parser, None, None, None)
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(2)
     
     while cap.isOpened():
         color_frame = cap.read()[1]

@@ -266,7 +266,7 @@ class ItemsDetector:
         encoder_pos: float,
         draw_box: bool = True,
         image_frame: np.ndarray = None,
-    ) -> tuple:
+    ) -> tuple[np.ndarray, list[Packet]]:
         """
         Detects packets using Yolact model.
 
@@ -293,8 +293,13 @@ class ItemsDetector:
 
         with torch.no_grad():
             class_p, box_p, coef_p, proto_p = self.net.forward(frame_tensor.unsqueeze(0))
-        ids_p, class_p, box_p, coef_p, proto_p = self.nms(class_p, box_p, coef_p, proto_p, self.net.anchors, self.cfg)
-        ids_p, class_p, boxes_p, masks_p = self.after_nms(ids_p, class_p, box_p, coef_p, proto_p, img_h, img_w, self.cfg)
+        
+        ids_p, class_p, box_p, coef_p, proto_p = self.nms(
+            class_p, box_p, coef_p, proto_p, self.net.anchors, self.cfg
+            )
+        ids_p, class_p, boxes_p, masks_p = self.after_nms(
+            ids_p, class_p, box_p, coef_p, proto_p, img_h, img_w, self.cfg
+            )
         # img_np_detect = self.draw_img(ids_p, class_p, boxes_p, masks_p, rgb_frame, self.cfg)
         
         if ids_p is None:
@@ -316,24 +321,24 @@ class ItemsDetector:
             color_masks = COLORS[masks_semantic].astype('uint8')
             img_np_detect = cv2.addWeighted(color_masks, 0.4, rgb_frame, 0.6, gamma=0)
         
-        if not self.cfg.hide_bbox:
-            for i in reversed(range(num_detected)):
-                xmin, ymin, xmax, ymax = boxes_p[i, :]
-                w = float((xmax - xmin)) / img_w
-                h = float((ymax - ymin)) / img_h
-                cx, cy = (xmax + xmin) / 2, (ymax + ymin) / 2
-                centroid = (int(cx), int(cy))
-                
-                bbox = {
-                    'xmin':xmin, 
-                    'ymin':ymin,
-                    'xmax': xmax,
-                    'ymax': ymax,
-                    'centroid':centroid, 
-                    'w': w, 
-                    'h': h
-                }
-                
+        for i in reversed(range(num_detected)):
+            xmin, ymin, xmax, ymax = boxes_p[i, :]
+            w = float((xmax - xmin)) / img_w
+            h = float((ymax - ymin)) / img_h
+            cx, cy = (xmax + xmin) / 2, (ymax + ymin) / 2
+            centroid = (int(cx), int(cy))
+            
+            bbox = {
+                'xmin':xmin, 
+                'ymin':ymin,
+                'xmax': xmax,
+                'ymax': ymax,
+                'centroid':centroid, 
+                'w': w, 
+                'h': h
+            }
+            
+            if not self.cfg.hide_bbox:
                 color = COLORS[ids_p[i] + 1].tolist()
                 cv2.rectangle(img_np_detect, (xmin, ymin), (xmax, ymax), color, thickness)
 
@@ -342,9 +347,23 @@ class ItemsDetector:
 
                 text_w, text_h = cv2.getTextSize(text_str, font, scale, thickness)[0]
                 cv2.rectangle(img_np_detect, (xmin, ymin), (xmin + text_w, ymin + text_h + 5), color, -1)
-                cv2.putText(img_np_detect, text_str, (xmin, ymin + 15), font, scale, (255, 255, 255), thickness, cv2.LINE_AA)
-    
-                packet = self.get_item_from_mask(img_np_detect, bbox, masks_p[i], ids_p[i], encoder_pos)
-                detected.append(packet)
+                cv2.putText(
+                    img_np_detect, 
+                    text_str, 
+                    (xmin, ymin + 15), 
+                    font, 
+                    scale, 
+                    (255, 255, 255), 
+                    thickness, 
+                    cv2.LINE_AA
+                )
+
+            packet = self.get_item_from_mask(
+                img_np_detect, 
+                bbox, masks_p[i], 
+                int(ids_p[i]), 
+                encoder_pos
+            )
+            detected.append(packet)
         return img_np_detect, detected
 
