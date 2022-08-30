@@ -205,7 +205,7 @@ class ItemsDetector:
                 cv2.putText(img_fused, text_str, (x1, y1 + 15), font, scale, (255, 255, 255), thickness, cv2.LINE_AA)
     
         return img_fused
-        
+
     def get_item_from_mask(
         self, img: np.array, bbox:dict, mask: np.array, type: int, encoder_pos: float
     ) -> Packet:
@@ -231,16 +231,15 @@ class ItemsDetector:
         box = np.int64(
             np.array([[xmin, ymin], [xmax, ymin], [xmax, ymax], [xmin, ymax]])
         )
-        print(box)
         contours, _  = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for cnt in contours:
             area = cv2.contourArea(cnt)
-            if area > 8500:
+            if area > 10000:
                 rectangle = cv2.minAreaRect(cnt)
                 centroid = (int(rectangle[0][0]), int(rectangle[0][1]))
                 box = np.int0(cv2.boxPoints(rectangle))
                 angle = int(rectangle[2])
-        print(box)
+
         cv2.polylines(img, [box], True, (255, 0, 0), 3)
         packet = Packet(
             box=box,

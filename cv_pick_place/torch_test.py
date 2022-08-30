@@ -15,7 +15,7 @@ if __name__ == '__main__':
     parser.add_argument('--no_crop', default=False, action='store_true',
                         help='Do not crop the output masks with the predicted bounding box.')
     parser.add_argument('--real_time', default=True, action='store_true', help='Show the detection results real-timely.')
-    parser.add_argument('--visual_thre', default=0.3, type=float,
+    parser.add_argument('--visual_thre', default=0.8, type=float,
                         help='Detections with a score under this threshold will be removed.')
     detector = ItemsDetector(parser, None, None, None)
     cap = cv2.VideoCapture(0)
