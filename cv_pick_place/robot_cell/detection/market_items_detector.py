@@ -27,6 +27,8 @@ class ItemsDetector:
         checkpt: str,
         max_detect: int = 1,
         detect_thres: float = 0.7,
+        ignore_vertical_px: int = 60,
+        ignore_horizontal_px: int = 10,
     ):
         """
         PacketDetector object constructor.
@@ -36,8 +38,17 @@ class ItemsDetector:
             files (dict): Dictionary with pipeline and config paths.
             checkpt (str): Name of training checkpoint to be restored.
             max_detect (int): Maximal ammount of concurrent detections in an image.
-            detect_thres (float): Minimal confidence for detected object to be labeled as a packet.
+            detect_thres (float): Minimal confidence for detected object to be labeled as a item.
+            ignore_vertical_px (int): Number of rows of pixels ignored from top and bottom of the image frame.
+            ignore_horizontal_px (int): Number of columns of pixels ignored from left and right of the image frame.
+            
         """
+        self.detected_objects = []
+        self.homography_matrix = None
+        self.homography_determinant = None
+
+        self.ignore_vertical_px = ignore_vertical_px
+        self.ignore_horizontal_px = ignore_horizontal_px
 
         args = parser.parse_args()
         prefix = re.findall(r'best_\d+\.\d+_', args.weight)[0]
@@ -53,7 +64,17 @@ class ItemsDetector:
             cudnn.benchmark = True
             cudnn.fastest = True
             self.net = self.net.cuda()
+    
+    def set_homography(self, homography_matrix: np.ndarray) -> None:
+        """
+        Sets the homography matrix and calculates its determinant.
 
+        Args:
+            homography_matrix(np.ndarray): Homography matrix.
+        """
+
+        self.homography_matrix = homography_matrix
+        self.homography_determinant = np.linalg.det(homography_matrix[0:2, 0:2])
 
     def fast_nms(self, box_thre, coef_thre, class_thre, cfg):
         class_thre, idx = class_thre.sort(1, descending=True)  # [80, 64 (the number of kept boxes)]
@@ -216,7 +237,7 @@ class ItemsDetector:
             img (np.array): image for drawing detections.
             bbox (dict): bounding box parameters.
             mask (np.array): mask produced by neural net.
-            type (int): Type of the packet.
+            type (int): Type of the item.
             encoder_pos (float): Position of the encoder.
 
         Returns:
@@ -241,7 +262,7 @@ class ItemsDetector:
                 angle = int(rectangle[2])
 
         cv2.polylines(img, [box], True, (255, 0, 0), 3)
-        packet = Packet(
+        item = Packet(
             box=box,
             pack_type=type,
             centroid=centroid,
@@ -255,10 +276,14 @@ class ItemsDetector:
             encoder_position=encoder_pos,
         )
 
-        packet.set_type(type)
-        packet.add_angle_to_average(angle)
+        item.set_type(type)
+        item.set_centroid(
+            centroid[0], centroid[1], self.homography_matrix, encoder_pos
+        )
+        item.set_bounding_size(bbox['w'], bbox['h'], self.homography_matrix)
+        item.add_angle_to_average(angle)
 
-        return packet
+        return item
 
     def deep_item_detector(
         self,
@@ -283,7 +308,7 @@ class ItemsDetector:
         scale = 0.6
         thickness = 1
         font = cv2.FONT_HERSHEY_DUPLEX
-        detected = []
+        self.detected_objects = []
         img_h, img_w = rgb_frame.shape[0:2]
         frame_trans = val_aug(rgb_frame, self.cfg.img_size)
 
@@ -303,7 +328,7 @@ class ItemsDetector:
         # img_np_detect = self.draw_img(ids_p, class_p, boxes_p, masks_p, rgb_frame, self.cfg)
         
         if ids_p is None:
-            return rgb_frame,detected
+            return rgb_frame, self.detected_objects
 
         if isinstance(ids_p, torch.Tensor):
             ids_p = ids_p.cpu().numpy()
@@ -323,8 +348,8 @@ class ItemsDetector:
         
         for i in reversed(range(num_detected)):
             xmin, ymin, xmax, ymax = boxes_p[i, :]
-            w = float((xmax - xmin)) / img_w
-            h = float((ymax - ymin)) / img_h
+            w = int(xmax - xmin)
+            h = int(ymax - ymin)
             cx, cy = (xmax + xmin) / 2, (ymax + ymin) / 2
             centroid = (int(cx), int(cy))
             
@@ -337,7 +362,6 @@ class ItemsDetector:
                 'w': w, 
                 'h': h
             }
-            
             if not self.cfg.hide_bbox:
                 color = COLORS[ids_p[i] + 1].tolist()
                 cv2.rectangle(img_np_detect, (xmin, ymin), (xmax, ymax), color, thickness)
@@ -346,7 +370,13 @@ class ItemsDetector:
                 text_str = f'{class_name}: {class_p[i]:.2f}' if not self.cfg.hide_score else class_name
 
                 text_w, text_h = cv2.getTextSize(text_str, font, scale, thickness)[0]
-                cv2.rectangle(img_np_detect, (xmin, ymin), (xmin + text_w, ymin + text_h + 5), color, -1)
+                cv2.rectangle(
+                    img_np_detect, 
+                    (xmin, ymin), 
+                    (xmin + text_w, ymin + text_h + 5), 
+                    color, 
+                    -1
+                )
                 cv2.putText(
                     img_np_detect, 
                     text_str, 
@@ -358,12 +388,17 @@ class ItemsDetector:
                     cv2.LINE_AA
                 )
 
-            packet = self.get_item_from_mask(
+            item = self.get_item_from_mask(
                 img_np_detect, 
                 bbox, masks_p[i], 
                 int(ids_p[i]), 
                 encoder_pos
             )
-            detected.append(packet)
-        return img_np_detect, detected
+            is_cx_low_ok = item.centroid[0] - item.width / 2 < self.ignore_horizontal_px
+            is_cx_up_ok = item.centroid[0] + item.width / 2 > (img_w - self.ignore_horizontal_px)
+            is_cx_out_range = is_cx_low_ok or is_cx_up_ok
+            if is_cx_out_range:
+                continue
+            self.detected_objects.append(item)
+        return img_np_detect, self.detected_objects
 
