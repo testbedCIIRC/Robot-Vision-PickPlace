@@ -25,6 +25,7 @@ class ItemsDetector:
         paths: dict,
         files: dict,
         checkpt: str,
+        detect_classes: list = [46,39],
         max_detect: int = 1,
         detect_thres: float = 0.7,
         ignore_vertical_px: int = 60,
@@ -43,6 +44,7 @@ class ItemsDetector:
             ignore_horizontal_px (int): Number of columns of pixels ignored from left and right of the image frame.
             
         """
+        self.detect_classes = detect_classes
         self.detected_objects = []
         self.homography_matrix = None
         self.homography_determinant = None
@@ -347,58 +349,59 @@ class ItemsDetector:
             img_np_detect = cv2.addWeighted(color_masks, 0.4, rgb_frame, 0.6, gamma=0)
         
         for i in reversed(range(num_detected)):
-            xmin, ymin, xmax, ymax = boxes_p[i, :]
-            w = int(xmax - xmin)
-            h = int(ymax - ymin)
-            cx, cy = (xmax + xmin) / 2, (ymax + ymin) / 2
-            centroid = (int(cx), int(cy))
-            
-            bbox = {
-                'xmin':xmin, 
-                'ymin':ymin,
-                'xmax': xmax,
-                'ymax': ymax,
-                'centroid':centroid, 
-                'w': w, 
-                'h': h
-            }
-            if not self.cfg.hide_bbox:
-                color = COLORS[ids_p[i] + 1].tolist()
-                cv2.rectangle(img_np_detect, (xmin, ymin), (xmax, ymax), color, thickness)
+            if int(ids_p[i]) in self.detect_classes:
+                xmin, ymin, xmax, ymax = boxes_p[i, :]
+                w = int(xmax - xmin)
+                h = int(ymax - ymin)
+                cx, cy = (xmax + xmin) / 2, (ymax + ymin) / 2
+                centroid = (int(cx), int(cy))
+                
+                bbox = {
+                    'xmin':xmin, 
+                    'ymin':ymin,
+                    'xmax': xmax,
+                    'ymax': ymax,
+                    'centroid':centroid, 
+                    'w': w, 
+                    'h': h
+                }
+                if not self.cfg.hide_bbox:
+                    color = COLORS[ids_p[i] + 1].tolist()
+                    cv2.rectangle(img_np_detect, (xmin, ymin), (xmax, ymax), color, thickness)
 
-                class_name = self.cfg.class_names[ids_p[i]]
-                text_str = f'{class_name}: {class_p[i]:.2f}' if not self.cfg.hide_score else class_name
+                    class_name = self.cfg.class_names[ids_p[i]]
+                    text_str = f'{class_name}: {class_p[i]:.2f}' if not self.cfg.hide_score else class_name
 
-                text_w, text_h = cv2.getTextSize(text_str, font, scale, thickness)[0]
-                cv2.rectangle(
+                    text_w, text_h = cv2.getTextSize(text_str, font, scale, thickness)[0]
+                    cv2.rectangle(
+                        img_np_detect, 
+                        (xmin, ymin), 
+                        (xmin + text_w, ymin + text_h + 5), 
+                        color, 
+                        -1
+                    )
+                    cv2.putText(
+                        img_np_detect, 
+                        text_str, 
+                        (xmin, ymin + 15), 
+                        font, 
+                        scale, 
+                        (255, 255, 255), 
+                        thickness, 
+                        cv2.LINE_AA
+                    )
+                print(int(ids_p[i]))
+                item = self.get_item_from_mask(
                     img_np_detect, 
-                    (xmin, ymin), 
-                    (xmin + text_w, ymin + text_h + 5), 
-                    color, 
-                    -1
+                    bbox, masks_p[i], 
+                    int(ids_p[i]), 
+                    encoder_pos
                 )
-                cv2.putText(
-                    img_np_detect, 
-                    text_str, 
-                    (xmin, ymin + 15), 
-                    font, 
-                    scale, 
-                    (255, 255, 255), 
-                    thickness, 
-                    cv2.LINE_AA
-                )
-
-            item = self.get_item_from_mask(
-                img_np_detect, 
-                bbox, masks_p[i], 
-                int(ids_p[i]), 
-                encoder_pos
-            )
-            is_cx_low_ok = item.centroid[0] - item.width / 2 < self.ignore_horizontal_px
-            is_cx_up_ok = item.centroid[0] + item.width / 2 > (img_w - self.ignore_horizontal_px)
-            is_cx_out_range = is_cx_low_ok or is_cx_up_ok
-            if is_cx_out_range:
-                continue
-            self.detected_objects.append(item)
+                is_cx_low_ok = item.centroid[0] - item.width / 2 < self.ignore_horizontal_px
+                is_cx_up_ok = item.centroid[0] + item.width / 2 > (img_w - self.ignore_horizontal_px)
+                is_cx_out_range = is_cx_low_ok or is_cx_up_ok
+                if is_cx_out_range:
+                    continue
+                self.detected_objects.append(item)
         return img_np_detect, self.detected_objects
 
