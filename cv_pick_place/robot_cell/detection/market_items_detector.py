@@ -205,66 +205,88 @@ class ItemsDetector:
                 cv2.putText(img_fused, text_str, (x1, y1 + 15), font, scale, (255, 255, 255), thickness, cv2.LINE_AA)
     
         return img_fused
-    def get_packet_from_contour(
-        self, contour: np.array, type: int, encoder_pos: float
+        
+    def get_item_from_mask(
+        self, img: np.array, bbox:dict, mask: np.array, type: int, encoder_pos: float
     ) -> Packet:
         """
-        TODO: Creates object given the contours from cnn mask.
+        Creates object inner rectangle given the mask from neural net.
 
         Args:
-            contour (np.array): Array of x, y coordinates making up the contour of some area.
+            img (np.array): image for drawing detections.
+            bbox (dict): bounding box parameters.
+            mask (np.array): mask produced by neural net.
             type (int): Type of the packet.
             encoder_pos (float): Position of the encoder.
 
         Returns:
             Packet: Created Packet object
         """
-
-        rectangle = cv2.minAreaRect(contour)
-        centroid = (int(rectangle[0][0]), int(rectangle[0][1]))
-        box = np.int0(cv2.boxPoints(rectangle))
-        angle = int(rectangle[2])
-        x, y, w, h = cv2.boundingRect(contour)
-
+        centroid = bbox['centroid']
+        ymin = bbox['ymin']
+        ymax = bbox['ymax']
+        xmin = bbox['xmin']
+        xmax = bbox['xmax']
+        angle = 0
+        box = np.int64(
+            np.array([[xmin, ymin], [xmax, ymin], [xmax, ymax], [xmin, ymax]])
+        )
+        print(box)
+        contours, _  = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            if area > 8500:
+                rectangle = cv2.minAreaRect(cnt)
+                centroid = (int(rectangle[0][0]), int(rectangle[0][1]))
+                box = np.int0(cv2.boxPoints(rectangle))
+                angle = int(rectangle[2])
+        print(box)
+        cv2.polylines(img, [box], True, (255, 0, 0), 3)
         packet = Packet(
             box=box,
             pack_type=type,
             centroid=centroid,
             angle=angle,
-            ymin=y,
-            ymax=y + w,
-            xmin=x,
-            xmax=x + h,
-            width=w,
-            height=h,
+            ymin=ymin,
+            ymax=ymax,
+            xmin=xmin,
+            xmax=xmax,
+            width=bbox['w'],
+            height=bbox['h'],
             encoder_position=encoder_pos,
         )
 
         packet.set_type(type)
-        packet.set_centroid(
-            centroid[0], centroid[1], self.homography_matrix, encoder_pos
-        )
-        packet.set_bounding_size(w, h, self.homography_matrix)
         packet.add_angle_to_average(angle)
 
         return packet
 
     def deep_item_detector(
         self,
-        color_frame: np.ndarray,
-        depth_frame: np.ndarray,
+        rgb_frame: np.ndarray,
         encoder_pos: float,
-        bnd_box: bool = True,
-        segment: bool = False,
-        homography: np.ndarray = None,
+        draw_box: bool = True,
         image_frame: np.ndarray = None,
     ) -> tuple:
+        """
+        Detects packets using Yolact model.
+
+        Args:
+            rgb_frame (np.ndarray): RGB frame in which packets should be detected.
+            encoder_position (float): Position of the encoder.
+            draw_box (bool): If bounding and min area boxes should be drawn.
+            image_frame (np.ndarray): Image frame into which information should be drawn.
+
+        Returns:
+            np.ndarray: Image frame with information drawn into it.
+            list[Packet]: List of detected packets.
+        """
         scale = 0.6
         thickness = 1
         font = cv2.FONT_HERSHEY_DUPLEX
         detected = []
-        img_h, img_w = color_frame.shape[0:2]
-        frame_trans = val_aug(color_frame, self.cfg.img_size)
+        img_h, img_w = rgb_frame.shape[0:2]
+        frame_trans = val_aug(rgb_frame, self.cfg.img_size)
 
         frame_tensor = torch.tensor(frame_trans).float()
         if self.cfg.cuda:
@@ -274,10 +296,10 @@ class ItemsDetector:
             class_p, box_p, coef_p, proto_p = self.net.forward(frame_tensor.unsqueeze(0))
         ids_p, class_p, box_p, coef_p, proto_p = self.nms(class_p, box_p, coef_p, proto_p, self.net.anchors, self.cfg)
         ids_p, class_p, boxes_p, masks_p = self.after_nms(ids_p, class_p, box_p, coef_p, proto_p, img_h, img_w, self.cfg)
-        # img_np_detect = self.draw_img(ids_p, class_p, boxes_p, masks_p, color_frame, self.cfg)
+        # img_np_detect = self.draw_img(ids_p, class_p, boxes_p, masks_p, rgb_frame, self.cfg)
         
         if ids_p is None:
-            return color_frame,detected
+            return rgb_frame,detected
 
         if isinstance(ids_p, torch.Tensor):
             ids_p = ids_p.cpu().numpy()
@@ -287,13 +309,13 @@ class ItemsDetector:
 
         num_detected = ids_p.shape[0]
 
-        img_np_detect = color_frame
+        img_np_detect = rgb_frame
         if not self.cfg.hide_mask:
             masks_semantic = masks_p * (ids_p[:, None, None] + 1)  # expand ids_p' shape for broadcasting
             # The color of the overlap area is different because of the '%' operation.
             masks_semantic = masks_semantic.astype('int').sum(axis=0) % (self.cfg.num_classes - 1)
             color_masks = COLORS[masks_semantic].astype('uint8')
-            img_np_detect = cv2.addWeighted(color_masks, 0.4, color_frame, 0.6, gamma=0)
+            img_np_detect = cv2.addWeighted(color_masks, 0.4, rgb_frame, 0.6, gamma=0)
         
         if not self.cfg.hide_bbox:
             for i in reversed(range(num_detected)):
@@ -302,6 +324,16 @@ class ItemsDetector:
                 h = float((ymax - ymin)) / img_h
                 cx, cy = (xmax + xmin) / 2, (ymax + ymin) / 2
                 centroid = (int(cx), int(cy))
+                
+                bbox = {
+                    'xmin':xmin, 
+                    'ymin':ymin,
+                    'xmax': xmax,
+                    'ymax': ymax,
+                    'centroid':centroid, 
+                    'w': w, 
+                    'h': h
+                }
                 
                 color = COLORS[ids_p[i] + 1].tolist()
                 cv2.rectangle(img_np_detect, (xmin, ymin), (xmax, ymax), color, thickness)
@@ -313,27 +345,7 @@ class ItemsDetector:
                 cv2.rectangle(img_np_detect, (xmin, ymin), (xmin + text_w, ymin + text_h + 5), color, -1)
                 cv2.putText(img_np_detect, text_str, (xmin, ymin + 15), font, scale, (255, 255, 255), thickness, cv2.LINE_AA)
     
-                packet = Packet(
-                    box=None,
-                    pack_type=int(class_p[i]),
-                    centroid=centroid,
-                    angle=None,
-                    ymin=ymin,
-                    ymax=ymax,
-                    xmin=xmin,
-                    xmax=xmax,
-                    width=w,
-                    height=h,
-                    encoder_position=None,
-                )
+                packet = self.get_item_from_mask(img_np_detect, bbox, masks_p[i], ids_p[i], encoder_pos)
                 detected.append(packet)
-                # packet.set_type(int(class_p[i]))
-                # packet.set_centroid(centroid[0], centroid[1], homography, encoder_pos)
-                # packet.set_bounding_size(int(w * width), int(h * height), homography)
-                # packet.add_angle_to_average(angle)
-                # if centroid[0] - w / 2 > guard and centroid[0] + w / 2 < (
-                #     width - guard
-                # ):
-                #     detected.append(packet)
         return img_np_detect, detected
 
