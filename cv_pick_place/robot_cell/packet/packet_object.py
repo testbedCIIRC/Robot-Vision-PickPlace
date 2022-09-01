@@ -291,7 +291,7 @@ class Packet:
         self.width = width
         self.height = height
 
-    def save_img_mask(self, img_mask: np.ndarray) -> None:
+    def set_img_mask(self, img_mask: np.ndarray) -> None:
         """
         Saves binary mask of the image.
 
