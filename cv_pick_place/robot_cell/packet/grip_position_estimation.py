@@ -552,11 +552,18 @@ class GripPositionEstimation:
         Returns:
             tuple[np.ndarray,np.ndarray, np.ndarray]: point, normal and direction of y axis for gripping
         """
-        print(self.d_bound)
-        real2pcd = self.d_bound[0]/self.mm_width
+        # TODO: Write some visualization for to know what are you suppose to pick and where
+        # Here is some problem with units
+        print(self.d_bound[0])
+        print(self.mm_width)
+        print(self.gripper_edge_length)
+
+        real2pcd = self.d_bound[0] / (self.mm_width/10)
         direction_y = np.array([1.0,0.0, 0.0])
         valid, simmilar, searched = False, False, False
-        edge_length = self.gripper_edge_length * real2pcd
+        edge_length = self.gripper_edge_length  * real2pcd
+        print(real2pcd)
+        print(edge_length)
 
         while self. run_number < self.max_runs:
             # Find points and normals in annulus around center
@@ -781,12 +788,12 @@ class GripPositionEstimation:
         if self.pick_type == "line":
             # Items that are too small for the whole gripper gripping by 2
             if self.verbose:
-                 print(f"[GPE INFO]: Item {CLASSES[self.item]} in line list - Fitting 2 optimal points")
+                 print(f"[GPE INFO]: Item {CLASSES[self.item_type]} in line list - Fitting 2 optimal points")
             center_f, normal_z, direction_y = self._pose_for_2points(center, normal)
         else:
             # Items gripped by circle
             if self.verbose:
-                print(f"[GPE INFO]: Item {CLASSES[self.item]} in circle list -  Fitting circle")
+                print(f"[GPE INFO]: Item {CLASSES[self.item_type]} in circle list -  Fitting circle")
             # Everything else
             center_f, normal_z, direction_y = self._pose_for_circle(center, normal)
     
@@ -1049,6 +1056,8 @@ class GripPositionEstimation:
         Args:
             item (Packet): Packet to be picked.
         """
+        self.item_type = item.type
+        print(self.item_type)
         self.pick_type = "line" if item.type in LINE_LIST else "circle"
 
 
@@ -1107,8 +1116,6 @@ class GripPositionEstimation:
         """
         # TODO: Later add to this stuff detection from packet
         # Now here due to the debugging purposes
-        self.item = item
-        self.mm_width = 0.25 # this already is in the the packet
 
         if packet_mask.shape != depth_array.shape: 
             if self.verbose :
@@ -1170,6 +1177,8 @@ class GripPositionEstimation:
         # TODO: Add recalculation of coords by the real values
         # Creating new class with given params
         self.blacklist_radius = blacklist_radius
+        self._change_visualization(True)
+
         z_min, z_max = z_lim
         y_min, y_max = y_lim
         _, pack_y = packet_coords
