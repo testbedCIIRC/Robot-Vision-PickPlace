@@ -293,7 +293,7 @@ class Packet:
 
     def set_img_mask(self, img_mask: np.ndarray) -> None:
         """
-        Saves binary mask of the image.
+        Sets binary mask of the image.
 
         Args:
             img_mask (np.ndarray): Image binary mask of the whole image.

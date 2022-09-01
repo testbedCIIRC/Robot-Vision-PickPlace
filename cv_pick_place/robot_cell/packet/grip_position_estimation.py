@@ -16,38 +16,23 @@ M2MM = 1000.0
 EPS = 0.000000001
 CLASSES = {
     # TODO: FILL via detection YOLACT or just take somthing from previous things
-    0: "", 
-    1: "",
-    2: "",
-    3: "",
-    4: "", 
-    5: "",
-    6: "",
-    7: "",
+    0: "small_white_packet", 
+    1: "medium_white_packet",
+    2: "big_white_packet",
+    3: "brown_packet",
+    4: "catfood", 
+    5: "banana",
+    6: "skittles",
+    7: "ketchup",
     8: "toothpaste",
-    9: "", 
-    10: "",
-    11: "",
-    12: "",
+    9: "showergel", 
+    10: "mouthwash",
+    11: "stain_remover",
+    12: "trex",
 
 }
 # Just name of the classes IDK if they will be used
-"""
-"ketchup"
-"showergel"
-"toothpaste"
-"trex"
-"mouthwash"
-"staincleaner"
-"banana"
-"skittles"
-"catfood"
-"packet-white-big"
-"packet-white-small"
-"packet-white-medium"
-"packet-brown"
-"""
-LINE_LIST = [8]
+LINE_LIST = [2, 8]
 
 class GripPositionEstimation:
     def __init__(
@@ -866,6 +851,7 @@ class GripPositionEstimation:
             point_relative = self._get_relative_coordinates(center, anchor)
             shift_x, shift_y = -1 * dx * self.mm_width, -1 * dy * self.mm_height
             
+            # XXX: Recalculation of the coords
             dist = self.gripper_edge_length * math.sqrt(3) / 6.0
             coords = np.array(shift_x, shift_y, pack_z) - dist * new_y
             point_relative += np.array(dist * new_y)
@@ -1164,7 +1150,7 @@ class GripPositionEstimation:
         """
         # TODO: add decision based on ration and sizes of packet bbox
         # MAYBE RENAME PACKET TO ITEM OR SOMETHING LIKE THAT
-        # TODO Add recalculation of coords by the real values
+        # TODO: Add recalculation of coords by the real values
         # Creating new class with given params
         self.blacklist_radius = blacklist_radius
         z_min, z_max = z_lim
