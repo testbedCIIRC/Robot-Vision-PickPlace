@@ -16,9 +16,9 @@ M2MM = 1000.0
 EPS = 0.000000001
 CLASSES = {
     # TODO: FILL via detection YOLACT or just take somthing from previous things
-    0: "small_white_packet", 
-    1: "medium_white_packet",
-    2: "big_white_packet",
+    0: "big_white_packet",
+    1: "small_white_packet", 
+    2: "medium_white_packet",
     3: "brown_packet",
     4: "catfood", 
     5: "banana",
@@ -32,7 +32,7 @@ CLASSES = {
 
 }
 # Just name of the classes IDK if they will be used
-LINE_LIST = [2, 8]
+LINE_LIST = [1, 8]
 
 class GripPositionEstimation:
     def __init__(
@@ -723,7 +723,7 @@ class GripPositionEstimation:
                 }
                 self._visualize_frame(viz_dict)
             c_point[2] = plane_c[2]
-            direction_y = np.array(1.0,0.0, 0.0)
+            direction_y = np.array(-1.0,0.0, 0.0)
             return c_point, plane_n, direction_y
 
         if self.verbose:
@@ -779,14 +779,14 @@ class GripPositionEstimation:
         if self.pick_type == "line":
             # Items that are too small for the whole gripper gripping by 2
             if self.verbose:
-                 print(f"[GPE INFO]: Item {CLASSES[self.item]} in line list - 2 optimal points")
+                 print(f"[GPE INFO]: Item {CLASSES[self.item]} in line list - Fitting 2 optimal points")
             center_f, normal_z, direction_y = self._pose_for_2points(center, normal)
         else:
             # Items gripped by circle
             if self.verbose:
-                print(f"[GPE INFO]: Item {CLASSES[self.item]} in circle list -  circle")
+                print(f"[GPE INFO]: Item {CLASSES[self.item]} in circle list -  Fitting circle")
             # Everything else
-            center_f, normal_z, direction_y= self._pose_circle(self.item, center, normal)
+            center_f, normal_z, direction_y = self._pose_for_circle(self.item, center, normal)
     
         return center_f, normal_z, direction_y
         
@@ -1232,7 +1232,7 @@ class GripPositionEstimation:
 
             if point_exists:
                 coord, angles = self._convert2actual_position(
-                    center,anchor, normal, direction, z_lim
+                    center, anchor, normal, direction, z_lim
                 )
                 shift_x, shift_y, pack_z = coord
                 roll, pitch, yaw = angles
@@ -1263,6 +1263,7 @@ def main():
         gripper_radius=gripper_radius,
         gripper_ration=0.8,
     )
+    gpe.pick_type = "line"
     # Toothpaste
     depth_array = np.load(
         os.path.join(
