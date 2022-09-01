@@ -120,14 +120,14 @@
     "MODEL": {
         "//": "Model parameter paths",
         "PATHS": {
-            "ANNOTATION_PATH": "Tensorflow/workspace/annotations",
-            "CHECKPOINT_PATH": "Tensorflow/workspace/models/my_ssd_mobnet"
+            "ANNOTATION_PATH": "neural_nets/tf_ssd_mobnet/annotations",
+            "CHECKPOINT_PATH": "neural_nets/tf_ssd_mobnet/models/my_ssd_mobnet"
         },
 
         "//": "Model files",
         "FILES": {
-            "PIPELINE_CONFIG": "Tensorflow/workspace/models/my_ssd_mobnet/pipeline.config",
-            "LABELMAP": "Tensorflow/workspace/annotations/label_map.pbtxt"
+            "PIPELINE_CONFIG": "neural_nets/tf_ssd_mobnet/models/my_ssd_mobnet/pipeline.config",
+            "LABELMAP": "neural_nets/tf_ssd_mobnet/annotations/label_map.pbtxt"
         },
 
         "//": "Model checkpoint name",
