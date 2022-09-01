@@ -677,6 +677,9 @@ class GripPositionEstimation:
         plane_c, plane_n = self._fit_plane(self.points[n_mask, :])
 
         valid = self._check_point_validity(center, plane_n)
+        
+        # this direction is basicaly set for this
+        direction_y = np.array([-1.0, 0.0, 0.0])
 
         # Returns original point as optimal if it is valid
         if valid:
@@ -691,7 +694,7 @@ class GripPositionEstimation:
                 }
                 self._visualize_frame(viz_dict)
             center[2] = plane_c[2]
-            return center, plane_n
+            return center, plane_n, direction_y
 
         self._expand_blacklist(center)
         while self.run_number < self.max_runs:
@@ -723,7 +726,6 @@ class GripPositionEstimation:
                 }
                 self._visualize_frame(viz_dict)
             c_point[2] = plane_c[2]
-            direction_y = np.array(-1.0,0.0, 0.0)
             return c_point, plane_n, direction_y
 
         if self.verbose:
@@ -732,7 +734,7 @@ class GripPositionEstimation:
                 print(f"\tAll possible points were checked, did not found the optimal")
             else:
                 print(f"\tExceded given number of tries: {self.max_runs}")
-        return None, None
+        return None, None, None
 
     def _detect_point_from_pcd(self) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -786,7 +788,7 @@ class GripPositionEstimation:
             if self.verbose:
                 print(f"[GPE INFO]: Item {CLASSES[self.item]} in circle list -  Fitting circle")
             # Everything else
-            center_f, normal_z, direction_y = self._pose_for_circle(self.item, center, normal)
+            center_f, normal_z, direction_y = self._pose_for_circle(center, normal)
     
         return center_f, normal_z, direction_y
         
