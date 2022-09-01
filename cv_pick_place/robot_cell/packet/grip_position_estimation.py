@@ -568,9 +568,10 @@ class GripPositionEstimation:
         while self. run_number < self.max_runs:
             # Find points and normals in annulus around center
             close_mask = self._anuluss_mask(center, normal, self.filtered_points, edge_length)
+            # Add behaviour when close mask is empty, though it should not happen
             close_points = self.filtered_points[close_mask, :]
             close_normals = self.filtered_normals[close_mask, :]
-
+            print(close_points.shape)
             # BLACKMAGIC NUMPY BROADCASTING 
             distance_matrix = np.linalg.norm(close_points[:, None, :] - close_points, axis=2)
             # Take just one half (triangle) of the distance matrix 
