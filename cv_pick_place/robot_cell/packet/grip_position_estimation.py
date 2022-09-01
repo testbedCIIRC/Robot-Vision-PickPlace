@@ -49,6 +49,7 @@ class GripPositionEstimation:
         num_bins: int = 20,
         black_list_radius: float = 0.01,
         save_depth_array: bool = False,
+        mask_probability_ratio: float = 0.5
     ):
         """
         Initializes class for predicting optimal position for the gripper.
@@ -66,6 +67,7 @@ class GripPositionEstimation:
             height_th (float): Distance between camera and belt.
             num_bins (int): Number of bins for height thresholding (20 is good enough, 10 works as well).
             black_list_radius (float): Distance for blacklisting points.
+            #TODO: Update docstring
         """
 
         self.visualization = visualize
@@ -82,6 +84,7 @@ class GripPositionEstimation:
         self.gripper_ratio = gripper_ration  # Ration for computing gripper annulus
         self.blacklist_radius = black_list_radius
         self.simmilartiy_threshold = 0.9
+        self.mask_probability_ratio = mask_probability_ratio
 
         # Pointcloud
         self.pcd = None
@@ -1172,7 +1175,7 @@ class GripPositionEstimation:
 
         if depth_exist:
             mask = packet.mask
-            mask = mask > self.mask_threshold
+            mask = mask > self.mask_probability_ratio
             if self.save_depth:
                 # NOTE: JUST FOR SAVING THE TEST IMG, DELETE MAYBE
                 print(f"[GPE INFO]: SAVING the depth array of packet {packet.id}")
