@@ -116,6 +116,17 @@ class GripPositionEstimation:
         self.run_number = 0  # current run
         self.spike_threshold = 0.04  # threshold for spike in the circlic neighborhood
 
+    def _change_visualization(self, visualization: bool) -> None:
+        """
+        Changes the visualization state.
+        Used for development.  # TODO: delete later
+
+        Args:
+            visualization (bool): New visualization state.
+        """
+
+        self.visualization = visualization
+
     def _create_pcd_from_rgb_depth_frames(
         self, rgb_name: str, depth_name: str, path: str = ""
     ) -> o3d.geometry.PointCloud:
@@ -580,9 +591,8 @@ class GripPositionEstimation:
                 # set it to zero so it is removed from the matrix
                 distance_matrix[r, c] = 0.0
 
-                # Check neighrbood of each point if it is valid
+                # Check neighrbood of each point if it is valid ie not partialy on the conveyor belt
                 point_1, point_2 = close_points[r, :], close_points[c, :]
-                # TODO: Add write somthing more beutifull nicer radius instead of 0.02*k
                 neigh_1 = self.points[self._circle_mask(point_1, self.suction_cup_radius*real2pcd),:]
                 neigh_2 = self.points[self._circle_mask(point_2, self.suction_cup_radius*real2pcd),:]
                 valid_1 = neigh_1[np.argmin(neigh_1[:, 2]), 2] > self.th_val
@@ -599,6 +609,7 @@ class GripPositionEstimation:
                 normal_1, normal_2 = close_normals[r, :], close_normals[c, :]
                 simmilarity = self._normal_similarity(normal_1, normal_2)
                 simmilar = simmilarity > self.simmilartiy_threshold
+
                 valid = valid_1 and valid_2 and simmilar
                 if self.verbose:
                     print(f"[GPE INFO]: Points {point_1}, {point_2} are {valid_1}, {valid_2}\n\t Normals {normal_1}, {normal_2}\n\t have similarity: {simmilarity}: {simmilar}")
@@ -628,22 +639,21 @@ class GripPositionEstimation:
                     break
                 center, normal = self._get_candidate_point(center, allowed_mask)
                 continue
-
             else:      
                 # NOTE: Maybe check if the points are colinear with center
                 # Might not be necessary as the iteration trough maximum distance will probably find the colinear points
                 direction_x = point_2 - point_1
-                direction_x = direction_x / np.linalg.norm(direction_x)
+                direction_x /= np.linalg.norm(direction_x)
                 direction_y = np.cross(direction_x, normal)
-                direction_y = direction_y / np.linalg.norm(direction_y)
+                direction_y /= np.linalg.norm(direction_y)
                 # Compute the center between these two points and probably normal
                 # WTF IS THIS GRAYED OUT
                 if self.visualization:
                     viz_dict = {
                         "Height filtered points": self.filtered_points,
                         "Close points": close_points,
-                        "center": center,
                         "pick_points": np.vstack((point_1, point_2)),
+                        "center": center
                     }
                     self._visualize_frame(viz_dict)
                 mid = (point_1 + point_2) / 2.0
@@ -738,10 +748,7 @@ class GripPositionEstimation:
 
     def _detect_point_from_pcd(self) -> tuple[np.ndarray, np.ndarray]:
         """
-        Detects points from point cloud. Firstly calculates center of mass,
-        check its validity, if its good returns it, if not blacklist
-        neighborhood, and selects clossest point to center of mass.
-        Checks again.
+        Detect optimal point from pointcloud. 
         FIXME: Update docstring
         Args:
             item (item): item class
@@ -800,7 +807,7 @@ class GripPositionEstimation:
         self, point: np.ndarray, anchor: np.ndarray
         ) -> np.ndarray:
         """
-        Returns relative coordinates of point from center of gripper.
+        Returns relative ratio coordinates of point from center of gripper.
 
         Args:
             point (np.ndarray): Point to be transformed.
@@ -809,9 +816,7 @@ class GripPositionEstimation:
         Returns:
             np.ndarray: Relative coordinates of point to anchor and height(px, py, z)
                         in packet coord system.
-        """
-
-        
+        """        
         point_rel = (point[:2] - self.min_bound[:2]) / self.db[:2]
         point_anchor_rel = point_rel - anchor
 
@@ -824,7 +829,7 @@ class GripPositionEstimation:
         normal: np.ndarray, 
         direction: np.ndarray, 
         z_lim: tuple[float], 
-        y_offset: float = 10.0,
+        rot_offset: float = 10.0,
         rotation_matrix: np.ndarray = np.array(
             [[-1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 1.0]])
         ) -> np.ndarray:
@@ -836,7 +841,7 @@ class GripPositionEstimation:
             normal (np.ndarray): Normal of the gripper in pcd coord system.
             direction (np.ndarray): Direction of the gripper in pcd coord system.
             z_lim (tuple[float]): z limits of the gripper.
-            y_offset (float): y offset in degrees for the straight line
+            rot_offset (float): y offset in degrees for the straight line
             rotation_matrix (np.ndarray): Rotation matrix between pcd and actual coord system.
         Returns:
             np.ndarray: Actual position for the robot.
@@ -937,7 +942,7 @@ class GripPositionEstimation:
 
         # Final array of angles in degrees
         angles = np.rad2deg(np.array([alpha, beta, gamma]))
-        angles[0] += y_offset
+        angles[0] += rot_offset
         return coords, angles
 
     
@@ -1181,6 +1186,7 @@ class GripPositionEstimation:
 
         if depth_exist:
             mask = packet.mask
+            mask = mask > self.mask_threshold
             if self.save_depth:
                 # NOTE: JUST FOR SAVING THE TEST IMG, DELETE MAYBE
                 print(f"[GPE INFO]: SAVING the depth array of packet {packet.id}")
@@ -1248,7 +1254,7 @@ def main():
     gripper_radius = triangle_edge / np.sqrt(3)
     
     gpe = GripPositionEstimation(
-        visualize=True,
+        visualize=False,
         verbose=True,
         center_switch="mass",
         suction_cup_radius = 0.02,
@@ -1256,7 +1262,7 @@ def main():
         gripper_radius=gripper_radius,
         gripper_ration=0.8,
     )
-    
+    # Toothpaste
     depth_array = np.load(
         os.path.join(
             "robot_cell",
@@ -1274,6 +1280,7 @@ def main():
             "new_items",
             "8_rgb.jpg"
         ))
+    print()
     print(img.shape, depth_array.shape)
     x_f = 784
     x_t = x_f + 355
@@ -1303,7 +1310,58 @@ def main():
     mask = mask[:,:,0] > 0
     cv2.waitKey(0)
     # print(mask.shape, np.unique(mask, return_counts=True))
-    point_relative, normal = gpe.estimate_from_depth_array(depth_array, mask, item = 8)
+    _ = gpe.estimate_from_depth_array(depth_array, mask, item = 8)
+
+    gpe._change_visualization(True)
+     # Toothpaste
+    depth_array = np.load(
+        os.path.join(
+            "robot_cell",
+            "packet",
+            "data",
+            "new_items",
+            "4_depth_array.npy"
+        )
+    )
+    img = cv2.imread(
+        os.path.join(
+            "robot_cell",
+            "packet",
+            "data",
+            "new_items",
+            "4_rgb.jpg"
+        ))
+   
+    print(img.shape, depth_array.shape)
+    x_f = 790
+    x_t = x_f + 424
+    y_f = 510
+    y_t = y_f + 210
+    img = img[y_f:y_t, x_f:x_t, :]
+    depth_array = depth_array[y_f:y_t, x_f:x_t]
+    cv2.imshow("img", img)
+    cv2.waitKey(0)
+
+    imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    cnt = tuple()
+    mask = np.zeros_like(img)
+    for i in range(3):
+        imgray = img[:,:,i]
+        ret, thresh = cv2.threshold(imgray, 35, 255, 0)
+        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        p = img.copy()
+        # cv2.drawContours(p, contours, -1, (0,255,0), 1)
+        # cv2.imshow("img", p)
+        # cv2.waitKey(0)
+        mask = cv2.drawContours(mask, contours, -1, (255,255, 255), -1)
+    # cond = np.repeat((depth_array < 770)[:, :, np.newaxis], 3, axis=2)
+    # img = np.where(cond, img, np.z eros_like(img))
+    # print(np.unique(depth_array, return_counts=True))
+    # cv2.imshow("mask", mask)
+    mask = mask[:,:,0] > 0
+    # print(mask.shape, np.unique(mask, return_counts=True))
+    _ = gpe.estimate_from_depth_array(depth_array, mask, item = 8)
+
 
     # print("second")
     # gpe.estimate_from_images("rgb_image1.jpg", "depth_image1.png", r"robot_cell\packet\data\packet+hand")

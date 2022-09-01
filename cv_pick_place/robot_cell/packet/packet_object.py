@@ -96,6 +96,10 @@ class Packet:
 
         self.in_pick_list = False
 
+        # Mask used for optimal point from depth crop
+        self.img_maks = None
+        self.num_proccessed_mask = 0
+
         # OBSOLETE PACKET PARAMETERS
         ############################
         # Tuple of 2 numbers describing center of the packet
@@ -289,7 +293,7 @@ class Packet:
 
     def set_mask(self, mask: tuple[int, int]) -> None:
         """
-        Sets the inner rectangle (params mask of the packet).
+        Sets probability mask of item.
 
         Args:
             mask (tuple): Center(x, y), (width, height), angle of rotation.
@@ -308,7 +312,14 @@ class Packet:
             if mask.shape != self.mask.shape:
                 print(f"[WARN]: Tried to average two uncompatible sizes")
                 return
-            self.mask = np.logical_and(mask, self.mask)
+            
+            # Some kind of averaging
+            self.mask = self.num_proccessed_mask * self.mask + mask
+            self.num_proccessed_mask += 1
+            self.mask /= self.num_proccessed_mask
+
+            # This was the old way
+            # self.mask = np.logical_and(mask, self.mask)
 
     def add_angle_to_average(self, angle: float) -> None:
         """

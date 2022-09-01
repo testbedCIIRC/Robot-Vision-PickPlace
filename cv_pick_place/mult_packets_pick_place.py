@@ -30,7 +30,7 @@ def packet_tracking(
     detected_packets: list[Packet],
     depth_frame: np.ndarray,
     frame_width: int,
-    mask: np.ndarray,
+    mask: np.ndarray = None,
 ) -> None:
     """
     Assigns IDs to detected packets and updates packet depth frames.
@@ -59,8 +59,9 @@ def packet_tracking(
                 and item.centroid_px.x + item.width / 2
                 < (frame_width - item.crop_border_px)
             ):
+                m = mask if mask is not None else item.img_mask
                 depth_crop = item.get_crop_from_frame(depth_frame)
-                mask_crop = item.get_crop_from_frame(mask)
+                mask_crop = item.get_crop_from_frame(m)
                 item.add_depth_crop_to_average(depth_crop)
                 item.set_mask(mask_crop)
 
