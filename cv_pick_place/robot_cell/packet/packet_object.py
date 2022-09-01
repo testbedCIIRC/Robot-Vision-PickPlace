@@ -326,8 +326,7 @@ class Packet:
             # Some kind of averaging
             self.mask = self.num_proccessed_mask * self.mask + mask
             self.num_proccessed_mask += 1
-            self.mask /= self.num_proccessed_mask
-
+            self.mask  = self.mask / self.num_proccessed_mask
             # This was the old way
             # self.mask = np.logical_and(mask, self.mask)
 

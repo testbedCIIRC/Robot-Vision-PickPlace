@@ -805,7 +805,7 @@ class GripPositionEstimation:
             np.ndarray: Relative coordinates of point to anchor and height(px, py, z)
                         in packet coord system.
         """        
-        point_rel = (point[:2] - self.min_bound[:2]) / self.db[:2]
+        point_rel = (point[:2] - self.min_bound[:2]) / self.d_bound[:2]
         point_anchor_rel = point_rel - anchor
 
         return np.hstack((point_anchor_rel, point[2]))
@@ -852,11 +852,12 @@ class GripPositionEstimation:
                 new_x *= -1.0
                 new_y *= -1.0
             point_relative = self._get_relative_coordinates(center, anchor)
+            dx, dy, pack_z = point_relative
             shift_x, shift_y = -1 * dx * self.mm_width, -1 * dy * self.mm_height
             
             # XXX: Recalculation of the coords
             dist = self.gripper_edge_length * math.sqrt(3) / 6.0
-            coords = np.array(shift_x, shift_y, pack_z) - dist * new_y
+            coords = np.array([shift_x, shift_y, pack_z]) - dist * new_y
             point_relative += np.array(dist * new_y)
 
 
@@ -1232,7 +1233,8 @@ class GripPositionEstimation:
                 print(f"\tReason - Average depth frame is None. Returns None")
             if not point_exists:
                 print(f"\tReason - Valid point was not found. Returns None")
-        return shift_x, shift_y, pack_z, roll, pitch, yaw
+        # TODO: returm should not have coords as it is in cm not relative for pixels
+        return shift_x, shift_y, pack_z, roll, pitch, yaw, coord
         # return shift_x, shift_y, pack_z, roll, pitch, yaw,
 
 
