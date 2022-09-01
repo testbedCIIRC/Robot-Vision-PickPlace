@@ -776,7 +776,7 @@ class GripPositionEstimation:
             idx = np.argmax(self.filtered_points[:, 2])
             center, normal = self.points[idx], self.normal[idx]
 
-        if self.item in LINE_LIST:
+        if self.pick_type == "line":
             # Items that are too small for the whole gripper gripping by 2
             if self.verbose:
                  print(f"[GPE INFO]: Item {CLASSES[self.item]} in line list - 2 optimal points")
@@ -843,7 +843,7 @@ class GripPositionEstimation:
         if self.verbose:
             print(f"[GPE INFO]: Aproach vector {new_z} in coord base")
 
-        if self.item in LINE_LIST:
+        if self.pick_type == "line":
             # Pick by 2 points
             new_z = -1 * (rotation_matrix @ normal)
             new_y = direction
@@ -1039,6 +1039,17 @@ class GripPositionEstimation:
         angles = np.rad2deg(np.array([alpha, beta, gamma]))
         return angles
 
+    def _get_pick_type(self, item: Packet) -> None :
+        """
+        Determine picking type based on item characteristics.
+        # TODO: Replace with some dicisions by the packet characteristics
+
+        Args:
+            item (Packet): Packet to be picked.
+        """
+        self.pick_type = "line" if item.type in LINE_LIST else "circle"
+
+
     def estimate_from_images(
         self,
         rgb_image_name: str,
@@ -1162,8 +1173,7 @@ class GripPositionEstimation:
         _, pack_y = packet_coords
         depth_frame = packet.avg_depth_crop
 
-        self.item = 8 # should be something from packet object like type
-        self
+        self._get_pick_type(packet)
 
         pack_z = z_min
         shift_x, shift_y = None, None
