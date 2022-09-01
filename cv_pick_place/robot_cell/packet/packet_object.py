@@ -291,6 +291,16 @@ class Packet:
         self.width = width
         self.height = height
 
+    def save_img_mask(self, img_mask: np.ndarray) -> None:
+        """
+        Saves binary mask of the image.
+
+        Args:
+            img_mask (np.ndarray): Image binary mask of the whole image.
+
+        """
+        self.img_mask = img_mask
+
     def set_mask(self, mask: tuple[int, int]) -> None:
         """
         Sets probability mask of item.
