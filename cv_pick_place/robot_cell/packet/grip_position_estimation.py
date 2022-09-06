@@ -1257,7 +1257,7 @@ class GripPositionEstimation:
             if pack_y_max > y_max:
                 ratio_over = abs(pack_y_max - y_max) / packet.height_bnd_mm
                 k = 1 - ratio_over
-                mm_height *= k
+                self.mm_height *= k
                 depth_frame = depth_frame[: int(k * dims[0]), :]
                 ratio /= k
                 mask = mask[: int(k * dims[0]), :]
@@ -1265,7 +1265,7 @@ class GripPositionEstimation:
             if pack_y_min < y_min:
                 ratio_over = abs(pack_y_min - y_min) / packet.height_bnd_mm
                 k = 1 - ratio_over
-                mm_height *= k
+                self.mm_height *= k
                 depth_frame = depth_frame[int(ratio_over * dims[0]) :, :]
                 ratio = (0.5 - ratio_over) / k
                 mask = mask[int(ratio_over * dims[0]) :, :]
