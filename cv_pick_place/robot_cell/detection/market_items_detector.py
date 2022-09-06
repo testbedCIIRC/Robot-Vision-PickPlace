@@ -25,11 +25,13 @@ class ItemsDetector:
         paths: dict,
         files: dict,
         checkpt: str,
-        detect_classes: list = [46,39],
+        detect_classes: dict = {46:0,39:1},
         max_detect: int = 1,
         detect_thres: float = 0.7,
         ignore_vertical_px: int = 60,
         ignore_horizontal_px: int = 10,
+        cnt_area_up_thresh: int = 110000,
+        cnt_area_low_thresh: int = 25000,
     ):
         """
         PacketDetector object constructor.
@@ -42,8 +44,11 @@ class ItemsDetector:
             detect_thres (float): Minimal confidence for detected object to be labeled as a item.
             ignore_vertical_px (int): Number of rows of pixels ignored from top and bottom of the image frame.
             ignore_horizontal_px (int): Number of columns of pixels ignored from left and right of the image frame.
+            cnt_area_up_thresh (int): Upper contour area threshold for item mask.
+            cnt_area_low_thresh (int): Lower contour area threshold for item mask.
             
         """
+        
         self.detect_classes = detect_classes
         self.detected_objects = []
         self.homography_matrix = None
@@ -51,6 +56,9 @@ class ItemsDetector:
 
         self.ignore_vertical_px = ignore_vertical_px
         self.ignore_horizontal_px = ignore_horizontal_px
+
+        self.cnt_area_up_thresh = cnt_area_up_thresh
+        self.cnt_area_low_thresh = cnt_area_low_thresh
 
         args = parser.parse_args()
         prefix = re.findall(r'best_\d+\.\d+_', args.weight)[0]
@@ -257,7 +265,7 @@ class ItemsDetector:
         contours, _  = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for cnt in contours:
             area = cv2.contourArea(cnt)
-            if area > 10000:
+            if area > self.cnt_area_low_thresh and area < self.cnt_area_up_thresh:
                 rectangle = cv2.minAreaRect(cnt)
                 centroid = (int(rectangle[0][0]), int(rectangle[0][1]))
                 box = np.int0(cv2.boxPoints(rectangle))
@@ -266,7 +274,6 @@ class ItemsDetector:
         cv2.polylines(img, [box], True, (255, 0, 0), 3)
         item = Packet(
             box=box,
-            pack_type=type,
             centroid=centroid,
             angle=angle,
             ymin=ymin,
@@ -278,7 +285,7 @@ class ItemsDetector:
             encoder_position=encoder_pos,
         )
 
-        item.set_type(type)
+        item.set_type(self.detect_classes[type])
         item.set_centroid(
             centroid[0], centroid[1], self.homography_matrix, encoder_pos
         )
@@ -390,7 +397,6 @@ class ItemsDetector:
                         thickness, 
                         cv2.LINE_AA
                     )
-                print(int(ids_p[i]))
                 item = self.get_item_from_mask(
                     img_np_detect, 
                     bbox, masks_p[i], 
