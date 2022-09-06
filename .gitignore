@@ -15,3 +15,9 @@ delete.py
 delete.ipynb
 depth_array*.npy
 cv_pick_place/dataset_capture
+cv_pick_place/trt_files
+cv_pick_place/tensorboard_log
+cv_pick_place/weights
+cv_pick_place/onnx_files
+cv_pick_place/results
+cv_pick_place/neural_nets/torch_yolact/weights
