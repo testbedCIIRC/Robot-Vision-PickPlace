@@ -1,5 +1,6 @@
 import os
 import json
+import argparse
 
 from multiprocessing import Process
 from multiprocessing import Manager
@@ -140,9 +141,9 @@ def program_mode(
                     args=(
                         rob_config,
                         r_control,
-                        rob_config["MODEL"]["PATHS"],
-                        rob_config["MODEL"]["FILES"],
-                        rob_config["MODEL"]["CHECK_POINT"],
+                        nn1_paths,
+                        nn1_files,
+                        nn1_checkpoint,
                         info_dict,
                     ),
                 )
@@ -166,13 +167,93 @@ def program_mode(
     return program_mode(demos, r_control, r_comm_info, r_comm_encoder, rob_config)
 
 
+def bool_str(string: str) -> bool:
+    """
+    Used in argument parser to detect boolean flags written as a string.
+
+    Args:
+        string (str): String to be evaluated.
+
+    Returns:
+        bool: True, False, depending on contents of the string.
+
+    Raises:
+        argparse.ArgumentTypeError: Error in case the string does not contain any of the expected values.
+    """
+
+    if string in ["True", "true"]:
+        return True
+    elif string in ["False", "false"]:
+        return False
+    else:
+        raise argparse.ArgumentTypeError
+
+
 if __name__ == "__main__":
-    # Read robot configuration
-    with open(ROB_CONFIG_FILE) as file:
+    # Read config file path
+    parser = argparse.ArgumentParser(description="Robot cell input arguments.")
+    parser.add_argument(
+        "--config-file",
+        default=ROB_CONFIG_FILE,
+        type=str,
+        dest="CONFIG_FILE",
+        help="Path to configuration file",
+    )
+    config, _ = parser.parse_known_args()
+
+    # Read config file
+    with open(config.CONFIG_FILE, "r") as file:
         rob_config = json.load(file)
 
+    # Read all other input arguments
+    for param in rob_config.items():
+        if isinstance(param[1]["default"], bool):
+            parser.add_argument(
+                param[1]["arg"],
+                default=param[1]["default"],
+                dest=param[0],
+                help=param[1]["help"],
+                type=bool_str,
+            )
+        elif isinstance(param[1]["default"], list):
+            parser.add_argument(
+                param[1]["arg"],
+                default=param[1]["default"],
+                dest=param[0],
+                help=param[1]["help"],
+                nargs=len(param[1]["default"]),
+                type=type(param[1]["default"][0]),
+            )
+        elif isinstance(param[1]["default"], int):
+            parser.add_argument(
+                param[1]["arg"],
+                default=param[1]["default"],
+                dest=param[0],
+                help=param[1]["help"],
+                type=int,
+            )
+        elif isinstance(param[1]["default"], float):
+            parser.add_argument(
+                param[1]["arg"],
+                default=param[1]["default"],
+                dest=param[0],
+                help=param[1]["help"],
+                type=float,
+            )
+        elif isinstance(param[1]["default"], str):
+            parser.add_argument(
+                param[1]["arg"],
+                default=param[1]["default"],
+                dest=param[0],
+                help=param[1]["help"],
+                type=str,
+            )
+        else:
+            print(f"[WARNING] Default value of {param[0]} parameter not handled")
+    rob_config = parser.parse_args()
+
     # Define robot positions dictionaries from json file
-    with open(rob_config["PATHS"]["ROBOT_POSITIONS_FILE"]) as file:
+    with open(rob_config.PATH_ROBOT_POSITIONS) as file:
         robot_poses = json.load(file)
 
     Pick_place_dict_conv_mov_slow = robot_poses["Pick_place_dict_conv_mov_slow"]
@@ -180,14 +261,24 @@ if __name__ == "__main__":
     Pick_place_dict = robot_poses["Pick_place_dict"]
     Short_pick_place_dict = robot_poses["Short_pick_place_dict"]
 
+    nn1_paths = {
+        "ANNOTATION_PATH": rob_config.NN1_ANNOTATION_PATH,
+        "CHECKPOINT_PATH": rob_config.NN1_CHECKPOINT_PATH,
+    }
+    nn1_files = {
+        "PIPELINE_CONFIG": rob_config.NN1_PIPELINE_CONFIG,
+        "LABELMAP": rob_config.NN1_LABELMAP,
+    }
+    nn1_checkpoint = rob_config.NN1_CHECK_POINT
+
     # Initialize robot demos and robot control objects
     r_control = RobotControl(None)
     r_comm_info = RobotCommunication()
     r_comm_encoder = RobotCommunication()
     demos = RobotDemos(
-        rob_config["MODEL"]["PATHS"],
-        rob_config["MODEL"]["FILES"],
-        rob_config["MODEL"]["CHECK_POINT"],
+        nn1_paths,
+        nn1_files,
+        nn1_checkpoint,
     )
 
     # Start program mode selection
