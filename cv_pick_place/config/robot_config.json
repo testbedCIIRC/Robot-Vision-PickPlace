@@ -42,13 +42,13 @@
     },
 
     "FRAME_LIMIT": {
-        "help": "Number of frames object must be tracked to start pick & place.",
+        "help": "Number of frames object must be tracked for to start pick & place.",
         "arg": "--frame-limit",
         "default": 10
     },
 
     "PACKET_DEPTHS": {
-        "help": "Minimal expected depth size in millimeters of each packet type. Index corresponds to type of packet.",
+        "help": "List of minimal expected depth sizes in millimeters of each packet type. Index corresponds to type of packet.",
         "arg": "--packet-depths",
         "default": [ 10.0, 3.0, 5.0, 5.0 ]
     },
@@ -216,7 +216,7 @@
     },
 
     "NN1_DETECTION_THRESHOLD": {
-        "help": "Minimal confidence for detected object to be labeled as a packet when detecting using the NN1 detector.",
+        "help": "Minimal confidence for detected object to be labeled as a packet when detecting using the NN1 detector. Number beween 0 and 1.",
         "arg": "--nn1-detection-threshold",
         "default": 0.7
     },
@@ -306,25 +306,25 @@
     },
 
     "HSV_WHITE_LOWER": {
-        "help": "List of 3 integer values representing Hue, Saturation, Value bottom threshold for white color when using the HSV detector.",
+        "help": "List of 3 integer values representing Hue (0 to 179), Saturation (0 to 255), Value (0 to 255) of bottom threshold for white color when using the HSV detector.",
         "arg": "--hsv-white-lower",
         "default": [ 60, 0, 85 ]
     },
 
     "HSV_WHITE_UPPER": {
-        "help": "List of 3 integer values representing Hue, Saturation, Value top threshold for white color when using the HSV detector.",
+        "help": "List of 3 integer values representing Hue (0 to 179), Saturation (0 to 255), Value (0 to 255) of top threshold for white color when using the HSV detector.",
         "arg": "--hsv-white-upper",
         "default": [ 179, 255, 255 ]
     },
 
     "HSV_BROWN_LOWER": {
-        "help": "List of 3 integer values representing Hue, Saturation, Value bottom threshold for brown color when using the HSV detector.",
+        "help": "List of 3 integer values representing Hue (0 to 179), Saturation (0 to 255), Value (0 to 255) of bottom threshold for brown color when using the HSV detector.",
         "arg": "--hsv-brown-lower",
         "default": [ 0, 33, 57 ]
     },
 
     "HSV_BROWN_UPPER": {
-        "help": "List of 3 integer values representing Hue, Saturation, Value top threshold for brown color when using the HSV detector.",
+        "help": "List of 3 integer values representing Hue (0 to 179), Saturation (0 to 255), Value (0 to 255) of top threshold for brown color when using the HSV detector.",
         "arg": "--hsv-brown-upper",
         "default": [ 60, 255, 178 ]
     }
