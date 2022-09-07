@@ -120,7 +120,7 @@ class DepthCamera:
         # Maximal supported Depth stream resolution of D435 camera is 1280 x 720
         # Maximal supported RGB stream resolution of D435 camera is 1920 x 1080
         self.config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
-        self.config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
+        self.config.enable_stream(rs.stream.color, 960, 540, rs.format.bgr8, 30)
 
         # Create object for aligning depth frame to RGB frame, so that they have equal resolution
         self.align = rs.align(rs.stream.color)

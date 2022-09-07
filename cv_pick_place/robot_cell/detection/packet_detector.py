@@ -142,6 +142,7 @@ class PacketDetector:
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         # img = cv2.drawContours(img, contours, -1, (0,255,0), 3,lineType = cv2.LINE_AA)
+        mask = np.zeros_like(img)
 
         for cnt in contours:
             area = cv2.contourArea(cnt)
@@ -154,7 +155,9 @@ class PacketDetector:
                 centroid = (int(cx), int(cy))
                 box = cv2.boxPoints(((cx, cy), (w, h), angle))
                 box = np.int0(box)
-        return box, angle, centroid
+                mask = cv2.drawContours(mask, [cnt], -1, (1), thickness=cv2.FILLED)
+
+        return box, angle, centroid, mask
 
     def compute_mask(
         self, img: np.ndarray, box_mask: np.ndarray, box_array: list
@@ -495,7 +498,7 @@ class PacketDetector:
                 centroid = (int(cx), int(cy))
                 w = float((xmax - xmin)) / width
                 h = float((ymax - ymin)) / height
-                box, angle, centroid = self.find_packet_contours(
+                box, angle, centroid, mask = self.find_packet_contours(
                     color_frame, ymin, ymax, xmin, xmax, centroid
                 )
                 box_array.append(box)
@@ -534,6 +537,8 @@ class PacketDetector:
                     height=h,
                     encoder_position=encoder_pos,
                 )
+
+                packet.set_img_mask(mask)
                 packet.set_type(int(detections["detection_classes"][i]))
                 packet.set_centroid(centroid[0], centroid[1], homography, encoder_pos)
                 packet.set_bounding_size(int(w * width), int(h * height), homography)

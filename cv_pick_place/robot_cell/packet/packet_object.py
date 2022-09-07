@@ -1,7 +1,7 @@
 from math import sqrt
 import numpy as np
 from collections import namedtuple
-
+import cv2
 
 class Packet:
     """
@@ -299,7 +299,7 @@ class Packet:
             img_mask (np.ndarray): Image binary mask of the whole image.
 
         """
-        self.img_mask = img_mask
+        self.img_mask = img_mask > 0
 
     def set_mask(self, mask: tuple[int, int]) -> None:
         """
@@ -329,6 +329,8 @@ class Packet:
             self.mask  = self.mask / self.num_proccessed_mask
             # This was the old way
             # self.mask = np.logical_and(mask, self.mask)
+            # print(np.unique(self.mask, return_counts=True))
+            cv2.imshow("mask", self.mask)
 
     def add_angle_to_average(self, angle: float) -> None:
         """
@@ -453,10 +455,8 @@ class Packet:
             tuple[float, float]: Updated x, y packet centroid.
 
         """
-        # k = 0.8299  # 640 x 480
-        # k = 1.2365  # 1280 x 720
-        k = 1.8672  # 1440 x 1080
-        # k = 1.2365  # 1080 x 720
+        # k = 1.8672  # 1440 x 1080 and 1920 x 1080
+        k = 0.9323 # 960 x 540
         return (
             int(
                 k * (encoder_position - self.encoder_initial_position)

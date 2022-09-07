@@ -1105,7 +1105,7 @@ class GripPositionEstimation:
         """
         self.item_type = item.type
         print(self.item_type)
-        self.pick_type = "line" if item.type in LINE_LIST else "circle"
+        self.pick_type = "line" # if item.type in LINE_LIST else "circle"
 
     def estimate_from_images(
         self,
@@ -1241,7 +1241,9 @@ class GripPositionEstimation:
 
         if depth_exist:
             mask = packet.mask
-            mask = mask > self.mask_probability_ratio
+            # print(mask.shape, np.unique(mask, return_counts=True))
+            mask = mask > 0
+            # print(mask.shape, np.unique(mask, return_counts=True))
             if self.save_depth:
                 # NOTE: JUST FOR SAVING THE TEST IMG, DELETE MAYBE
                 print(f"[GPE INFO]: SAVING the depth array of packet {packet.id}")
@@ -1337,8 +1339,7 @@ def main():
             "new_items",
             "8_rgb.jpg"
         ))
-    print()
-    print(img.shape, depth_array.shape)
+
     x_f = 784
     x_t = x_f + 355
     y_f = 490

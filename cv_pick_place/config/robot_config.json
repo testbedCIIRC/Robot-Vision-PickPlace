@@ -15,7 +15,7 @@
 
     "CELL": {
         "//": "Selection of object detector. Valid values are 'deep_1', 'deep_2' and 'hsv'",
-        "DETECTOR_TYPE": "hsv",
+        "DETECTOR_TYPE": "deep_2",
 
         "//": "If extra information should be printed to the console",
         "VERBOSE": true,
@@ -93,7 +93,7 @@
 
     "POSITION_ESTIMATOR": {
         "//": "If results should be visualized",
-        "VISUALIZE": false,
+        "VISUALIZE": true,
 
         "//": "Defines the center of the gripper. Valid values are 'mass' and 'height'",
         "CENTER_SWITCH": "mass",

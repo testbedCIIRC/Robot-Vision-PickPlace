@@ -1,6 +1,7 @@
 # Standard library
 import os
 import time
+import argparse
 import multiprocessing
 import multiprocessing.connection
 import multiprocessing.managers
@@ -17,6 +18,7 @@ from robot_cell.detection.realsense_depth import DepthCamera
 from robot_cell.detection.packet_detector import PacketDetector
 from robot_cell.detection.apriltag_detection import ProcessingApriltag
 from robot_cell.detection.threshold_detector import ThresholdDetector
+from robot_cell.detection.market_items_detector import ItemsDetector
 from robot_cell.packet.packet_object import Packet
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.packet.grip_position_estimation import GripPositionEstimation
@@ -60,6 +62,8 @@ def packet_tracking(
                 < (frame_width - item.crop_border_px)
             ):
                 m = mask if mask is not None else item.img_mask
+                print(m.shape, depth_frame.shape)
+                # print(m.shape, depth_frame.shape)
                 depth_crop = item.get_crop_from_frame(depth_frame)
                 mask_crop = item.get_crop_from_frame(m)
                 item.add_depth_crop_to_average(depth_crop)
@@ -319,8 +323,22 @@ def main_multi_packets(
             rob_config["MODEL"]["DETECTION_THRESHOLD"],
         )
     elif rob_config["CELL"]["DETECTOR_TYPE"] == "deep_2":
-        # TODO Implement new deep detector
-        pass
+        parser = argparse.ArgumentParser(description='YOLACT Detection.')
+        parser.add_argument('--weight', default='neural_nets/torch_yolact/weights/best_30.4_res101_coco_340000.pth', type=str)
+        parser.add_argument('--img_size', type=int, default=544, help='The image size for validation.')
+        parser.add_argument('--traditional_nms', default=False, action='store_true', help='Whether to use traditional nms.')
+        parser.add_argument('--hide_mask', default=True, action='store_true', help='Hide masks in results.')
+        parser.add_argument('--hide_bbox', default=False, action='store_true', help='Hide boxes in results.')
+        parser.add_argument('--hide_score', default=False, action='store_true', help='Hide scores in results.')
+        parser.add_argument('--cutout', default=False, action='store_true', help='Cut out each object and save.')
+        parser.add_argument('--save_lincomb', default=False, action='store_true', help='Show the generating process of masks.')
+        parser.add_argument('--no_crop', default=False, action='store_true',
+                            help='Do not crop the output masks with the predicted bounding box.')
+        parser.add_argument('--real_time', default=True, action='store_true', help='Show the detection results real-timely.')
+        parser.add_argument('--visual_thre', default=0.8, type=float,
+                            help='Detections with a score under this threshold will be removed.')
+        pack_detect = ItemsDetector(parser, None, None, None)
+
     elif rob_config["CELL"]["DETECTOR_TYPE"] == "hsv":
         pack_detect = ThresholdDetector(
             ignore_vertical_px=rob_config["HSV_DETECTOR"]["IGNORE_VERTICAL"],
@@ -331,6 +349,7 @@ def main_multi_packets(
             brown_lower=rob_config["HSV_DETECTOR"]["BROWN_LOWER"],
             brown_upper=rob_config["HSV_DETECTOR"]["BROWN_UPPER"],
         )
+    print(f"[INFO]: Used detector is: {rob_config['CELL']['DETECTOR_TYPE']}")
 
     # Toggles
     toggles_dict = {
@@ -408,7 +427,7 @@ def main_multi_packets(
                 frame_count = 1
 
             # Set homography in HSV detector
-            if rob_config["CELL"]["DETECTOR_TYPE"] == "hsv":
+            if rob_config["CELL"]["DETECTOR_TYPE"] in  ["hsv", "deep_2"]:
                 pack_detect.set_homography(homography)
 
         # PACKET DETECTION
@@ -427,12 +446,20 @@ def main_multi_packets(
             for packet in detected_packets:
                 packet.width = packet.width * frame_width
                 packet.height = packet.height * frame_height
+            mask = None
 
         # Detect packets using neural network
         elif rob_config["CELL"]["DETECTOR_TYPE"] == "deep_2":
             # TODO Implement new deep detector
-            detected_packets = []
-            pass
+            # print(rgb_frame.shape)
+            image_frame, detected_packets = pack_detect.deep_item_detector(
+                rgb_frame,
+                encoder_pos,
+                draw_box = toggles_dict["show_bbox"],
+                image_frame = image_frame,
+            )
+            # image_frame, detected_packets = pack_detect.deep_item_detector(rgb_frame, None, None)
+            mask = None
 
         # Detect packets using neural HSV thresholding
         elif rob_config["CELL"]["DETECTOR_TYPE"] == "hsv":
@@ -468,7 +495,7 @@ def main_multi_packets(
             start_time,
             frame_width,
             frame_height,
-            (frame_width // 2, frame_height // 2),
+            (frame_width, frame_height),
         )
 
         # Keyboard inputs
