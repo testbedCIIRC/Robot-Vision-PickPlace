@@ -28,217 +28,222 @@ class RobotCommunication:
 
     def get_nodes(self):
         """
-        Using the client.get_node method, it gets nodes from OPCUA Server on PLC.
+        Using the client.get_node() method, get all requied nodes from the PLC server.
+        The node is then passed to the client.register_nodes(), which notifies the server
+        that it should perform optimizations for reading / writing operations for this node.
+        The client.register_nodes() only takes a list of nodes as input, and returns list of
+        registered nodes as output, so single node is wrapped in a list and then received
+        as first element of a list.
         """
 
         # fmt: off
-        self.Start_Prog = self.client.get_node(
-            'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."start"')
-        self.Conti_Prog = self.client.get_node(
-            'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."continue"')
-        self.Stop_Prog = self.client.get_node(
-            'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."interrupt"')
-        self.Abort_Prog = self.client.get_node(
-            'ns=3;s="HMIKuka"."robot"."powerRobot"."command"."abort"')
-        self.Prog_Done = self.client.get_node(
-            'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."status"."done"')
-        self.Stop_Active = self.client.get_node(
-            'ns=3;s="InstPickPlace"."instInterrupt"."BrakeActive"')
-        self.Rob_Stopped = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instAutomaticExternal"."ROB_STOPPED"')
-        self.Conveyor_Left = self.client.get_node(
-            'ns=3;s="conveyor_left"')
-        self.Conveyor_Right = self.client.get_node(
-            'ns=3;s="conveyor_right"')
-        self.Gripper_State = self.client.get_node(
-            'ns=3;s="gripper_control"')
-        self.Encoder_Vel = self.client.get_node(
-            'ns=3;s="Encoder_1".ActualVelocity')
-        self.Encoder_Pos = self.client.get_node(
-            'ns=3;s="Encoder_1".ActualPosition')
-        self.Laser_Enable = self.client.get_node(
-            'ns=3;s="laser_field_enable"')
-        self.Pick_Place_Select = self.client.get_node(
-            'ns=3;s="pick_place_select"')
-        self.Go_to_home = self.client.get_node(
-            'ns=3;s="go_to_home"')
-        self.Robot_speed_override = self.client.get_node(
-            'ns=3;s="HMIKuka"."robot"."powerRobot"."status".override"."actualOverride"')
+        self.Start_Prog = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."start"')])[0]
+        self.Conti_Prog = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."continue"')])[0]
+        self.Stop_Prog = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."interrupt"')])[0]
+        self.Abort_Prog = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="HMIKuka"."robot"."powerRobot"."command"."abort"')])[0]
+        self.Prog_Done = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."status"."done"')])[0]
+        self.Stop_Active = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."instInterrupt"."BrakeActive"')])[0]
+        self.Rob_Stopped = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstKukaControl"."instAutomaticExternal"."ROB_STOPPED"')])[0]
+        self.Conveyor_Left = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="conveyor_left"')])[0]
+        self.Conveyor_Right = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="conveyor_right"')])[0]
+        self.Gripper_State = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="gripper_control"')])[0]
+        self.Encoder_Vel = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="Encoder_1".ActualVelocity')])[0]
+        self.Encoder_Pos = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="Encoder_1".ActualPosition')])[0]
+        self.Laser_Enable = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="laser_field_enable"')])[0]
+        self.Pick_Place_Select = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="pick_place_select"')])[0]
+        self.Go_to_home = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="go_to_home"')])[0]
+        self.Robot_speed_override = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="HMIKuka"."robot"."powerRobot"."status".override"."actualOverride"')])[0]
 
-        self.Act_Pos_X = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."X"')
-        self.Act_Pos_Y = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."Y"')
-        self.Act_Pos_Z = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."Z"')
-        self.Act_Pos_A = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."A"')
-        self.Act_Pos_B = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."B"')
-        self.Act_Pos_C = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."C"')
-        self.Act_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."Turn"')
-        self.Act_Pos_Status = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."Status"')
+        self.Act_Pos_X = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstKukaControl"."instReadActualPos"."X"')])[0]
+        self.Act_Pos_Y = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstKukaControl"."instReadActualPos"."Y"')])[0]
+        self.Act_Pos_Z = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstKukaControl"."instReadActualPos"."Z"')])[0]
+        self.Act_Pos_A = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstKukaControl"."instReadActualPos"."A"')])[0]
+        self.Act_Pos_B = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstKukaControl"."instReadActualPos"."B"')])[0]
+        self.Act_Pos_C = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstKukaControl"."instReadActualPos"."C"')])[0]
+        self.Act_Pos_Turn = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstKukaControl"."instReadActualPos"."Turn"')])[0]
+        self.Act_Pos_Status = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstKukaControl"."instReadActualPos"."Status"')])[0]
 
-        self.Home_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."X"')
-        self.Home_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Y"')
-        self.Home_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Z"')
-        self.Home_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."A"')
-        self.Home_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."B"')
-        self.Home_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."C"')
-        self.Home_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Status"')
-        self.Home_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Turn"')
+        self.Home_X = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."X"')])[0]
+        self.Home_Y = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Y"')])[0]
+        self.Home_Z = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Z"')])[0]
+        self.Home_A = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."A"')])[0]
+        self.Home_B = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."B"')])[0]
+        self.Home_C = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."C"')])[0]
+        self.Home_Status = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Status"')])[0]
+        self.Home_Turn = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Turn"')])[0]
 
-        self.PrePick_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."X"')
-        self.PrePick_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Y"')
-        self.PrePick_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Z"')
-        self.PrePick_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."A"')
-        self.PrePick_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."B"')
-        self.PrePick_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."C"')
-        self.PrePick_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Status"')
-        self.PrePick_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Turn"')
+        self.PrePick_Pos_X = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."X"')])[0]
+        self.PrePick_Pos_Y = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Y"')])[0]
+        self.PrePick_Pos_Z = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Z"')])[0]
+        self.PrePick_Pos_A = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."A"')])[0]
+        self.PrePick_Pos_B = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."B"')])[0]
+        self.PrePick_Pos_C = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."C"')])[0]
+        self.PrePick_Pos_Status = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Status"')])[0]
+        self.PrePick_Pos_Turn = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Turn"')])[0]
 
-        self.Pick_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."X"')
-        self.Pick_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."Y"')
-        self.Pick_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."Z"')
-        self.Pick_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."A"')
-        self.Pick_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."B"')
-        self.Pick_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."C"')
-        self.Pick_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."Status"')
-        self.Pick_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."Turn"')
+        self.Pick_Pos_X = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."X"')])[0]
+        self.Pick_Pos_Y = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."Y"')])[0]
+        self.Pick_Pos_Z = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."Z"')])[0]
+        self.Pick_Pos_A = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."A"')])[0]
+        self.Pick_Pos_B = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."B"')])[0]
+        self.Pick_Pos_C = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."C"')])[0]
+        self.Pick_Pos_Status = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."Status"')])[0]
+        self.Pick_Pos_Turn = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."Turn"')])[0]
 
-        self.Place_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."X"')
-        self.Place_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."Y"')
-        self.Place_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."Z"')
-        self.Place_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."A"')
-        self.Place_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."B"')
-        self.Place_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."C"')
-        self.Place_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."Status"')
-        self.Place_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."Turn"')
+        self.Place_Pos_X = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."X"')])[0]
+        self.Place_Pos_Y = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."Y"')])[0]
+        self.Place_Pos_Z = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."Z"')])[0]
+        self.Place_Pos_A = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."A"')])[0]
+        self.Place_Pos_B = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."B"')])[0]
+        self.Place_Pos_C = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."C"')])[0]
+        self.Place_Pos_Status = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."Status"')])[0]
+        self.Place_Pos_Turn = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."Turn"')])[0]
 
-        self.ShPrePick_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."X"')
-        self.ShPrePick_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Y"')
-        self.ShPrePick_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Z"')
-        self.ShPrePick_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."A"')
-        self.ShPrePick_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."B"')
-        self.ShPrePick_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."C"')
-        self.ShPrePick_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Status"')
-        self.ShPrePick_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Turn"')
+        self.ShPrePick_Pos_X = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."X"')])[0]
+        self.ShPrePick_Pos_Y = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Y"')])[0]
+        self.ShPrePick_Pos_Z = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Z"')])[0]
+        self.ShPrePick_Pos_A = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."A"')])[0]
+        self.ShPrePick_Pos_B = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."B"')])[0]
+        self.ShPrePick_Pos_C = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."C"')])[0]
+        self.ShPrePick_Pos_Status = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Status"')])[0]
+        self.ShPrePick_Pos_Turn = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Turn"')])[0]
 
-        self.ShPick_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."X"')
-        self.ShPick_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Y"')
-        self.ShPick_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Z"')
-        self.ShPick_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."A"')
-        self.ShPick_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."B"')
-        self.ShPick_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."C"')
-        self.ShPick_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Status"')
-        self.ShPick_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Turn"')
+        self.ShPick_Pos_X = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."X"')])[0]
+        self.ShPick_Pos_Y = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Y"')])[0]
+        self.ShPick_Pos_Z = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Z"')])[0]
+        self.ShPick_Pos_A = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."A"')])[0]
+        self.ShPick_Pos_B = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."B"')])[0]
+        self.ShPick_Pos_C = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."C"')])[0]
+        self.ShPick_Pos_Status = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Status"')])[0]
+        self.ShPick_Pos_Turn = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Turn"')])[0]
 
-        self.ShPostPick_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."X"')
-        self.ShPostPick_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Y"')
-        self.ShPostPick_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Z"')
-        self.ShPostPick_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."A"')
-        self.ShPostPick_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."B"')
-        self.ShPostPick_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."C"')
-        self.ShPostPick_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Status"')
-        self.ShPostPick_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Turn"')
+        self.ShPostPick_Pos_X = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."X"')])[0]
+        self.ShPostPick_Pos_Y = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Y"')])[0]
+        self.ShPostPick_Pos_Z = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Z"')])[0]
+        self.ShPostPick_Pos_A = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."A"')])[0]
+        self.ShPostPick_Pos_B = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."B"')])[0]
+        self.ShPostPick_Pos_C = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."C"')])[0]
+        self.ShPostPick_Pos_Status = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Status"')])[0]
+        self.ShPostPick_Pos_Turn = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Turn"')])[0]
 
-        self.ShPlace_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."X"')
-        self.ShPlace_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Y"')
-        self.ShPlace_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Z"')
-        self.ShPlace_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."A"')
-        self.ShPlace_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."B"')
-        self.ShPlace_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."C"')
-        self.ShPlace_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Status"')
-        self.ShPlace_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Turn"')
+        self.ShPlace_Pos_X = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."X"')])[0]
+        self.ShPlace_Pos_Y = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Y"')])[0]
+        self.ShPlace_Pos_Z = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Z"')])[0]
+        self.ShPlace_Pos_A = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."A"')])[0]
+        self.ShPlace_Pos_B = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."B"')])[0]
+        self.ShPlace_Pos_C = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."C"')])[0]
+        self.ShPlace_Pos_Status = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Status"')])[0]
+        self.ShPlace_Pos_Turn = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Turn"')])[0]
 
-        self.ShHome_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."X"')
-        self.ShHome_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Y"')
-        self.ShHome_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Z"')
-        self.ShHome_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."A"')
-        self.ShHome_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."B"')
-        self.ShHome_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."C"')
-        self.ShHome_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Status"')
-        self.ShHome_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Turn"')
+        self.ShHome_Pos_X = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."X"')])[0]
+        self.ShHome_Pos_Y = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Y"')])[0]
+        self.ShHome_Pos_Z = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Z"')])[0]
+        self.ShHome_Pos_A = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."A"')])[0]
+        self.ShHome_Pos_B = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."B"')])[0]
+        self.ShHome_Pos_C = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."C"')])[0]
+        self.ShHome_Pos_Status = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Status"')])[0]
+        self.ShHome_Pos_Turn = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Turn"')])[0]
 
-        self.PrePick_Done =  self.client.get_node(
-            'ns=3;s="InstPickPlace"."instPrePickPos"."Done"')
-        self.Place_Done =  self.client.get_node(
-            'ns=3;s="InstPickPlace"."instPlacePos"."Done"')
+        self.PrePick_Done = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."instPrePickPos"."Done"')])[0]
+        self.Place_Done = self.client.register_nodes([self.client.get_node(
+            'ns=3;s="InstPickPlace"."instPlacePos"."Done"')])[0]
         # fmt: on
 
     def get_robot_info(self) -> tuple:
