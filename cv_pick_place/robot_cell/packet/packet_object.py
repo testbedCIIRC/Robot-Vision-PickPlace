@@ -208,6 +208,7 @@ class Packet:
 
         # Set parameter
         self.centroid_px = self.PointTuple(x, y)
+        print(self.centroid_px)
 
         # Set initial values if not set
         if self.centroid_initial_px is None and encoder_pos is not None:
@@ -299,11 +300,12 @@ class Packet:
             img_mask (np.ndarray): Image binary mask of the whole image.
 
         """
-        self.img_mask = img_mask > 0
+        self.full_img_mask = (img_mask > 0) * 1.0
 
-    def set_mask(self, mask: tuple[int, int]) -> None:
+    def add_mask_to_average(self, mask: np.ndarray) -> None:
         """
-        Sets probability mask of item.
+        Add new binary mask to average. If no mask have been saved, saves
+        new mask as original
 
         Args:
             mask (tuple): Center(x, y), (width, height), angle of rotation.
@@ -318,11 +320,11 @@ class Packet:
         # Update the mask
         if self.mask is None:
             self.mask = mask
+            self.num_proccessed_mask = 1
         else:
             if mask.shape != self.mask.shape:
-                print(f"[WARN]: Tried to average two uncompatible sizes")
+                print(f"[WARN]: Tried to average two uncompatible sizes {mask.shape} and {self.mask.shape}")
                 return
-            
             # Some kind of averaging
             self.mask = self.num_proccessed_mask * self.mask + mask
             self.num_proccessed_mask += 1
@@ -330,7 +332,6 @@ class Packet:
             # This was the old way
             # self.mask = np.logical_and(mask, self.mask)
             # print(np.unique(self.mask, return_counts=True))
-            cv2.imshow("mask", self.mask)
 
     def add_angle_to_average(self, angle: float) -> None:
         """
@@ -421,7 +422,6 @@ class Packet:
                 )
             )
             return None
-
         # Compute crop
         if self.num_avg_depths == 0:
             crop = frame[

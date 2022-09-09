@@ -286,6 +286,7 @@ class ItemsDetector:
         )
 
         item.set_img_mask(mask)
+        print(mask.shape)
         item.set_type(self.detect_classes[type])
         item.set_centroid(
             centroid[0], centroid[1], self.homography_matrix, encoder_pos

@@ -32,7 +32,6 @@ def packet_tracking(
     detected_packets: list[Packet],
     depth_frame: np.ndarray,
     frame_width: int,
-    mask: np.ndarray = None,
 ) -> None:
     """
     Assigns IDs to detected packets and updates packet depth frames.
@@ -42,7 +41,6 @@ def packet_tracking(
         detected_packets (list[Packet]): List of detected packets.
         depth_frame (np.ndarray): Depth frame from camera.
         frame_width (int): Width of the camera frame in pixels.
-        mask (np.ndarray): Binary mask of packet.
 
     Returns:
         registered_packets (list[Packet]): List of tracked packet objects.
@@ -61,13 +59,11 @@ def packet_tracking(
                 and item.centroid_px.x + item.width / 2
                 < (frame_width - item.crop_border_px)
             ):
-                m = mask if mask is not None else item.img_mask
-                print(m.shape, depth_frame.shape)
-                # print(m.shape, depth_frame.shape)
+                m = item.full_img_mask
                 depth_crop = item.get_crop_from_frame(depth_frame)
                 mask_crop = item.get_crop_from_frame(m)
                 item.add_depth_crop_to_average(depth_crop)
-                item.set_mask(mask_crop)
+                item.add_mask_to_average(mask_crop)
 
     # Update registered packet list with new packet info
     registered_packets = pt.item_database
@@ -327,7 +323,7 @@ def main_multi_packets(
         parser.add_argument('--weight', default='neural_nets/torch_yolact/weights/best_30.4_res101_coco_340000.pth', type=str)
         parser.add_argument('--img_size', type=int, default=544, help='The image size for validation.')
         parser.add_argument('--traditional_nms', default=False, action='store_true', help='Whether to use traditional nms.')
-        parser.add_argument('--hide_mask', default=True, action='store_true', help='Hide masks in results.')
+        parser.add_argument('--hide_mask', default=False, action='store_true', help='Hide masks in results.')
         parser.add_argument('--hide_bbox', default=False, action='store_true', help='Hide boxes in results.')
         parser.add_argument('--hide_score', default=False, action='store_true', help='Hide scores in results.')
         parser.add_argument('--cutout', default=False, action='store_true', help='Cut out each object and save.')
@@ -446,7 +442,6 @@ def main_multi_packets(
             for packet in detected_packets:
                 packet.width = packet.width * frame_width
                 packet.height = packet.height * frame_height
-            mask = None
 
         # Detect packets using neural network
         elif rob_config["CELL"]["DETECTOR_TYPE"] == "deep_2":
@@ -459,7 +454,7 @@ def main_multi_packets(
                 image_frame = image_frame,
             )
             # image_frame, detected_packets = pack_detect.deep_item_detector(rgb_frame, None, None)
-            mask = None
+
 
         # Detect packets using neural HSV thresholding
         elif rob_config["CELL"]["DETECTOR_TYPE"] == "hsv":
@@ -471,7 +466,7 @@ def main_multi_packets(
             )
 
         registered_packets = packet_tracking(
-            pt, detected_packets, depth_frame, frame_width, mask
+            pt, detected_packets, depth_frame, frame_width
         )
 
         # STATE MACHINE

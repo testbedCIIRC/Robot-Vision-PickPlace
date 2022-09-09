@@ -91,6 +91,8 @@ class ItemTracker:
         tracked_item.disappeared = 0
         tracked_item.box = new_item.box
 
+        tracked_item.full_img_mask = new_item.full_img_mask
+
         return tracked_item
 
     def update_item_database(self, labeled_item_list: list[Packet]):

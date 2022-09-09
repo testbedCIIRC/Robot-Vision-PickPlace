@@ -69,7 +69,7 @@ class ThresholdDetector:
         self.homography_determinant = np.linalg.det(homography_matrix[0:2, 0:2])
 
     def get_packet_from_contour(
-        self, contour: np.array, type: int, encoder_pos: float
+        self, contour: np.array, type: int, encoder_pos: float, frame_height:int, frame_width:int
     ) -> Packet:
         """
         Creates Packet object from a contour.
@@ -78,6 +78,8 @@ class ThresholdDetector:
             contour (np.array): Array of x, y coordinates making up the contour of some area.
             type (int): Type of the packet.
             encoder_pos (float): Position of the encoder.
+            frame_height (int): Pixel height of the img
+            frame_width (int): Pixel width of the img.
 
         Returns:
             Packet: Created Packet object
@@ -102,6 +104,9 @@ class ThresholdDetector:
             height=h,
             encoder_position=encoder_pos,
         )
+        mask = np.zeros((frame_height, frame_width))
+        mask = cv2.drawContours(mask, [contour], -1, (1), thickness=cv2.FILLED)
+        packet.set_img_mask(mask)
 
         packet.set_type(type)
         packet.set_centroid(
@@ -194,7 +199,7 @@ class ThresholdDetector:
         frame_height = rgb_frame.shape[0]
         frame_width = rgb_frame.shape[1]
 
-        mask = np.zeros((frame_height, frame_width))
+        
 
         # Get binary mask
         hsv_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2HSV)
@@ -227,10 +232,10 @@ class ThresholdDetector:
                 object_type = 0
             else:
                 continue
-
+            
             # Get detected packet parameters
             packet = self.get_packet_from_contour(
-                contour, object_type, encoder_position
+                contour, object_type, encoder_position, frame_height, frame_width
             )
 
             # Check for squareness
@@ -251,15 +256,13 @@ class ThresholdDetector:
             image_frame = self.draw_packet_info(
                 image_frame, packet, encoder_position, draw_box
             )
-            mask = cv2.drawContours(mask, [contour], -1, (1), thickness=cv2.FILLED)
-
             self.detected_objects.append(packet)
 
         # Detect BROWN packets from brown binary mask contours
         for contour in brown_contour_list:
             area_cm2 = abs(cv2.contourArea(contour) * self.homography_determinant)
             object_type = 0
-
+            
             if 165 > area_cm2 > 145:
                 object_type = 3
             else:
@@ -267,7 +270,7 @@ class ThresholdDetector:
 
             # Get detected packet parameters
             packet = self.get_packet_from_contour(
-                contour, object_type, encoder_position
+                contour, object_type, encoder_position, frame_height, frame_width
             )
 
             # Check for squareness
@@ -288,12 +291,9 @@ class ThresholdDetector:
             image_frame = self.draw_packet_info(
                 image_frame, packet, encoder_position, draw_box
             )
-            mask = cv2.drawContours(mask, [contour], -1, (1), thickness=cv2.FILLED)
-
             self.detected_objects.append(packet)
 
-        bin_mask = mask.astype(bool)
-        return image_frame, self.detected_objects, bin_mask
+        return image_frame, self.detected_objects
 
     def draw_hsv_mask(self, image_frame: np.ndarray) -> np.ndarray:
         """
