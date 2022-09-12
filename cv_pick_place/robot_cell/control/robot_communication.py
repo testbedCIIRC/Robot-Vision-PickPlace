@@ -3,7 +3,7 @@ import multiprocessing
 import multiprocessing.connection
 import multiprocessing.managers
 
-from opcua import Client
+import opcua
 
 
 class RobotCommunication:
@@ -22,13 +22,17 @@ class RobotCommunication:
 
         """
         password = "CIIRC"
-        self.client = Client("opc.tcp://user:" + str(password) + "@10.35.91.101:4840/")
+        self.client = opcua.Client(
+            "opc.tcp://user:" + str(password) + "@10.35.91.101:4840/"
+        )
         self.client.connect()
         print("[INFO]: Client connected.")
 
     def get_nodes(self):
         """
-        Using the client.get_node method, it gets nodes from OPCUA Server on PLC.
+        Using the client.get_node() method, get all requied nodes from the PLC server.
+        All nodes are then passed to the client.register_nodes() method, which notifies the server
+        that it should perform optimizations for reading / writing operations for these nodes.
         """
 
         # fmt: off
@@ -235,11 +239,19 @@ class RobotCommunication:
         self.ShHome_Pos_Turn = self.client.get_node(
             'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Turn"')
 
-        self.PrePick_Done =  self.client.get_node(
+        self.PrePick_Done = self.client.get_node(
             'ns=3;s="InstPickPlace"."instPrePickPos"."Done"')
-        self.Place_Done =  self.client.get_node(
+        self.Place_Done = self.client.get_node(
             'ns=3;s="InstPickPlace"."instPlacePos"."Done"')
         # fmt: on
+
+        # Register all nodes for faster read / write access.
+        # The client.register_nodes() only takes a list of nodes as input, and returns list of
+        # registered nodes as output, so single node is wrapped in a list and then received
+        # as first element of a list.
+        for key, value in self.__dict__.items():
+            if type(value) == opcua.Node:
+                value = self.client.register_nodes([value])[0]
 
     def get_robot_info(self) -> tuple:
         """
