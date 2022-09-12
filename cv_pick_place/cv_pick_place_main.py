@@ -34,19 +34,6 @@ def program_mode(
         rob_config (dict): Dictionary with parameters setting the behaviour of the cell.
     """
 
-    # Show message about robot programs
-    print(
-        "Select pick and place mode: \n"
-        + "1 : Pick and place with static conveyor and hand gestures\n"
-        + "2 : Pick and place with static conveyor and multithreading\n"
-        + "3 : Pick and place with moving conveyor, point cloud and multithreading\n"
-        + "4 : Main Pick and place\n"
-        + "e : To exit program\n"
-    )
-
-    # Read mode input
-    mode = input()
-
     # Dictionary with robot positions and robot programs
     # fmt: off
     modes_dict = {
@@ -69,6 +56,22 @@ def program_mode(
     }
     # fmt: on
 
+    # Read mode input
+    if rob_config.mode in modes_dict:
+        mode = rob_config.mode
+        rob_config.mode = "0"
+    else:
+        # Show message about robot programs
+        print(
+            "Select pick and place mode: \n"
+            + "1 : Pick and place with static conveyor and hand gestures\n"
+            + "2 : Pick and place with static conveyor and multithreading\n"
+            + "3 : Pick and place with moving conveyor, point cloud and multithreading\n"
+            + "4 : Main Pick and place\n"
+            + "e : To exit program\n"
+        )
+        mode = input()
+
     # If mode is a program key
     if mode in modes_dict:
         # Set robot positions and robot program
@@ -77,15 +80,13 @@ def program_mode(
 
         # If first mode (not threaded) was selected
         if mode == "1":
-            print(
-                "[INFO]: Starting program: Pick and place with static conveyor and hand gestures"
-            )
+            print(f"[INFO]: Starting mode {mode}")
             robot_prog(rob_config, r_control)
 
         # If fourth mode (has extra processes) was selected
         elif mode == "4":
             with Manager() as manager:
-                print("[INFO]: Starting program: Multi packets pick and place")
+                print(f"[INFO]: Starting mode {mode}")
 
                 # Create Pipe and Manager objects for passing data between processes
                 info_dict = manager.dict()
@@ -130,7 +131,7 @@ def program_mode(
         # Otherwise start selected threaded program
         else:
             with Manager() as manager:
-                print(f"[INFO]: Starting program: {mode}")
+                print(f"[INFO]: Starting mode {mode}")
 
                 # Create Pipe and Manager objects for passing data between processes
                 info_dict = manager.dict()
@@ -249,7 +250,7 @@ if __name__ == "__main__":
                 type=str,
             )
         else:
-            print(f"[WARNING] Default value of {param[0]} parameter not handled")
+            print(f"[WARNING] Default value of {param[0]} config parameter not handled")
     rob_config = parser.parse_args()
 
     # Define robot positions dictionaries from json file

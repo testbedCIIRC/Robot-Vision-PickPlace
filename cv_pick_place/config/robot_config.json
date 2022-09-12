@@ -23,6 +23,12 @@
         "default": "config/D435_camera_config_demos.json"
     },
 
+    "mode": {
+        "help": "Selection of default mode. '0' or undefined mode allows mode selection, '1', '2' and '3' start specified program immediately.",
+        "arg": "--mode",
+        "default": "4"
+    },
+
     "detector_type": {
         "help": "Selection of object detector. Valid values are 'NN1', 'NN2' and 'HSV'.",
         "arg": "--detector-type",
@@ -203,7 +209,7 @@
         "default": "neural_nets/tf_ssd_mobnet/annotations/label_map.pbtxt"
     },
 
-    "nn1_check_point": {
+    "nn1_checkpoint": {
         "help": "Name of NN1 detector checkpoint to be used.",
         "arg": "--nn1-check-point",
         "default": "ckpt-3"
