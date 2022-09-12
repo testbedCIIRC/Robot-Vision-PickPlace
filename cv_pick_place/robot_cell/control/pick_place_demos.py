@@ -233,7 +233,7 @@ class RobotDemos:
         time.sleep(0.5)
         frame_num = -1
         bpressed = 0
-        dc = DepthCamera(config_path=rob_config.PATH_CAMERA_CONFIG_DEMOS)
+        dc = DepthCamera(config_path=rob_config.path_camera_config_demos)
         gripper_ON = rc.Gripper_State.get_value()
         cap = cv2.VideoCapture(2)
         detector = self.HandDetector(detectionCon=0.8, maxHands=2)
@@ -367,7 +367,7 @@ class RobotDemos:
         apriltag = ProcessingApriltag()
         apriltag.load_world_points(os.path.join("config", "conveyor_points.json"))
         ct = CentroidTracker()
-        dc = DepthCamera(config_path=rob_config.PATH_CAMERA_CONFIG_DEMOS)
+        dc = DepthCamera(config_path=rob_config.path_camera_config_demos)
         rc.show_boot_screen("STARTING NEURAL NET...", (540, 720))
         pack_detect = PacketDetector(paths, files, check_point)
 
@@ -556,7 +556,7 @@ class RobotDemos:
         apriltag = ProcessingApriltag()
         apriltag.load_world_points(os.path.join("config", "conveyor_points.json"))
         pt = PacketTracker(maxDisappeared=10, guard=50)
-        dc = DepthCamera(config_path=rob_config.PATH_CAMERA_CONFIG_DEMOS)
+        dc = DepthCamera(config_path=rob_config.path_camera_config_demos)
         rc.show_boot_screen("STARTING NEURAL NET...", (540, 720))
         pack_detect = PacketDetector(paths, files, check_point)
 

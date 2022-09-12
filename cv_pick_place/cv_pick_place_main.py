@@ -253,7 +253,7 @@ if __name__ == "__main__":
     rob_config = parser.parse_args()
 
     # Define robot positions dictionaries from json file
-    with open(rob_config.PATH_ROBOT_POSITIONS) as file:
+    with open(rob_config.path_robot_positions) as file:
         robot_poses = json.load(file)
 
     Pick_place_dict_conv_mov_slow = robot_poses["Pick_place_dict_conv_mov_slow"]
@@ -262,14 +262,14 @@ if __name__ == "__main__":
     Short_pick_place_dict = robot_poses["Short_pick_place_dict"]
 
     nn1_paths = {
-        "ANNOTATION_PATH": rob_config.NN1_ANNOTATION_PATH,
-        "CHECKPOINT_PATH": rob_config.NN1_CHECKPOINT_PATH,
+        "ANNOTATION_PATH": rob_config.nn1_annotation_path,
+        "CHECKPOINT_PATH": rob_config.nn1_checkpoint_path,
     }
     nn1_files = {
-        "PIPELINE_CONFIG": rob_config.NN1_PIPELINE_CONFIG,
-        "LABELMAP": rob_config.NN1_LABELMAP,
+        "PIPELINE_CONFIG": rob_config.nn1_pipeline_config,
+        "LABELMAP": rob_config.nn1_labelmap,
     }
-    nn1_checkpoint = rob_config.NN1_CHECK_POINT
+    nn1_checkpoint = rob_config.nn1_checkpoint
 
     # Initialize robot demos and robot control objects
     r_control = RobotControl(None)

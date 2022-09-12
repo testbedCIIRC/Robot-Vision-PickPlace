@@ -59,7 +59,7 @@ class RobotStateMachine:
         self, registered_packets: list[Packet], encoder_vel: float
     ) -> None:
         """
-        Add packets which have been tracked for FRAMES_LIM frames to the pick list.
+        Add packets which have been tracked for frame_limit frames to the pick list.
 
         Args:
             registered_packets (list[Packet]): List of tracked packet objects.
@@ -78,7 +78,7 @@ class RobotStateMachine:
                     packet.track_frame += 1
                     # If number of frames the packet is tracked for is larger than limit, and packet is not already in pick list
                     if (
-                        packet.track_frame > self.constants["FRAMES_LIM"]
+                        packet.track_frame > self.constants["frame_limit"]
                         and not packet.in_pick_list
                     ):
                         print(
@@ -120,9 +120,9 @@ class RobotStateMachine:
         # If item is too far remove it from list
         is_valid_position = (
             pick_list_positions
-            < self.constants["MAX_PICK_DISTANCE"]
-            - self.constants["GRIP_TIME_OFFSET"]
-            - 1.5 * self.constants["X_PICK_OFFSET"]
+            < self.constants["max_pick_distance"]
+            - self.constants["grip_time_offset"]
+            - 1.5 * self.constants["x_pick_offset"]
         )
         self.pick_list = np.ndarray.tolist(
             np.asanyarray(self.pick_list)[is_valid_position]
@@ -194,7 +194,7 @@ class RobotStateMachine:
 
         # Set positions and Start robot
         packet_x, pick_pos_y = packet_to_pick.centroid_mm
-        pick_pos_x = packet_x + self.constants["GRIP_TIME_OFFSET"]
+        pick_pos_x = packet_x + self.constants["grip_time_offset"]
 
         angle = packet_to_pick.avg_angle_deg
         packet_type = packet_to_pick.type
@@ -203,11 +203,11 @@ class RobotStateMachine:
         # Prediction of position by the gripper pose estimation
         # Limiting the height for packet pick positions
         z_lims = (
-            self.constants["PACK_DEPTHS"][packet_to_pick.type],
-            self.constants["MAX_Z"],
+            self.constants["packet_depths"][packet_to_pick.type],
+            self.constants["max_z"],
         )
         packet_coords = (pick_pos_x, pick_pos_y)
-        y_lims = (self.constants["MIN_Y"], self.constants["MAX_Y"])
+        y_lims = (self.constants["min_y"], self.constants["max_y"])
         (
             shift_x,
             shift_y,
@@ -230,8 +230,8 @@ class RobotStateMachine:
         # Check if x is range
         pick_pos_x = np.clip(
             pick_pos_x,
-            self.constants["MIN_PICK_DISTANCE"],
-            self.constants["MAX_PICK_DISTANCE"] - 1.5 * self.constants["X_PICK_OFFSET"],
+            self.constants["min_pick_distance"],
+            self.constants["max_pick_distance"] - 1.5 * self.constants["x_pick_offset"],
         )
         # Check if y is range of conveyor width and adjust accordingly
         pick_pos_y = np.clip(pick_pos_y, 75.0, 470.0)
@@ -245,12 +245,12 @@ class RobotStateMachine:
             "y": pick_pos_y,
             "rot": angle,
             "packet_type": packet_type,
-            "x_offset": self.constants["X_PICK_OFFSET"],
+            "x_offset": self.constants["x_pick_offset"],
             "pack_z": pick_pos_z,
             "a": roll,
             "b": pitch,
             "c": yaw,
-            "z_offset": self.constants["Z_OFFSET"],
+            "z_offset": self.constants["z_offset"],
             "shift_x": shift_x,
         }
 
@@ -328,7 +328,7 @@ class RobotStateMachine:
             # Choose a item for picking
             if (
                 self.pick_list
-                and pick_list_positions.max() > self.constants["MIN_PICK_DISTANCE"]
+                and pick_list_positions.max() > self.constants["min_pick_distance"]
             ):
                 # Select packet and start pick place opration
                 self.packet_to_pick, self.trajectory_dict = self._start_program(
@@ -340,7 +340,7 @@ class RobotStateMachine:
                         [
                             self.trajectory_dict["x"],
                             self.trajectory_dict["y"],
-                            self.trajectory_dict["pack_z"] + self.constants["Z_OFFSET"],
+                            self.trajectory_dict["pack_z"] + self.constants["z_offset"],
                         ]
                     )
                     self.is_in_home_pos = False
@@ -380,7 +380,7 @@ class RobotStateMachine:
             # If packet is too far abort and return to ready
             if (
                 packet_pos_x
-                > self.trajectory_dict["x"] + self.constants["X_PICK_OFFSET"]
+                > self.trajectory_dict["x"] + self.constants["x_pick_offset"]
             ):
                 self.cp.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 self.cp.send(RcData(RcCommand.ABORT_PROGRAM))
@@ -392,7 +392,7 @@ class RobotStateMachine:
             elif (
                 packet_pos_x
                 > self.trajectory_dict["x"]
-                - self.constants["PICK_START_X_OFFSET"]
+                - self.constants["pick_start_x_offset"]
                 - self.trajectory_dict["shift_x"]
             ):
                 self.cp.send(RcData(RcCommand.CONTINUE_PROGRAM))
