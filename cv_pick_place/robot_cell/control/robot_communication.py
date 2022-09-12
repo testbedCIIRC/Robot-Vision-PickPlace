@@ -63,7 +63,7 @@ class RobotCommunication:
         self.Go_to_home = self.client.get_node(
             'ns=3;s="go_to_home"')
         self.Robot_speed_override = self.client.get_node(
-            'ns=3;s="HMIKuka"."robot"."powerRobot"."status".override"."actualOverride"')
+            'ns=3;s="HMIKuka"."robot"."powerRobot"."status"."override"."actualOverride"')
 
         self.Act_Pos_X = self.client.get_node(
             'ns=3;s="InstKukaControl"."instReadActualPos"."X"')
