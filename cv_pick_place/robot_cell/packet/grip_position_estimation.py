@@ -244,6 +244,13 @@ class GripPositionEstimation:
     def _save_frame(
         self, points_dict: dict, title: str = f"Points 2D Projection"
     ) -> None:
+        """
+        Saves frame with given title.
+
+        Args:
+            points_dict (dict): Dictionry weith strings as keys and values beeing np.ndarray.
+            title (str, optional): Ttile of the image. Defaults to f"Points 2D Projection".
+        """
         plt.figure(self.frame_num)
 
         plt.scatter(self.points[:, 0], self.points[:, 1])
@@ -641,7 +648,6 @@ class GripPositionEstimation:
         Returns:
             tuple[np.ndarray,np.ndarray, np.ndarray]: point, normal and direction of y axis for gripping
         """
-        # TODO: Write some visualization for to know what are you suppose to pick and where
         # Here is some problem with units
 
         # Now it should be working as intended
@@ -1044,7 +1050,7 @@ class GripPositionEstimation:
         angles[0] += rot_offset
         return coords, angles
 
-    # Remove later
+    # XXX: Remove later
     def _vectors2RPYrot(
         self,
         vector: np.ndarray,
@@ -1283,7 +1289,7 @@ class GripPositionEstimation:
         _, pack_y = packet_coords
         depth_frame = packet.avg_depth_crop
 
-        self._get_pick_type(packet)
+        self._get_pick_type(packet) # NOTE: not yeat implemented
 
         pack_z = z_min
         shift_x, shift_y = None, None
