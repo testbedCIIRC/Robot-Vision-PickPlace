@@ -342,7 +342,20 @@ def main_multi_packets(
         )
     elif rob_config.detector_type == "NN2":
         # TODO Remove parser and replace in with some dictionary
-        pack_detect = ItemsDetector(parser, None, None, None)
+        pack_detect = ItemsDetector(
+            weights=rob_config.nn2_weights, 
+            img_size=rob_config.nn2_img_size,
+            visual_threshold=rob_config.nn2_visual_threshold,
+            traditional_nms=rob_config.nn2_traditional_nms,
+            hide_mask=rob_config.nn2_hide_mask,
+            hide_bbox=rob_config.nn2_hide_bbox,
+            hide_score=rob_config.nn2_hide_score,
+            cutout=rob_config.nn2_cutout,
+            save_lincomb=rob_config.nn2_save_lincomb,
+            no_crop=rob_config.nn2_no_crop,
+            real_time=rob_config.nn2_real_time
+        )
+
     elif rob_config.detector_type == "HSV":
         pack_detect = ThresholdDetector(
             ignore_vertical_px=rob_config.hsv_ignore_vertical,
@@ -353,7 +366,7 @@ def main_multi_packets(
             brown_lower=rob_config.hsv_brown_lower,
             brown_upper=rob_config.hsv_brown_upper,
         )
-    print(f"[INFO]: Used detector is: {rob_config['CELL']['DETECTOR_TYPE']}")
+    print(f"[INFO]: Used detector is: {rob_config.detector_type}")
 
     # Toggles
     toggles_dict = {
@@ -463,7 +476,7 @@ def main_multi_packets(
 
         # Detect packets using neural HSV thresholding
         elif rob_config.detector_type == "HSV":
-            image_frame, detected_packets, mask = pack_detect.detect_packet_hsv(
+            image_frame, detected_packets = pack_detect.detect_packet_hsv(
                 rgb_frame,
                 encoder_pos,
                 draw_box=toggles_dict["show_bbox"],

@@ -208,7 +208,6 @@ class Packet:
 
         # Set parameter
         self.centroid_px = self.PointTuple(x, y)
-        print(self.centroid_px)
 
         # Set initial values if not set
         if self.centroid_initial_px is None and encoder_pos is not None:
