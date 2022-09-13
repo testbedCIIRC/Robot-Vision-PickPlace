@@ -57,13 +57,21 @@ class ItemTracker:
                 del self.item_database[tracked_item_index]
                 break
 
-    def update_item(self, new_item: Packet, tracked_item: Packet) -> Packet:
+    def update_item(
+        self,
+        new_item: Packet,
+        tracked_item: Packet,
+        homography: np.ndarray,
+        encoder_pos: int,
+    ) -> Packet:
         """
         Updates parameters of single tracked packet with those of a new packet.
 
         Args:
             new_item (Packet): New packet object whose parameters are transferred.
             tracked_item (Packet): Packet object whose parameters are updated.
+            homography (np.ndarray): Homography matrix converting from pixels to centimeters.
+            encoder_pos (float): Position of encoder.
 
         Returns:
             tracked_item (Packet): Updated tracked packet object.
@@ -74,8 +82,9 @@ class ItemTracker:
             return
 
         # NEW parameters
-        tracked_item.centroid_px = new_item.centroid_px
-        tracked_item.centroid_mm = new_item.centroid_mm
+        tracked_item.set_centroid(
+            new_item.centroid_px.x, new_item.centroid_px.y, homography, encoder_pos
+        )
 
         tracked_item.width_bnd_px = new_item.width_bnd_px
         tracked_item.width_bnd_mm = new_item.width_bnd_mm
@@ -93,7 +102,12 @@ class ItemTracker:
 
         return tracked_item
 
-    def update_item_database(self, labeled_item_list: list[Packet]):
+    def update_item_database(
+        self,
+        labeled_item_list: list[Packet],
+        homography: np.ndarray,
+        encoder_pos: int,
+    ):
         """
         Update tracked item database using labeled detected items.
         When item has id of None, it is registered as new item.
@@ -101,6 +115,8 @@ class ItemTracker:
 
         Args:
             labeled_item_list (list[Packet]): List of detected Packet objects with id == id of nearest tracked item.
+            homography (np.ndarray): Homography matrix converting from pixels to centimeters.
+            encoder_pos (float): Position of encoder.
         """
 
         # Increment disappeared frame on all items
@@ -117,7 +133,7 @@ class ItemTracker:
             for tracked_item_index, tracked_item in enumerate(self.item_database):
                 if labeled_item.id == tracked_item.id:
                     self.item_database[tracked_item_index] = self.update_item(
-                        labeled_item, tracked_item
+                        labeled_item, tracked_item, homography, encoder_pos
                     )
                     break
 
