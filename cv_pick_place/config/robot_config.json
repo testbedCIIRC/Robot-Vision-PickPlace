@@ -1,142 +1,337 @@
 {
-    "PATHS": {
-        "//": "Path to file with predefined robot positions",
-        "ROBOT_POSITIONS_FILE": "config/robot_positions.json",
-
-        "//": "Path to file defining world coordinates of april tags",
-        "HOMOGRAPHY_POINTS_FILE": "config/conveyor_points.json",
-
-        "//": "Path to file containing camera configuration",
-        "CAMERA_CONFIG_FILE": "config/D435_camera_config.json",
-
-        "//": "Path to file containing camera configuration for demo functions",
-        "CAMERA_CONFIG_FILE_DEMOS": "config/D435_camera_config_demos.json"
+    "path_robot_positions": {
+        "help": "Path to file with predefined robot positions.",
+        "arg": "--path-robot-positions",
+        "default": "config/robot_positions.json"
     },
 
-    "CELL": {
-        "//": "Selection of object detector. Valid values are 'deep_1', 'deep_2' and 'hsv'",
-        "DETECTOR_TYPE": "deep_2",
-
-        "//": "If extra information should be printed to the console",
-        "VERBOSE": true,
-
-        "//": "Number of frames between homography updates",
-        "MAX_FRAME_COUNT": 500,
-
-        "//": "Number of frames object must be tracked for to start pick & place",
-        "FRAMES_LIM": 10,
-
-        "//": "Predefined packet depths, index corresponds to type of packet",
-        "PACK_DEPTHS": [ 10.0, 3.0, 5.0, 5.0 ],
-
-        "//": "Minimal x position in mm for packet picking",
-        "MIN_PICK_DISTANCE": 600,
-
-        "//": "Maximal x position in mm for packet picking",
-        "MAX_PICK_DISTANCE": 1900,
-
-        "//": "Z height offset from pick height for all positions except for pick position",
-        "Z_OFFSET": 50.0,
-
-        "//": "X offset between prepick and pick position",
-        "X_PICK_OFFSET": 140,
-
-        "//": "X offset from current packet position to prepick position",
-        "GRIP_TIME_OFFSET": 400,
-
-        "//": "Offset between robot and packet for starting the pick move",
-        "PICK_START_X_OFFSET": 25,
-
-        "//": "",
-        "MAX_Z": 500,
-
-        "//": "",
-        "MIN_Y": 45.0,
-
-        "//": "",
-        "MAX_Y": 470.0
+    "path_homography_points": {
+        "help": "Path to file defining world coordinates of april tags.",
+        "arg": "--path-homography-points",
+        "default": "config/conveyor_points.json"
     },
 
-    "TRACKER": {
-        "//": "Maximum number of frames before packet is deregistered",
-        "MAX_DISAPPEARED_FRAMES": 20,
-
-        "//": "When packet depth is cropped, the resulting crop will have this many extra pixels on each side",
-        "GUARD": 50,
-
-        "//": "Maximal distance which packet can travel when it disappears in frame pixels",
-        "MAX_ITEM_DISTANCE": 400
+    "path_camera_config": {
+        "help": "Path to file containing camera configuration.",
+        "arg": "--path-camera-config",
+        "default": "config/D435_camera_config.json"
     },
 
-    "HSV_DETECTOR": {
-        "//": "Number of rows of pixels ignored from top and bottom of the image frame",
-        "IGNORE_VERTICAL": 133,
-
-        "//": "Number of columns of pixels ignored from left and right of the image frame",
-        "IGNORE_HORIZONTAL": 50,
-
-        "//": "Checking squareness of the packet allows the ratio of packet sides to be off by this ammount",
-        "MAX_RATIO_ERROR": 0.15,
-
-        "//": "List of 3 values representing Hue, Saturation, Value bottom threshold for white color",
-        "WHITE_LOWER": [ 60, 0, 85 ],
-
-        "//": "List of 3 values representing Hue, Saturation, Value top threshold for white color",
-        "WHITE_UPPER": [ 179, 255, 255 ],
-
-        "//": "List of 3 values representing Hue, Saturation, Value bottom threshold for brown color",
-        "BROWN_LOWER": [ 0, 33, 57 ],
-
-        "//": "List of 3 values representing Hue, Saturation, Value top threshold for brown color",
-        "BROWN_UPPER": [ 60, 255, 178 ]
+    "path_camera_config_demos": {
+        "help": "Path to file containing camera configuration for demo functions.",
+        "arg": "--path-camera-config-demos",
+        "default": "config/D435_camera_config_demos.json"
     },
 
-    "POSITION_ESTIMATOR": {
-        "//": "If results should be visualized",
-        "VISUALIZE": true,
-
-        "//": "Defines the center of the gripper. Valid values are 'mass' and 'height'",
-        "CENTER_SWITCH": "mass",
-
-        "//": "Radius of the gripper in meters",
-        "GRIPPER_RADIUS": 0.08,
-
-        "//": "Ratio of gripper radius for dettecting the gripper annulus",
-        "MAX_NUM_TRIES": 100,
-
-        "//": "Maximal number of tries to estimate the optimal position",
-        "HEIGHT_TH": -0.76,
-
-        "//": "Distance between camera and belt",
-        "NUM_BINS": 20,
-
-        "//": "Number of bins for height thresholding (20 is good enough, 10 works as well)",
-        "BLACK_LIST_RADIUS": 0.01,
-
-        "//": "Distance for blacklisting points",
-        "SAVE_DEPTH_ARRAY": false
+    "mode": {
+        "help": "Selection of default mode. '0' or undefined mode allows mode selection, '1', '2' and '3' start specified program immediately.",
+        "arg": "--mode",
+        "default": "4"
     },
 
-    "MODEL": {
-        "//": "Model parameter paths",
-        "PATHS": {
-            "ANNOTATION_PATH": "neural_nets/tf_ssd_mobnet/annotations",
-            "CHECKPOINT_PATH": "neural_nets/tf_ssd_mobnet/models/my_ssd_mobnet"
-        },
+    "detector_type": {
+        "help": "Selection of object detector. Valid values are 'NN1', 'NN2' and 'HSV'.",
+        "arg": "--detector-type",
+        "default": "HSV"
+    },
 
-        "//": "Model files",
-        "FILES": {
-            "PIPELINE_CONFIG": "neural_nets/tf_ssd_mobnet/models/my_ssd_mobnet/pipeline.config",
-            "LABELMAP": "neural_nets/tf_ssd_mobnet/annotations/label_map.pbtxt"
-        },
+    "verbose": {
+        "help": "If extra information should be printed to the console.",
+        "arg": "--verbose",
+        "default": true
+    },
 
-        "//": "Model checkpoint name",
-        "CHECK_POINT": "ckpt-3",
+    "homography_frame_count": {
+        "help": "Number of frames between homography updates.",
+        "arg": "--homography-frame-count",
+        "default": 500
+    },
 
-        "//": "Maximal ammount of concurrent detections in an image",
-        "MAX_DETECTIONS": 3,
+    "frame_limit": {
+        "help": "Number of frames object must be tracked for to start pick & place.",
+        "arg": "--frame-limit",
+        "default": 10
+    },
 
-        "//": "Minimal confidence for detected object to be labeled as a packet",
-        "DETECTION_THRESHOLD": 0.7
+    "packet_depths": {
+        "help": "List of minimal expected depth sizes in millimeters of each packet type. Index corresponds to type of packet.",
+        "arg": "--packet-depths",
+        "default": [ 10.0, 3.0, 5.0, 5.0 ]
+    },
+
+    "min_pick_distance": {
+        "help": "Minimal x position in millimeters for packet picking.",
+        "arg": "--min-pick-distance",
+        "default": 600
+    },
+
+    "max_pick_distance": {
+        "help": "Maximal x position in millimeters for packet picking.",
+        "arg": "--max-pick-distance",
+        "default": 1900
+    },
+
+    "z_offset": {
+        "help": "Z height offset from pick height for all positions except for pick position.",
+        "arg": "--z-offset",
+        "default": 50.0
+    },
+
+    "x_pick_offset": {
+        "help": "X offset between prepick and pick position.",
+        "arg": "--x-pick-offset",
+        "default": 140
+    },
+
+    "grip_time_offset": {
+        "help": "X offset from current packet position to prepick position.",
+        "arg": "--grip-time-offset",
+        "default": 400
+    },
+
+    "pick_start_x_offset": {
+        "help": "Offset between robot and packet for starting the pick move.",
+        "arg": "--pick-start-x-offset",
+        "default": 25
+    },
+
+    "max_z": {
+        "help": "Highest allowed gripper position above conveyor belt in millimeters.",
+        "arg": "--max-z",
+        "default": 500
+    },
+
+    "min_y": {
+        "help": "Y coordinate of side of the conveyor belt closer to robot base in millimeters.",
+        "arg": "--min-y",
+        "default": 45.0
+    },
+
+    "max_y": {
+        "help": "Y coordinate of side of the conveyor belt further from robot base in millimeters.",
+        "arg": "--max-y",
+        "default": 470.0
+    },
+
+    "tracker_frames_to_deregister": {
+        "help": "Number of frames after which the packet is deregistered.",
+        "arg": "--tracker-frames-to-deregister",
+        "default": 20
+    },
+
+    "tracker_guard": {
+        "help": "When packet depth is cropped, the resulting crop will have this many extra pixels on each side.",
+        "arg": "--tracker-guard",
+        "default": 50
+    },
+
+    "tracker_max_item_distance": {
+        "help": "Maximal distance which packet can travel when it disappears in frame pixels.",
+        "arg": "--tracker-max-item-distance",
+        "default": 400
+    },
+
+    "pos_est_visualize": {
+        "help": "If results of position estimator should be visualized.",
+        "arg": "--pos-est-visualize",
+        "default": false
+    },
+
+    "pos_est_center_switch": {
+        "help": "Defines the center of the gripper. Valid values are 'mass' and 'height'.",
+        "arg": "--pos-est-center-switch",
+        "default": "mass"
+    },
+
+    "pos_est_gripper_radius": {
+        "help": "Radius of the gripper in meters.",
+        "arg": "--pos-est-gripper-radius",
+        "default": 0.08
+    },
+
+    "pos_est_gripper_ration": {
+        "help": "Ratio of gripper radius for detecting the gripper annulus.",
+        "arg": "--pos-est-gripper-ration",
+        "default": 0.8
+    },
+
+    "pos_est_max_num_tries": {
+        "help": "Maximal number of tries to estimate the optimal gripper position.",
+        "arg": "--pos-est-max-num-tries",
+        "default": 100
+    },
+
+    "pos_est_height_th": {
+        "help": "Distance between camera and belt in meters.",
+        "arg": "--pos-est-height-th",
+        "default": -0.76
+    },
+
+    "pos_est_num_bins": {
+        "help": "Number of bins for height thresholding (20 is good enough, 10 works as well).",
+        "arg": "--pos-est-num-bins",
+        "default": 20
+    },
+
+    "pos_est_blacklist_radius": {
+        "help": "Distance for blacklisting points in the position estimator.",
+        "arg": "--pos-est-blacklist-radius",
+        "default": 0.01
+    },
+
+    "pos_est_save_depth_array": {
+        "help": "TODO",
+        "arg": "--pos-est-save-depth-array",
+        "default": false
+    },
+
+    "nn1_annotation_path": {
+        "help": "Path to NN1 detector annotations.",
+        "arg": "--nn1-annotation-path",
+        "default": "neural_nets/tf_ssd_mobnet/annotations"
+    },
+
+    "nn1_checkpoint_path": {
+        "help": "Path to NN1 detector checkpoints.",
+        "arg": "--nn1-checkpoint-path",
+        "default": "neural_nets/tf_ssd_mobnet/models/my_ssd_mobnet"
+    },
+
+    "nn1_pipeline_config": {
+        "help": "Path to NN1 detector configuration file.",
+        "arg": "--nn1-pipeline-config",
+        "default": "neural_nets/tf_ssd_mobnet/models/my_ssd_mobnet/pipeline.config"
+    },
+
+    "nn1_labelmap": {
+        "help": "Path to NN1 detector labelmap file.",
+        "arg": "--nn1-labelmap",
+        "default": "neural_nets/tf_ssd_mobnet/annotations/label_map.pbtxt"
+    },
+
+    "nn1_checkpoint": {
+        "help": "Name of NN1 detector checkpoint to be used.",
+        "arg": "--nn1-check-point",
+        "default": "ckpt-3"
+    },
+
+    "nn1_max_detections": {
+        "help": "Maximal ammount of concurrent detections in an image when detecting using the NN1 detector.",
+        "arg": "--nn1-max-detections",
+        "default": 3
+    },
+
+    "nn1_detection_threshold": {
+        "help": "Minimal confidence for detected object to be labeled as a packet when detecting using the NN1 detector. Number beween 0 and 1.",
+        "arg": "--nn1-detection-threshold",
+        "default": 0.7
+    },
+
+    "nn2_weights": {
+        "help": "Path to NN2 detector weights file.",
+        "arg": "--nn2-weights",
+        "default": "neural_nets/torch_yolact/weights/best_30.4_res101_coco_340000.pth"
+    },
+
+    "nn2_img_size": {
+        "help": "The image size for validation when using the NN2 detector.",
+        "arg": "--nn2-img-size",
+        "default": 544
+    },
+
+    "nn2_visual_threshold": {
+        "help": "Detections with a score under this threshold will be removed when using the NN2 detector.",
+        "arg": "--nn2-visual-threshold",
+        "default": 0.8
+    },
+
+    "nn2_traditional_nms": {
+        "help": "Whether to use traditional nms when using the NN2 detector.",
+        "arg": "--nn2-traditional-nms",
+        "default": false
+    },
+
+    "nn2_hide_mask": {
+        "help": "Hide masks in results of the NN2 detector.",
+        "arg": "--nn2-hide-mask",
+        "default": true
+    },
+
+    "nn2_hide_bbox": {
+        "help": "Hide boxes in results of the NN2 detector.",
+        "arg": "--nn2-hide-box",
+        "default": false
+    },
+
+    "nn2_hide_score": {
+        "help": "Hide scores in results of the NN2 detector.",
+        "arg": "--nn2-hide-score",
+        "default": false
+    },
+
+    "nn2_cutout": {
+        "help": "Cut out each object and save when using the NN2 detector.",
+        "arg": "--nn2-cutout",
+        "default": false
+    },
+
+    "nn2_save_lincomb": {
+        "help": "Show the generating process of masks when using the NN2 detector.",
+        "arg": "--nn2-save-lincomb",
+        "default": false
+    },
+
+    "nn2_no_crop": {
+        "help": "Do not crop the output masks with the predicted bounding box when using the NN2 detector.",
+        "arg": "--nn2-no-crop",
+        "default": false
+    },
+
+    "nn2_real_time": {
+        "help": "Show the detection results real-timely when using the NN2 detector.",
+        "arg": "--nn2-real-time",
+        "default": true
+    },
+
+    "hsv_ignore_vertical": {
+        "help": "Number of rows of pixels ignored from top and bottom of the image frame when using HSV detector.",
+        "arg": "--hsv-ignore-vertical",
+        "default": 133
+    },
+
+    "hsv_ignore_horizontal": {
+        "help": "Number of columns of pixels ignored from left and right of the image frame when using HSV detector.",
+        "arg": "--hsv-ignore-horizontal",
+        "default": 50
+    },
+
+    "hsv_max_ratio_error": {
+        "help": "When checking squareness of the packet, the HSV detector allows the ratio of packet sides to be off by this ammount.",
+        "arg": "--hsv-max-ratio-error",
+        "default": 0.15
+    },
+
+    "hsv_white_lower": {
+        "help": "List of 3 integer values representing Hue (0 to 179), Saturation (0 to 255), Value (0 to 255) of bottom threshold for white color when using the HSV detector.",
+        "arg": "--hsv-white-lower",
+        "default": [ 60, 0, 85 ]
+    },
+
+    "hsv_white_upper": {
+        "help": "List of 3 integer values representing Hue (0 to 179), Saturation (0 to 255), Value (0 to 255) of top threshold for white color when using the HSV detector.",
+        "arg": "--hsv-white-upper",
+        "default": [ 179, 255, 255 ]
+    },
+
+    "hsv_brown_lower": {
+        "help": "List of 3 integer values representing Hue (0 to 179), Saturation (0 to 255), Value (0 to 255) of bottom threshold for brown color when using the HSV detector.",
+        "arg": "--hsv-brown-lower",
+        "default": [ 0, 33, 57 ]
+    },
+
+    "hsv_brown_upper": {
+        "help": "List of 3 integer values representing Hue (0 to 179), Saturation (0 to 255), Value (0 to 255) of top threshold for brown color when using the HSV detector.",
+        "arg": "--hsv-brown-upper",
+        "default": [ 60, 255, 178 ]
     }
 }

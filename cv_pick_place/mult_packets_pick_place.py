@@ -1,12 +1,11 @@
-# Standard library
-import os
+# Standard libraries
 import time
 import argparse
 import multiprocessing
 import multiprocessing.connection
 import multiprocessing.managers
 
-# Third party
+# Third party libraries
 import cv2
 import numpy as np
 
@@ -278,72 +277,81 @@ def main_multi_packets(
 
     # Inititalize objects
     apriltag = ProcessingApriltag()
-    apriltag.load_world_points(rob_config["PATHS"]["HOMOGRAPHY_POINTS_FILE"])
+    apriltag.load_world_points(rob_config.path_homography_points)
 
     pt = ItemTracker(
-        max_disappeared_frames=rob_config["TRACKER"]["MAX_DISAPPEARED_FRAMES"],
-        guard=rob_config["TRACKER"]["GUARD"],
-        max_item_distance=rob_config["TRACKER"]["MAX_ITEM_DISTANCE"],
+        max_disappeared_frames=rob_config.tracker_frames_to_deregister,
+        guard=rob_config.tracker_guard,
+        max_item_distance=rob_config.tracker_max_item_distance,
     )
 
-    dc = DepthCamera(config_path=rob_config["PATHS"]["CAMERA_CONFIG_FILE"])
+    dc = DepthCamera(config_path=rob_config.path_camera_config)
 
     gripper_pose_estimator = GripPositionEstimation(
-        visualize=rob_config["POSITION_ESTIMATOR"]["VISUALIZE"],
-        verbose=rob_config["CELL"]["VERBOSE"],
-        center_switch=rob_config["POSITION_ESTIMATOR"]["CENTER_SWITCH"],
-        gripper_radius=rob_config["POSITION_ESTIMATOR"]["GRIPPER_RADIUS"],
-        max_num_tries=rob_config["POSITION_ESTIMATOR"]["MAX_NUM_TRIES"],
-        height_th=rob_config["POSITION_ESTIMATOR"]["HEIGHT_TH"],
-        num_bins=rob_config["POSITION_ESTIMATOR"]["NUM_BINS"],
-        black_list_radius=rob_config["POSITION_ESTIMATOR"]["BLACK_LIST_RADIUS"],
-        save_depth_array=rob_config["POSITION_ESTIMATOR"]["SAVE_DEPTH_ARRAY"],
+        visualize=rob_config.pos_est_visualize,
+        verbose=rob_config.verbose,
+        center_switch=rob_config.pos_est_center_switch,
+        gripper_radius=rob_config.pos_est_gripper_radius,
+        gripper_ration=rob_config.pos_est_gripper_ration,
+        max_num_tries=rob_config.pos_est_max_num_tries,
+        height_th=rob_config.pos_est_height_th,
+        num_bins=rob_config.pos_est_num_bins,
+        black_list_radius=rob_config.pos_est_blacklist_radius,
+        save_depth_array=rob_config.pos_est_save_depth_array,
     )
+
+    constants = {
+        "frame_limit": rob_config.frame_limit,
+        "packet_depths": rob_config.packet_depths,
+        "min_pick_distance": rob_config.min_pick_distance,
+        "max_pick_distance": rob_config.max_pick_distance,
+        "z_offset": rob_config.z_offset,
+        "x_pick_offset": rob_config.x_pick_offset,
+        "grip_time_offset": rob_config.grip_time_offset,
+        "pick_start_x_offset": rob_config.pick_start_x_offset,
+        "max_z": rob_config.max_z,
+        "min_y": rob_config.min_y,
+        "max_y": rob_config.max_y,
+    }
 
     stateMachine = RobotStateMachine(
         control_pipe,
         gripper_pose_estimator,
         encoder_pos_m,
         home_xyz_coords,
-        constants=rob_config["CELL"],
-        verbose=rob_config["CELL"]["VERBOSE"],
+        constants=constants,
+        verbose=rob_config.verbose,
     )
 
-    if rob_config["CELL"]["DETECTOR_TYPE"] == "deep_1":
+    if rob_config.detector_type == "NN1":
         show_boot_screen("STARTING NEURAL NET...")
+        nn1_paths = {
+            "ANNOTATION_PATH": rob_config.nn1_annotation_path,
+            "CHECKPOINT_PATH": rob_config.nn1_checkpoint_path,
+        }
+        nn1_files = {
+            "PIPELINE_CONFIG": rob_config.nn1_pipeline_config,
+            "LABELMAP": rob_config.nn1_labelmap,
+        }
         pack_detect = PacketDetector(
-            rob_config["MODEL"]["PATHS"],
-            rob_config["MODEL"]["FILES"],
-            rob_config["MODEL"]["CHECK_POINT"],
-            rob_config["MODEL"]["MAX_DETECTIONS"],
-            rob_config["MODEL"]["DETECTION_THRESHOLD"],
+            nn1_paths,
+            nn1_files,
+            rob_config.nn1_checkpoint,
+            rob_config.nn1_max_detections,
+            rob_config.nn1_detection_threshold,
         )
-    elif rob_config["CELL"]["DETECTOR_TYPE"] == "deep_2":
-        parser = argparse.ArgumentParser(description='YOLACT Detection.')
-        parser.add_argument('--weight', default='neural_nets/torch_yolact/weights/best_30.4_res101_coco_340000.pth', type=str)
-        parser.add_argument('--img_size', type=int, default=544, help='The image size for validation.')
-        parser.add_argument('--traditional_nms', default=False, action='store_true', help='Whether to use traditional nms.')
-        parser.add_argument('--hide_mask', default=False, action='store_true', help='Hide masks in results.')
-        parser.add_argument('--hide_bbox', default=False, action='store_true', help='Hide boxes in results.')
-        parser.add_argument('--hide_score', default=False, action='store_true', help='Hide scores in results.')
-        parser.add_argument('--cutout', default=False, action='store_true', help='Cut out each object and save.')
-        parser.add_argument('--save_lincomb', default=False, action='store_true', help='Show the generating process of masks.')
-        parser.add_argument('--no_crop', default=False, action='store_true',
-                            help='Do not crop the output masks with the predicted bounding box.')
-        parser.add_argument('--real_time', default=True, action='store_true', help='Show the detection results real-timely.')
-        parser.add_argument('--visual_thre', default=0.8, type=float,
-                            help='Detections with a score under this threshold will be removed.')
+    elif rob_config.detector_type == "NN2":
+        # TODO Remove parser and replace in with some dictionary
         pack_detect = ItemsDetector(parser, None, None, None)
-
-    elif rob_config["CELL"]["DETECTOR_TYPE"] == "hsv":
+    elif rob_config.detector_type == "HSV":
         pack_detect = ThresholdDetector(
-            ignore_vertical_px=rob_config["HSV_DETECTOR"]["IGNORE_VERTICAL"],
-            ignore_horizontal_px=rob_config["HSV_DETECTOR"]["IGNORE_HORIZONTAL"],
-            max_ratio_error=rob_config["HSV_DETECTOR"]["MAX_RATIO_ERROR"],
-            white_lower=rob_config["HSV_DETECTOR"]["WHITE_LOWER"],
-            white_upper=rob_config["HSV_DETECTOR"]["WHITE_UPPER"],
-            brown_lower=rob_config["HSV_DETECTOR"]["BROWN_LOWER"],
-            brown_upper=rob_config["HSV_DETECTOR"]["BROWN_UPPER"],
+            ignore_vertical_px=rob_config.hsv_ignore_vertical,
+            ignore_horizontal_px=rob_config.hsv_ignore_horizontal,
+            max_ratio_error=rob_config.hsv_max_ratio_error,
+            white_lower=rob_config.hsv_white_lower,
+            white_upper=rob_config.hsv_white_upper,
+            brown_lower=rob_config.hsv_brown_lower,
+            brown_upper=rob_config.hsv_brown_upper,
         )
     print(f"[INFO]: Used detector is: {rob_config['CELL']['DETECTOR_TYPE']}")
 
@@ -399,10 +407,7 @@ def main_multi_packets(
         image_frame = rgb_frame.copy()
 
         # Draw HSV mask over screen if enabled
-        if (
-            toggles_dict["show_hsv_mask"]
-            and rob_config["CELL"]["DETECTOR_TYPE"] == "hsv"
-        ):
+        if toggles_dict["show_hsv_mask"] and rob_config.detector_type == "HSV":
             image_frame = pack_detect.draw_hsv_mask(image_frame)
 
         # HOMOGRAPHY UPDATE
@@ -419,18 +424,18 @@ def main_multi_packets(
         if isinstance(homography, np.ndarray):
             # Increase counter for homography update
             frame_count += 1
-            if frame_count >= rob_config["CELL"]["MAX_FRAME_COUNT"]:
+            if frame_count >= rob_config.homography_frame_count:
                 frame_count = 1
 
-            # Set homography in HSV detector
-            if rob_config["CELL"]["DETECTOR_TYPE"] in  ["hsv", "deep_2"]:
+            # Set homography in HSV, NN2 detector
+            if rob_config.detector_type in ["HSV", "NN2"]:
                 pack_detect.set_homography(homography)
 
         # PACKET DETECTION
         ##################
 
         # Detect packets using neural network
-        if rob_config["CELL"]["DETECTOR_TYPE"] == "deep_1":
+        if rob_config.detector_type == "NN1":
             image_frame, detected_packets = pack_detect.deep_pack_obj_detector(
                 rgb_frame,
                 depth_frame,
@@ -444,7 +449,7 @@ def main_multi_packets(
                 packet.height = packet.height * frame_height
 
         # Detect packets using neural network
-        elif rob_config["CELL"]["DETECTOR_TYPE"] == "deep_2":
+        elif rob_config.detector_type == "NN2":
             # TODO Implement new deep detector
             # print(rgb_frame.shape)
             image_frame, detected_packets = pack_detect.deep_item_detector(
@@ -457,7 +462,7 @@ def main_multi_packets(
 
 
         # Detect packets using neural HSV thresholding
-        elif rob_config["CELL"]["DETECTOR_TYPE"] == "hsv":
+        elif rob_config.detector_type == "HSV":
             image_frame, detected_packets, mask = pack_detect.detect_packet_hsv(
                 rgb_frame,
                 encoder_pos,
