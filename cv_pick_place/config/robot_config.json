@@ -50,7 +50,7 @@
     "frame_limit": {
         "help": "Number of frames object must be tracked for to start pick & place.",
         "arg": "--frame-limit",
-        "default": 10
+        "default": 30
     },
 
     "packet_depths": {
@@ -116,7 +116,7 @@
     "tracker_frames_to_deregister": {
         "help": "Number of frames after which the packet is deregistered.",
         "arg": "--tracker-frames-to-deregister",
-        "default": 20
+        "default": 30
     },
 
     "tracker_guard": {
