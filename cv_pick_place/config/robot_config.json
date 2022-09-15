@@ -80,7 +80,7 @@
     "x_pick_offset": {
         "help": "X offset between prepick and pick position.",
         "arg": "--x-pick-offset",
-        "default": 140
+        "default": 70
     },
 
     "grip_time_offset": {
@@ -92,7 +92,7 @@
     "pick_start_x_offset": {
         "help": "Offset between robot and packet for starting the pick move.",
         "arg": "--pick-start-x-offset",
-        "default": 25
+        "default": 100
     },
 
     "max_z": {
