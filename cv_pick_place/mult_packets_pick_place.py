@@ -250,8 +250,8 @@ def process_key_input(
 def main_multi_packets(
     rob_config: dict,
     rob_dict: dict,
-    info_dict: multiprocessing.managers.DictProxy,
-    encoder_pos_m: multiprocessing.managers.ValueProxy,
+    manag_info_dict: multiprocessing.managers.DictProxy,
+    manag_encoder_val: multiprocessing.managers.ValueProxy,
     control_pipe: multiprocessing.connection.PipeConnection,
 ) -> None:
     """
@@ -260,8 +260,8 @@ def main_multi_packets(
     Args:
         rob_config (dict): Dictionary with parameters setting the behaviour of the cell.
         rob_dict (dict): Dictionary of predefined points.
-        info_dict (multiprocessing.managers.DictProxy): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
-        encoder_pos_m (multiprocessing.managers.ValueProxy): Value object from multiprocessing Manager for reading encoder value from another process.
+        manag_info_dict (multiprocessing.managers.DictProxy): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
+        manag_encoder_val (multiprocessing.managers.ValueProxy): Value object from multiprocessing Manager for reading encoder value from another process.
         control_pipe (multiprocessing.connection.PipeConnection): Multiprocessing pipe object for sending commands to RobotControl object process.
     """
 
@@ -316,7 +316,7 @@ def main_multi_packets(
     stateMachine = RobotStateMachine(
         control_pipe,
         gripper_pose_estimator,
-        encoder_pos_m,
+        manag_encoder_val,
         home_xyz_coords,
         constants=constants,
         verbose=rob_config.verbose,
@@ -324,17 +324,11 @@ def main_multi_packets(
 
     if rob_config.detector_type == "NN1":
         show_boot_screen("STARTING NEURAL NET...")
-        nn1_paths = {
-            "ANNOTATION_PATH": rob_config.nn1_annotation_path,
-            "CHECKPOINT_PATH": rob_config.nn1_checkpoint_path,
-        }
-        nn1_files = {
-            "PIPELINE_CONFIG": rob_config.nn1_pipeline_config,
-            "LABELMAP": rob_config.nn1_labelmap,
-        }
-        pack_detect = PacketDetector(
-            nn1_paths,
-            nn1_files,
+        detector = PacketDetector(
+            rob_config.nn1_annotation_path,
+            rob_config.nn1_checkpoint_path,
+            rob_config.nn1_pipeline_config,
+            rob_config.nn1_labelmap,
             rob_config.nn1_checkpoint,
             rob_config.nn1_max_detections,
             rob_config.nn1_detection_threshold,
@@ -343,15 +337,17 @@ def main_multi_packets(
         # TODO Implement new deep detector
         pass
     elif rob_config.detector_type == "HSV":
-        pack_detect = ThresholdDetector(
-            ignore_vertical_px=rob_config.hsv_ignore_vertical,
-            ignore_horizontal_px=rob_config.hsv_ignore_horizontal,
-            max_ratio_error=rob_config.hsv_max_ratio_error,
-            white_lower=rob_config.hsv_white_lower,
-            white_upper=rob_config.hsv_white_upper,
-            brown_lower=rob_config.hsv_brown_lower,
-            brown_upper=rob_config.hsv_brown_upper,
+        detector = ThresholdDetector(
+            rob_config.hsv_ignore_vertical,
+            rob_config.hsv_ignore_horizontal,
+            rob_config.hsv_max_ratio_error,
+            rob_config.hsv_white_lower,
+            rob_config.hsv_white_upper,
+            rob_config.hsv_brown_lower,
+            rob_config.hsv_brown_upper,
         )
+    else:
+        print("[WARNING] No detector selected")
 
     # Toggles
     toggles_dict = {
@@ -379,20 +375,18 @@ def main_multi_packets(
         # READ DATA
         ###################
 
-        # Read data dict from PLC server
+        # Read data dict from OPCUA server
         try:
-            rob_stopped = info_dict["rob_stopped"]
-            stop_active = info_dict["stop_active"]
-            prog_done = info_dict["prog_done"]
-            encoder_vel = info_dict["encoder_vel"]
-            pos = info_dict["pos"]
-            speed_override = info_dict["speed_override"]
+            rob_stopped = manag_info_dict["rob_stopped"]
+            stop_active = manag_info_dict["stop_active"]
+            prog_done = manag_info_dict["prog_done"]
+            encoder_vel = manag_info_dict["encoder_vel"]
+            pos = manag_info_dict["pos"]
+            speed_override = manag_info_dict["speed_override"]
+            encoder_pos = manag_encoder_val.value
+            if encoder_pos is None:
+                continue
         except:
-            continue
-
-        # Read encoder dict from PLC server
-        encoder_pos = encoder_pos_m.value
-        if encoder_pos is None:
             continue
 
         # Get frames from realsense
@@ -481,7 +475,7 @@ def main_multi_packets(
             encoder_pos,
             text_size,
             toggles_dict,
-            info_dict,
+            manag_info_dict,
             colorized_depth,
             start_time,
             frame_width,
