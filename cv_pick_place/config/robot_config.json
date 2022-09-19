@@ -74,7 +74,7 @@
     "z_offset": {
         "help": "Z height offset from pick height for all positions except for pick position.",
         "arg": "--z-offset",
-        "default": 50.0
+        "default": 150.0
     },
 
     "x_pick_offset": {
@@ -86,7 +86,7 @@
     "grip_time_offset": {
         "help": "X offset from current packet position to prepick position.",
         "arg": "--grip-time-offset",
-        "default": 400
+        "default": 350
     },
 
     "pick_start_x_offset": {
@@ -116,7 +116,7 @@
     "tracker_frames_to_deregister": {
         "help": "Number of frames after which the packet is deregistered.",
         "arg": "--tracker-frames-to-deregister",
-        "default": 30
+        "default": 90
     },
 
     "tracker_guard": {
@@ -308,7 +308,7 @@
     "hsv_max_ratio_error": {
         "help": "When checking squareness of the packet, the HSV detector allows the ratio of packet sides to be off by this ammount.",
         "arg": "--hsv-max-ratio-error",
-        "default": 0.15
+        "default": 0.5
     },
 
     "hsv_white_lower": {
