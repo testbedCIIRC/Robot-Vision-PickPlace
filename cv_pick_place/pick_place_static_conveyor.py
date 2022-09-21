@@ -1,4 +1,3 @@
-import os
 import time
 import multiprocessing
 import multiprocessing.connection
@@ -8,6 +7,8 @@ import cv2
 import numpy as np
 from opcua import ua
 
+from robot_cell.control.robot_control import RcCommand
+from robot_cell.control.robot_control import RcData
 from robot_cell.packet.item_tracker import ItemTracker
 from robot_cell.detection.realsense_depth import DepthCamera
 from robot_cell.detection.packet_detector import PacketDetector
@@ -15,6 +16,8 @@ from robot_cell.detection.threshold_detector import ThresholdDetector
 from robot_cell.detection.apriltag_detection import ProcessingApriltag
 from robot_cell.packet.grip_position_estimation import GripPositionEstimation
 from robot_cell.graphics_functions import show_boot_screen
+from robot_cell.graphics_functions import drawText
+from robot_cell.graphics_functions import colorizeDepthFrame
 
 
 def main_pick_place(
@@ -23,7 +26,7 @@ def main_pick_place(
     manag_info_dict: multiprocessing.managers.DictProxy,
     manag_encoder_val: multiprocessing.managers.ValueProxy,
     control_pipe: multiprocessing.connection.PipeConnection,
-):
+) -> None:
     """
     Pick and place with static conveyor.
     Object should be placed in front of camera, conveyor belt should not be moving.
@@ -36,17 +39,21 @@ def main_pick_place(
         control_pipe (multiprocessing.connection.PipeConnection): Multiprocessing pipe object for sending commands to RobotControl object process.
     """
 
+    # Inititalize Apriltag Detector
     apriltag = ProcessingApriltag()
-    apriltag.load_world_points(os.path.join("config", "conveyor_points.json"))
+    apriltag.load_world_points(rob_config.path_homography_points)
 
+    # Initialize object tracker
     tracker = ItemTracker(
-        max_disappeared_frames=rob_config.tracker_frames_to_deregister,
-        guard=rob_config.tracker_guard,
-        max_item_distance=rob_config.tracker_max_item_distance,
+        rob_config.tracker_frames_to_deregister,
+        rob_config.tracker_guard,
+        rob_config.tracker_max_item_distance,
     )
 
-    camera = DepthCamera(config_path=rob_config.path_camera_config_demos)
+    # Initialize depth camera
+    camera = DepthCamera(config_path=rob_config.path_camera_config)
 
+    # Initialize gripper pose estimator
     gripper_pose_estimator = GripPositionEstimation(
         visualize=rob_config.pos_est_visualize,
         verbose=rob_config.verbose,
@@ -60,7 +67,7 @@ def main_pick_place(
         save_depth_array=rob_config.pos_est_save_depth_array,
     )
 
-    # Initialize selested detector
+    # Initialize object detector
     if rob_config.detector_type == "NN1":
         show_boot_screen("STARTING NEURAL NET...")
         detector = PacketDetector(
@@ -72,10 +79,11 @@ def main_pick_place(
             rob_config.nn1_max_detections,
             rob_config.nn1_detection_threshold,
         )
+        print("[INFO] NN1 detector started")
     elif rob_config.detector_type == "NN2":
         show_boot_screen("STARTING NEURAL NET...")
-        # TODO Implement new deep detector
-        pass
+        detector = None  # TODO Implement new deep detector
+        print("[INFO] NN2 detector started")
     elif rob_config.detector_type == "HSV":
         detector = ThresholdDetector(
             rob_config.hsv_ignore_vertical,
@@ -86,25 +94,36 @@ def main_pick_place(
             rob_config.hsv_brown_lower,
             rob_config.hsv_brown_upper,
         )
+        print("[INFO] HSV detector started")
     else:
+        detector = None
         print("[WARNING] No detector selected")
 
-    rc.connect_OPCUA_server()
-    rc.get_nodes()
-    rc.Pick_Place_Select.set_value(ua.DataValue(False))
+    # Tell PLC to use different set of robot instructions
+    control_pipe.send(RcData(RcCommand.PICK_PLACE_SELECT, False))
 
-    is_detect = False
-    conv_left = False
-    conv_right = False
-    bbox = True
-    depth_map = True
-    f_data = False
-    homography = None
-    frame_count = 1
+    # Toggles for various program functions
+    toggles_dict = {
+        "gripper": False,  # Gripper enable
+        "conv_left": False,  # Conveyor heading left enable
+        "conv_right": False,  # Conveyor heading right enable
+        "show_bbox": True,  # Bounding box visualization enable
+        "show_frame_data": False,  # Show frame data (robot pos, encoder vel, FPS ...)
+        "show_depth_map": False,  # Overlay colorized depth enable
+        "show_hsv_mask": False,  # Remove pixels not within HSV mask boundaries
+    }
+
+    # Program variables
+    frame_count = 1  # Counter of frames for homography update
+    text_size = 1
+    homography = None  # Homography matrix
 
     while True:
         # Start timer for FPS estimation
         start_time = time.time()
+
+        # READ DATA
+        ###################
 
         # Read data dict from OPCUA server
         try:
@@ -120,134 +139,258 @@ def main_pick_place(
         except:
             continue
 
-        # Get frames from realsense.
-        success, depth_frame, rgb_frame, colorized_depth = dc.get_frames()
-        height, width, depth = rgb_frame.shape
+        # Get frames from camera
+        success, depth_frame, rgb_frame, colorized_depth = camera.get_frames()
+        if not success:
+            continue
 
-        # Crop frames to 1080x1440x3.
+        # Crop frames to 1080 x 1440.
         rgb_frame = rgb_frame[:, 240:1680]
         depth_frame = depth_frame[:, 240:1680]
         colorized_depth = colorized_depth[:, 240:1680]
+
+        frame_height, frame_width, frame_channel_count = rgb_frame.shape
+        text_size = frame_height / 1000
+
+        # rgb_frame is used for detection, image_frame is used for graphics and displayed
+        image_frame = rgb_frame.copy()
+
+        # Draw HSV mask over screen if enabled
+        if toggles_dict["show_hsv_mask"] and rob_config.detector_type == "HSV":
+            image_frame = detector.draw_hsv_mask(image_frame)
+
+        # HOMOGRAPHY UPDATE
+        ###################
 
         # Update homography
         if frame_count == 1:
             apriltag.detect_tags(rgb_frame)
             homography = apriltag.compute_homog()
 
-        rgb_frame = apriltag.draw_tags(rgb_frame)
+        image_frame = apriltag.draw_tags(image_frame)
 
         # If homography has been detected
         if isinstance(homography, np.ndarray):
             # Increase counter for homography update
             frame_count += 1
-            if frame_count >= 500:
+            if frame_count >= rob_config.homography_frame_count:
                 frame_count = 1
 
-        img_detect, detected = pack_detect.deep_detector(
-            rgb_frame, depth_frame, homography, bnd_box=bbox
-        )
+            # Set homography in HSV detector
+            if rob_config.detector_type == "HSV":
+                detector.set_homography(homography)
 
-        objects = ct.update(detected)
-        # print(objects)
-        rc.objects_update(objects, img_detect)
+        # PACKET DETECTION
+        ##################
 
-        if depth_map:
-            img_detect = cv2.addWeighted(img_detect, 0.8, colorized_depth, 0.3, 0)
-
-        if f_data:
-            cv2.putText(
-                img_detect,
-                str(info_dict),
-                (10, 25),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.57,
-                (255, 255, 0),
-                2,
+        # Detect packets using neural network
+        if rob_config.detector_type == "NN1":
+            image_frame, detected_packets = detector.deep_pack_obj_detector(
+                rgb_frame,
+                depth_frame,
+                encoder_pos,
+                bnd_box=toggles_dict["show_bbox"],
+                homography=homography,
+                image_frame=image_frame,
             )
-            cv2.putText(
-                img_detect,
-                "FPS:" + str(1.0 / (time.time() - start_time)),
-                (10, 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.57,
-                (255, 255, 0),
-                2,
+            for packet in detected_packets:
+                packet.width = packet.width * frame_width
+                packet.height = packet.height * frame_height
+
+        # Detect packets using neural network
+        elif rob_config.detector_type == "NN2":
+            # TODO Implement new deep detector
+            detected_packets = []
+
+        # Detect packets using HSV thresholding
+        elif rob_config.detector_type == "HSV":
+            image_frame, detected_packets, mask = detector.detect_packet_hsv(
+                rgb_frame,
+                encoder_pos,
+                toggles_dict["show_bbox"],
+                image_frame,
             )
 
-        cv2.imshow("Frame", cv2.resize(img_detect, (720, 540)))
+        # In case no valid detector was selected
+        else:
+            detected_packets = []
+
+        # PACKET TRACKING
+        #################
+
+        labeled_packets = tracker.track_items(detected_packets)
+        tracker.update_item_database(labeled_packets)
+
+        # Update depth frames of tracked packets
+        for item in tracker.item_database:
+            if item.disappeared == 0:
+                # Check if packet is far enough from edge
+                if (
+                    item.centroid_px.x - item.width / 2 > item.crop_border_px
+                    and item.centroid_px.x + item.width / 2
+                    < (frame_width - item.crop_border_px)
+                ):
+                    depth_crop = item.get_crop_from_frame(depth_frame)
+                    mask_crop = item.get_crop_from_frame(mask)
+                    item.add_depth_crop_to_average(depth_crop)
+                    item.set_mask(mask_crop)
+
+        # Update registered packet list with new packet info
+        registered_packets = tracker.item_database
+
+        # ROBOT CONTROL
+        ###############
+
+        is_rob_ready = prog_done and (rob_stopped or not stop_active)
+
+        rc.objects_update(registered_packets, img_detect)
+
+        # FRAME GRAPHICS
+        ################
+
+        # Draw packet info
+        for packet in registered_packets:
+            if packet.disappeared == 0:
+                # Draw centroid estimated with encoder position
+                cv2.drawMarker(
+                    image_frame,
+                    packet.getCentroidFromEncoder(encoder_pos),
+                    (255, 255, 0),
+                    cv2.MARKER_CROSS,
+                    10,
+                    cv2.LINE_4,
+                )
+
+                # Draw packet ID and type
+                text_id = "ID {}, Type {}".format(packet.id, packet.type)
+                drawText(
+                    image_frame,
+                    text_id,
+                    (packet.centroid_px.x + 10, packet.centroid_px.y),
+                    text_size,
+                )
+
+                # Draw packet centroid value in pixels
+                text_centroid = "X: {}, Y: {} (px)".format(
+                    packet.centroid_px.x, packet.centroid_px.y
+                )
+                drawText(
+                    image_frame,
+                    text_centroid,
+                    (
+                        packet.centroid_px.x + 10,
+                        packet.centroid_px.y + int(45 * text_size),
+                    ),
+                    text_size,
+                )
+
+                # Draw packet centroid value in milimeters
+                text_centroid = "X: {:.2f}, Y: {:.2f} (mm)".format(
+                    packet.centroid_mm.x, packet.centroid_mm.y
+                )
+                drawText(
+                    image_frame,
+                    text_centroid,
+                    (
+                        packet.centroid_px.x + 10,
+                        packet.centroid_px.y + int(80 * text_size),
+                    ),
+                    text_size,
+                )
+
+        # Draw packet depth crop to separate frame
+        cv2.imshow("Depth Crop", np.zeros((500, 500)))
+        for packet in registered_packets:
+            if packet.avg_depth_crop is not None:
+                depth_img = colorizeDepthFrame(packet.avg_depth_crop)
+                depth_img = cv2.resize(depth_img, (500, 500))
+                cv2.imshow("Depth Crop", depth_img)
+                break
+
+        # Show depth frame overlay
+        if toggles_dict["show_depth_map"]:
+            image_frame = cv2.addWeighted(image_frame, 0.8, colorized_depth, 0.3, 0)
+
+        # Show FPS and robot position data
+        if toggles_dict["show_frame_data"]:
+            # Draw FPS to screen
+            text_fps = "FPS: {:.2f}".format(1.0 / (time.time() - start_time))
+            drawText(image_frame, text_fps, (10, int(35 * text_size)), text_size)
+
+            # Draw OPCUA data to screen
+            text_robot = str(manag_info_dict)
+            drawText(image_frame, text_robot, (10, int(75 * text_size)), text_size)
+
+        image_frame = cv2.resize(image_frame, (frame_width // 2, frame_height // 2))
+
+        # Show frames on cv2 window
+        cv2.imshow("Frame", image_frame)
 
         key = cv2.waitKey(1)
 
-        if prog_done and (rob_stopped or not stop_active):
+        if is_rob_ready:
             if key == ord("b"):
                 bpressed += 1
                 if bpressed == 5:
-                    print(detected)
-                    world_centroid = detected[0][2]
+                    print(registered_packets)
+                    world_centroid = registered_packets[0][2]
                     packet_x = round(world_centroid[0] * 10.0, 2)
                     packet_y = round(world_centroid[1] * 10.0, 2)
-                    angle = detected[0][3]
+                    angle = registered_packets[0][3]
+                    packet_type = registered_packets[0][4]
                     gripper_rot = rc.compute_gripper_rot(angle)
-                    packet_type = detected[0][4]
                     rc.change_trajectory(packet_x, packet_y, gripper_rot, packet_type)
-                    rc.start_program()
+                    control_pipe.send(RcData(RcCommand.START_PROGRAM))
                     bpressed = 0
             elif key != ord("b"):
                 bpressed = 0
 
-        if key == ord("o"):
-            rc.Gripper_State.set_value(ua.DataValue(False))
-            time.sleep(0.1)
+        # Toggle gripper
+        if key == ord("g"):
+            toggles_dict["gripper"] = not toggles_dict["gripper"]
+            control_pipe.send(RcData(RcCommand.GRIPPER, toggles_dict["gripper"]))
 
-        if key == ord("i"):
-            rc.Gripper_State.set_value(ua.DataValue(True))
-            time.sleep(0.1)
-
-        if key == ord("m"):
-            conv_right = not conv_right
-            rc.Conveyor_Right.set_value(ua.DataValue(conv_right))
-            time.sleep(0.1)
-
+        # Toggle conveyor in left direction
         if key == ord("n"):
-            conv_left = not conv_left
-            rc.Conveyor_Left.set_value(ua.DataValue(conv_left))
-            time.sleep(0.1)
+            toggles_dict["conv_left"] = not toggles_dict["conv_left"]
+            control_pipe.send(
+                RcData(RcCommand.CONVEYOR_LEFT, toggles_dict["conv_left"])
+            )
 
-        if key == ord("l"):
-            bbox = not bbox
+        # Toggle conveyor in right direction
+        if key == ord("m"):
+            toggles_dict["conv_right"] = not toggles_dict["conv_right"]
+            control_pipe.send(
+                RcData(RcCommand.CONVEYOR_RIGHT, toggles_dict["conv_right"])
+            )
 
-        if key == ord("h"):
-            depth_map = not depth_map
+        # Toggle detected packets bounding box display
+        if key == ord("b"):
+            toggles_dict["show_bbox"] = not toggles_dict["show_bbox"]
 
+        # Toggle depth map overlay
+        if key == ord("d"):
+            toggles_dict["show_depth_map"] = not toggles_dict["show_depth_map"]
+
+        # Toggle frame data display
         if key == ord("f"):
-            f_data = not f_data
+            toggles_dict["show_frame_data"] = not toggles_dict["show_frame_data"]
 
-        if key == ord("e"):
-            is_detect = not is_detect
+        # Toggle HSV mask overlay
+        if key == ord("h"):
+            toggles_dict["show_hsv_mask"] = not toggles_dict["show_hsv_mask"]
 
         if key == ord("a"):
-            rc.Abort_Prog.set_value(ua.DataValue(True))
-            print("Program Aborted: ", info_dict["abort"])
-            time.sleep(0.5)
+            control_pipe.send(RcData(RcCommand.ABORT_PROGRAM))
 
         if key == ord("c"):
-            rc.Conti_Prog.set_value(ua.DataValue(True))
-            print("Continue Program")
-            time.sleep(0.5)
-            rc.Conti_Prog.set_value(ua.DataValue(False))
+            control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
 
         if key == ord("s"):
-            rc.Stop_Prog.set_value(ua.DataValue(True))
-            print("Program Interrupted")
-            time.sleep(0.5)
-            rc.Stop_Prog.set_value(ua.DataValue(False))
+            control_pipe.send(RcData(RcCommand.STOP_PROGRAM))
 
         if key == 27:
-            rc.Abort_Prog.set_value(ua.DataValue(True))
-            print("Program Aborted: ", info_dict["abort"])
-            rc.Abort_Prog.set_value(ua.DataValue(False))
-            rc.client.disconnect()
+            control_pipe.send(RcData(RcCommand.CLOSE_PROGRAM))
             cv2.destroyAllWindows()
-            print("[INFO]: Client disconnected.")
-            time.sleep(0.5)
+            camera.release()
             break

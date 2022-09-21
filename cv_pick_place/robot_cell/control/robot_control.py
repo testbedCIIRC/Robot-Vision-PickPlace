@@ -25,6 +25,7 @@ class RcCommand(Enum):
     CHANGE_SHORT_TRAJECTORY = 10
     GO_TO_HOME = 11
     SET_HOME_POS_SH = 12
+    PICK_PLACE_SELECT = 13
 
 
 class RcData:
@@ -788,6 +789,9 @@ class RobotControl(RobotCommunication):
 
                 elif command == RcCommand.GO_TO_HOME:
                     self.go_to_home()
+
+                elif command == RcCommand.PICK_PLACE_SELECT:
+                    self.Pick_Place_Select.set_value(ua.DataValue(data))
 
                 else:
                     print("[WARNING]: Wrong command send to control server")
