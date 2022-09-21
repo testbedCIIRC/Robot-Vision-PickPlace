@@ -30,6 +30,8 @@ def packet_tracking(
     depth_frame: np.ndarray,
     frame_width: int,
     mask: np.ndarray,
+    homography: np.ndarray,
+    encoder_pos: int,
 ) -> None:
     """
     Assigns IDs to detected packets and updates packet depth frames.
@@ -40,6 +42,8 @@ def packet_tracking(
         depth_frame (np.ndarray): Depth frame from camera.
         frame_width (int): Width of the camera frame in pixels.
         mask (np.ndarray): Binary mask of packet.
+        homography (np.ndarray): Homography matrix converting from pixels to centimeters.
+        encoder_pos (float): Position of encoder.
 
     Returns:
         registered_packets (list[Packet]): List of tracked packet objects.
@@ -47,7 +51,7 @@ def packet_tracking(
 
     # Update tracked packets from detected packets
     labeled_packets = tracker.track_items(detected_packets)
-    tracker.update_item_database(labeled_packets)
+    tracker.update_item_database(labeled_packets, homography, encoder_pos)
 
     # Update depth frames of tracked packets
     for item in tracker.item_database:
@@ -467,7 +471,13 @@ def main_multi_packets(
             detected_packets = []
 
         registered_packets = packet_tracking(
-            tracker, detected_packets, depth_frame, frame_width, mask
+            tracker,
+            detected_packets,
+            depth_frame,
+            frame_width,
+            mask,
+            homography,
+            encoder_pos,
         )
 
         # STATE MACHINE
