@@ -375,6 +375,9 @@ def main_multi_packets(
     text_size = 1
     homography = None  # Homography matrix
 
+    # Tell PLC to use different set of robot instructions
+    control_pipe.send(RcData(RcCommand.PICK_PLACE_SELECT, False))
+
     # Set home position from dictionary on startup
     control_pipe.send(RcData(RcCommand.SET_HOME_POS_SH))
 

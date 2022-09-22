@@ -5,7 +5,6 @@ import multiprocessing.managers
 
 import cv2
 import numpy as np
-from opcua import ua
 
 from robot_cell.control.robot_control import RcCommand
 from robot_cell.control.robot_control import RcData
@@ -18,6 +17,25 @@ from robot_cell.packet.grip_position_estimation import GripPositionEstimation
 from robot_cell.graphics_functions import show_boot_screen
 from robot_cell.graphics_functions import drawText
 from robot_cell.graphics_functions import colorizeDepthFrame
+
+
+def compute_gripper_rot(angle: float):
+    """
+    Computes the gripper rotation based on the detected packet angle. For rotating at picking.
+
+    Args:
+        angle (float): Detected angle of packet.
+
+    Returns:
+        float: Gripper rotation.
+    """
+
+    angle = abs(angle)
+    if angle > 45:
+        rot = 90 + (90 - angle)
+    if angle <= 45:
+        rot = 90 - angle
+    return rot
 
 
 def main_pick_place(
@@ -117,6 +135,7 @@ def main_pick_place(
     frame_count = 1  # Counter of frames for homography update
     text_size = 1
     homography = None  # Homography matrix
+    bpressed = 0
 
     while True:
         # Start timer for FPS estimation
@@ -238,13 +257,6 @@ def main_pick_place(
         # Update registered packet list with new packet info
         registered_packets = tracker.item_database
 
-        # ROBOT CONTROL
-        ###############
-
-        is_rob_ready = prog_done and (rob_stopped or not stop_active)
-
-        rc.objects_update(registered_packets, img_detect)
-
         # FRAME GRAPHICS
         ################
 
@@ -328,22 +340,36 @@ def main_pick_place(
 
         key = cv2.waitKey(1)
 
-        if is_rob_ready:
+        is_rob_ready = prog_done and (rob_stopped or not stop_active)
+        if is_rob_ready and len(registered_packets) >= 1:
             if key == ord("b"):
                 bpressed += 1
-                if bpressed == 5:
+                # If begin key is held for 30 frames, start program
+                if bpressed == 30:
                     print(registered_packets)
                     world_centroid = registered_packets[0][2]
                     packet_x = round(world_centroid[0] * 10.0, 2)
                     packet_y = round(world_centroid[1] * 10.0, 2)
                     angle = registered_packets[0][3]
                     packet_type = registered_packets[0][4]
-                    gripper_rot = rc.compute_gripper_rot(angle)
-                    rc.change_trajectory(packet_x, packet_y, gripper_rot, packet_type)
+                    gripper_rot = compute_gripper_rot(angle)
+                    trajectory_dict = {
+                        "x": packet_x,
+                        "y": packet_y,
+                        "rot": gripper_rot,
+                        "packet_type": packet_type,
+                        "x_offset": 0.0,
+                        "pack_z": 5,
+                    }
+                    control_pipe.send(
+                        RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict)
+                    )
                     control_pipe.send(RcData(RcCommand.START_PROGRAM))
                     bpressed = 0
-            elif key != ord("b"):
+            else:
                 bpressed = 0
+        else:
+            bpressed = 0
 
         # Toggle gripper
         if key == ord("g"):
@@ -351,45 +377,45 @@ def main_pick_place(
             control_pipe.send(RcData(RcCommand.GRIPPER, toggles_dict["gripper"]))
 
         # Toggle conveyor in left direction
-        if key == ord("n"):
+        elif key == ord("n"):
             toggles_dict["conv_left"] = not toggles_dict["conv_left"]
             control_pipe.send(
                 RcData(RcCommand.CONVEYOR_LEFT, toggles_dict["conv_left"])
             )
 
         # Toggle conveyor in right direction
-        if key == ord("m"):
+        elif key == ord("m"):
             toggles_dict["conv_right"] = not toggles_dict["conv_right"]
             control_pipe.send(
                 RcData(RcCommand.CONVEYOR_RIGHT, toggles_dict["conv_right"])
             )
 
         # Toggle detected packets bounding box display
-        if key == ord("b"):
+        elif key == ord("b"):
             toggles_dict["show_bbox"] = not toggles_dict["show_bbox"]
 
         # Toggle depth map overlay
-        if key == ord("d"):
+        elif key == ord("d"):
             toggles_dict["show_depth_map"] = not toggles_dict["show_depth_map"]
 
         # Toggle frame data display
-        if key == ord("f"):
+        elif key == ord("f"):
             toggles_dict["show_frame_data"] = not toggles_dict["show_frame_data"]
 
         # Toggle HSV mask overlay
-        if key == ord("h"):
+        elif key == ord("h"):
             toggles_dict["show_hsv_mask"] = not toggles_dict["show_hsv_mask"]
 
-        if key == ord("a"):
+        elif key == ord("a"):
             control_pipe.send(RcData(RcCommand.ABORT_PROGRAM))
 
-        if key == ord("c"):
+        elif key == ord("c"):
             control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
 
-        if key == ord("s"):
+        elif key == ord("s"):
             control_pipe.send(RcData(RcCommand.STOP_PROGRAM))
 
-        if key == 27:
+        elif key == 27:
             control_pipe.send(RcData(RcCommand.CLOSE_PROGRAM))
             cv2.destroyAllWindows()
             camera.release()

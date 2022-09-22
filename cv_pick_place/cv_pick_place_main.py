@@ -194,17 +194,17 @@ if __name__ == "__main__":
     modes_dict = {
         "1": {
             "help": "Object sorting with static conveyor",
-            "dict": robot_poses["Pick_place_dict"],
+            "dict": robot_poses["pick_place_dict"],
             "func": main_pick_place,
         },
         "2": {
             "help": "Object sorting with moving conveyor",
-            "dict": robot_poses["Short_pick_place_dict"],
+            "dict": robot_poses["short_pick_place_dict"],
             "func": main_multi_packets,
         },
         "3": {
             "help": "Loop with moving conveyor (TODO)",
-            "dict": robot_poses["Short_pick_place_dict"],
+            "dict": robot_poses["short_pick_place_dict_loop"],
             "func": main_multi_packets,
         },
     }
