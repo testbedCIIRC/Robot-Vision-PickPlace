@@ -32,7 +32,7 @@
     "detector_type": {
         "help": "Selection of object detector. Valid values are 'NN1', 'NN2' and 'HSV'.",
         "arg": "--detector-type",
-        "default": "HSV"
+        "default": "NN2"
     },
 
     "verbose": {
@@ -242,7 +242,7 @@
     "nn2_visual_threshold": {
         "help": "Detections with a score under this threshold will be removed when using the NN2 detector.",
         "arg": "--nn2-visual-threshold",
-        "default": 0.8
+        "default": 0.7
     },
 
     "nn2_traditional_nms": {

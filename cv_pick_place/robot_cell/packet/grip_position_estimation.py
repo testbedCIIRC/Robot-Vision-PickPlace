@@ -107,6 +107,8 @@ class GripPositionEstimation:
         self.run_number = 0  # current run
         self.spike_threshold = 0.04  # threshold for spike in the circlic neighborhood
 
+        os.makedirs("imgs2ignore", exist_ok=True)
+
     def _change_visualization(self, visualization: bool) -> None:
         """
         Changes the visualization state.
@@ -265,7 +267,8 @@ class GripPositionEstimation:
 
         plt.legend(legend)
         plt.title(title)
-        plt.savefig(f"{self.frame_num}.png", bbox_inches="tight")
+
+        plt.savefig(f"imgs2ignore\{self.frame_num}.png", bbox_inches="tight")
         self.frame_num += 1
 
     def _visualize_histogram(self, n_bins: int) -> None:
@@ -1289,7 +1292,7 @@ class GripPositionEstimation:
         _, pack_y = packet_coords
         depth_frame = packet.avg_depth_crop
 
-        self._get_pick_type(packet) # NOTE: not yeat implemented
+        self._get_pick_type(packet)  # NOTE: not yeat implemented
 
         pack_z = z_min
         shift_x, shift_y = None, None
