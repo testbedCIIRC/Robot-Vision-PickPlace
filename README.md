@@ -10,8 +10,6 @@ Our developed pick and place architecture allows an industrial KUKA robot to be 
 ## HW setup
 Our setup consists of a KUKA KR Cybertech industrial robot, a PLC, a conveyor belt with rotary encoder and an Intel Realsense RGBD camera. We mounted apriltags on the conveyor for robot workspace detection.
 
-![alt text]()
-
 ## Robot system and control
 The high level control, coded in Python, utilizes an OPC UA Client that runs on the PC. It includes a finite state machine for the trajectory planning based on visual recognition, which reads sensor and robot data from the OPC UA nodes and sends high level control actions and path trajectory updates to the OPC UA Server on the PLC. These inputs are converted into control instructions using the mx Automation package and are sent to the robot controller via Profinet.
 
@@ -30,7 +28,7 @@ During the tracking process the depth map is cropped and averaged. The correspon
 
 ![alt text](https://github.com/testbedCIIRC/Robot-Vision-PickPlace/blob/main/readme_imgs/optimal_pt.png)
 ![alt text](https://github.com/testbedCIIRC/Robot-Vision-PickPlace/blob/main/readme_imgs/downsampled_point_cloud.png)
-
+![alt text](https://github.com/testbedCIIRC/Robot-Vision-PickPlace/blob/main/readme_imgs/packet_optimal_pt.gif)
 ## Conclusion and future work
 Our system shows potential to be scaled and increase the flexibility of industrial pick and place set ups due to the ease of integration of state of the art models and open source software. It may allow developers to get to a working solution much faster. In the future we would like to implement detection and processing of objects with complex geometries. For this we would like to explore the use of synthetic data generation.
 
