@@ -6,6 +6,7 @@ import multiprocessing.managers
 import cv2
 import numpy as np
 
+from robot_cell.packet.packet_object import Packet
 from robot_cell.control.robot_control import RcCommand
 from robot_cell.control.robot_control import RcData
 from robot_cell.packet.item_tracker import ItemTracker
@@ -17,6 +18,56 @@ from robot_cell.packet.grip_position_estimation import GripPositionEstimation
 from robot_cell.graphics_functions import show_boot_screen
 from robot_cell.graphics_functions import drawText
 from robot_cell.graphics_functions import colorizeDepthFrame
+
+
+def compute_mean_packet_z(self, packet: Packet, pack_z_fixed: float):
+    """
+    Computes depth of packet based on average of stored depth frames.
+    Args:
+        packet (Packet): Packet object for which centroid depth should be found.
+        pack_z_fixed (float): Constant depth value to fall back to.
+    """
+
+    conv2cam_dist = 777.0  # mm
+    # range 25 - 13
+    depth_mean = np.mean(packet.depth_maps, axis=2)
+    d_rows, d_cols = depth_mean.shape
+
+    print(d_rows, d_cols)
+
+    # If depth frames are present
+    try:
+        if d_rows > 0:
+            # Compute centroid in depth crop coordinates
+            cx, cy = packet.centroid
+            xminbbx = packet.xminbbx
+            yminbbx = packet.yminbbx
+            x_depth, y_depth = int(cx - xminbbx), int(cy - yminbbx)
+
+            # Get centroid from depth mean crop
+            centroid_depth = depth_mean[y_depth, x_depth]
+            if self.verbose:
+                print("Centroid_depth:", centroid_depth)
+
+            # Compute packet z position with respect to conveyor base
+            pack_z = abs(conv2cam_dist - centroid_depth)
+
+            # Return pack_z if in acceptable range, set to default if not
+            pack_z_in_range = (pack_z > pack_z_fixed) and (pack_z < pack_z_fixed + 17.0)
+
+            if pack_z_in_range:
+                if self.verbose:
+                    print("[INFO]: Pack z in range")
+                return pack_z
+            else:
+                return pack_z_fixed
+
+        # When depth frames unavailable
+        else:
+            return pack_z_fixed
+
+    except:
+        return pack_z_fixed
 
 
 def compute_gripper_rot(angle: float):
@@ -72,6 +123,12 @@ def main_pick_place(
     camera = DepthCamera(config_path=rob_config.path_camera_config)
 
     # Initialize gripper pose estimator
+    pack_depths = [
+        10.0,
+        3.0,
+        5.0,
+        5.0,
+    ]  # List of z positions at pick. (TODO, remove when pose estimation is implemented)
     gripper_pose_estimator = GripPositionEstimation(
         visualize=rob_config.pos_est_visualize,
         verbose=rob_config.verbose,
@@ -359,12 +416,14 @@ def main_pick_place(
                         "rot": gripper_rot,
                         "packet_type": packet_type,
                         "x_offset": 0.0,
-                        "pack_z": 5,
+                        "pack_z": compute_mean_packet_z(
+                            packet, pack_depths[packet_type]
+                        ),
                     }
                     control_pipe.send(
                         RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict)
                     )
-                    control_pipe.send(RcData(RcCommand.START_PROGRAM))
+                    control_pipe.send(RcData(RcCommand.START_PROGRAM, False))
                     bpressed = 0
             else:
                 bpressed = 0
