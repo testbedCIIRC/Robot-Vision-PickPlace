@@ -34,7 +34,6 @@ During the tracking process the depth map is cropped and averaged. The correspon
 ## Conclusion and future work
 Our system shows potential to be scaled and increase the flexibility of industrial pick and place set ups due to the ease of integration of state of the art models and open source software. It may allow developers to get to a working solution much faster. In the future we would like to implement detection and processing of objects with complex geometries. For this we would like to explore the use of synthetic data generation.
 
-![alt text]()
 
 # Environment set up
 <br />
