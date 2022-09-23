@@ -20,7 +20,7 @@ from robot_cell.graphics_functions import drawText
 from robot_cell.graphics_functions import colorizeDepthFrame
 
 
-def compute_mean_packet_z(self, packet: Packet, pack_z_fixed: float):
+def compute_mean_packet_z(packet: Packet, pack_z_fixed: float):
     """
     Computes depth of packet based on average of stored depth frames.
     Args:
