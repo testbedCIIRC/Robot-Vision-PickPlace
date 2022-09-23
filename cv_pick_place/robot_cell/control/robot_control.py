@@ -1,31 +1,30 @@
 import time
 import multiprocessing
 import multiprocessing.connection
-from enum import Enum
-from collections import OrderedDict
+from enum import Enum, unique, auto
 
 import cv2
 import numpy as np
 from opcua import ua
 
 from robot_cell.control.robot_communication import RobotCommunication
-from robot_cell.packet.packet_object import Packet
 
 
+@unique
 class RcCommand(Enum):
-    GRIPPER = 1
-    CONVEYOR_LEFT = 2
-    CONVEYOR_RIGHT = 3
-    ABORT_PROGRAM = 4
-    CONTINUE_PROGRAM = 5
-    STOP_PROGRAM = 6
-    CLOSE_PROGRAM = 7
-    START_PROGRAM = 8
-    CHANGE_TRAJECTORY = 9
-    CHANGE_SHORT_TRAJECTORY = 10
-    GO_TO_HOME = 11
-    SET_HOME_POS_SH = 12
-    PICK_PLACE_SELECT = 13
+    GRIPPER = auto()
+    CONVEYOR_LEFT = auto()
+    CONVEYOR_RIGHT = auto()
+    ABORT_PROGRAM = auto()
+    CONTINUE_PROGRAM = auto()
+    STOP_PROGRAM = auto()
+    CLOSE_PROGRAM = auto()
+    START_PROGRAM = auto()
+    CHANGE_TRAJECTORY = auto()
+    CHANGE_SHORT_TRAJECTORY = auto()
+    GO_TO_HOME = auto()
+    SET_HOME_POS_SH = auto()
+    PICK_PLACE_SELECT = auto()
 
 
 class RcData:
@@ -467,7 +466,7 @@ class RobotControl(RobotCommunication):
 
         To add new command:
         1. Add the command to Enum at top of the file
-        (example: NEW_COMMAND = 50)
+        (example: NEW_COMMAND = auto())
         2. Add new if section to the while loop
         (example: elif command == RcCommand.NEW_COMMAND:)
         3. Send command from the main process, with optional data argument
