@@ -30,14 +30,12 @@ def compute_mean_packet_z(packet: Packet, pack_z_fixed: float):
 
     conv2cam_dist = 777.0  # mm
     # range 25 - 13
-    depth_mean = np.mean(packet.depth_maps, axis=2)
+    depth_mean = packet.avg_depth_crop
     d_rows, d_cols = depth_mean.shape
-
-    print(d_rows, d_cols)
 
     # If depth frames are present
     try:
-        if d_rows > 0:
+        if d_rows > 0 and d_cols > 0:
             # Compute centroid in depth crop coordinates
             cx, cy = packet.centroid
             xminbbx = packet.xminbbx
@@ -46,18 +44,14 @@ def compute_mean_packet_z(packet: Packet, pack_z_fixed: float):
 
             # Get centroid from depth mean crop
             centroid_depth = depth_mean[y_depth, x_depth]
-            if self.verbose:
-                print("Centroid_depth:", centroid_depth)
 
             # Compute packet z position with respect to conveyor base
             pack_z = abs(conv2cam_dist - centroid_depth)
 
             # Return pack_z if in acceptable range, set to default if not
-            pack_z_in_range = (pack_z > pack_z_fixed) and (pack_z < pack_z_fixed + 17.0)
+            pack_z_in_range = (pack_z > pack_z_fixed) and (pack_z < pack_z_fixed + 50.0)
 
             if pack_z_in_range:
-                if self.verbose:
-                    print("[INFO]: Pack z in range")
                 return pack_z
             else:
                 return pack_z_fixed
@@ -448,10 +442,6 @@ def main_pick_place(
             control_pipe.send(
                 RcData(RcCommand.CONVEYOR_RIGHT, toggles_dict["conv_right"])
             )
-
-        # Toggle detected packets bounding box display
-        elif key == ord("b"):
-            toggles_dict["show_bbox"] = not toggles_dict["show_bbox"]
 
         # Toggle depth map overlay
         elif key == ord("d"):
