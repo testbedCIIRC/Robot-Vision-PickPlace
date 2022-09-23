@@ -1,30 +1,30 @@
 import time
 import multiprocessing
 import multiprocessing.connection
-from enum import Enum
-from collections import OrderedDict
+from enum import Enum, unique, auto
 
 import cv2
 import numpy as np
 from opcua import ua
 
 from robot_cell.control.robot_communication import RobotCommunication
-from robot_cell.packet.packet_object import Packet
 
 
+@unique
 class RcCommand(Enum):
-    GRIPPER = 1
-    CONVEYOR_LEFT = 2
-    CONVEYOR_RIGHT = 3
-    ABORT_PROGRAM = 4
-    CONTINUE_PROGRAM = 5
-    STOP_PROGRAM = 6
-    CLOSE_PROGRAM = 7
-    START_PROGRAM = 8
-    CHANGE_TRAJECTORY = 9
-    CHANGE_SHORT_TRAJECTORY = 10
-    GO_TO_HOME = 11
-    SET_HOME_POS_SH = 12
+    GRIPPER = auto()
+    CONVEYOR_LEFT = auto()
+    CONVEYOR_RIGHT = auto()
+    ABORT_PROGRAM = auto()
+    CONTINUE_PROGRAM = auto()
+    STOP_PROGRAM = auto()
+    CLOSE_PROGRAM = auto()
+    START_PROGRAM = auto()
+    CHANGE_TRAJECTORY = auto()
+    CHANGE_SHORT_TRAJECTORY = auto()
+    GO_TO_HOME = auto()
+    SET_HOME_POS_SH = auto()
+    PICK_PLACE_SELECT = auto()
 
 
 class RcData:
@@ -459,251 +459,6 @@ class RobotControl(RobotCommunication):
             rot = 90 + angle
         return rot
 
-    def compute_mean_packet_z(self, packet: Packet, pack_z_fixed: float):
-        """
-        Computes depth of packet based on average of stored depth frames.
-
-        Args:
-            packet (Packet): Packet object for which centroid depth should be found.
-            pack_z_fixed (float): Constant depth value to fall back to.
-        """
-
-        conv2cam_dist = 777.0  # mm
-        # range 25 - 13
-        depth_mean = np.mean(packet.depth_maps, axis=2)
-        d_rows, d_cols = depth_mean.shape
-
-        print(d_rows, d_cols)
-
-        # If depth frames are present
-        try:
-            if d_rows > 0:
-                # Compute centroid in depth crop coordinates
-                cx, cy = packet.centroid
-                xminbbx = packet.xminbbx
-                yminbbx = packet.yminbbx
-                x_depth, y_depth = int(cx - xminbbx), int(cy - yminbbx)
-
-                # Get centroid from depth mean crop
-                centroid_depth = depth_mean[y_depth, x_depth]
-                if self.verbose:
-                    print("Centroid_depth:", centroid_depth)
-
-                # Compute packet z position with respect to conveyor base
-                pack_z = abs(conv2cam_dist - centroid_depth)
-
-                # Return pack_z if in acceptable range, set to default if not
-                pack_z_in_range = (pack_z > pack_z_fixed) and (
-                    pack_z < pack_z_fixed + 17.0
-                )
-
-                if pack_z_in_range:
-                    if self.verbose:
-                        print("[INFO]: Pack z in range")
-                    return pack_z
-                else:
-                    return pack_z_fixed
-
-            # When depth frames unavailable
-            else:
-                return pack_z_fixed
-
-        except:
-            return pack_z_fixed
-
-    def objects_update(self, objects: OrderedDict, image: np.ndarray):
-        """
-        Draws the IDs of tracked objects.
-
-        Args:
-            objects (OrderedDict): Ordered dictionary with currently tracked objects.
-            image (np.ndarray): Image where the objects will be drawn.
-        """
-
-        # Loop over the tracked objects.
-        for (objectID, centroid) in objects.items():
-            # Draw both the ID and centroid of objects.
-            text = "ID {}".format(objectID)
-            cv2.putText(
-                image,
-                text,
-                (centroid[0], centroid[1] - 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (255, 255, 0),
-                2,
-            )
-            cv2.circle(image, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
-
-    def single_pack_tracking_update(
-        self,
-        objects: OrderedDict,
-        img: np.ndarray,
-        homog: np.ndarray,
-        enable: bool,
-        x_fixed: float,
-        track_frame: int,
-        frames_lim: int,
-        encoder_pos: float,
-        track_list=[],
-    ) -> tuple[float, float, float, Packet]:
-        """
-        Computes distance to packet and updated x, mean y packet positions of tracked moving packets.
-
-        Args:
-            objects (OrderedDict): Ordered Dictionary with currently tracked packet objects.
-            img (np.ndarray): Image where the objects will be drawn.
-            homog (np.ndarray): Homography matrix.
-            enable (bool): Boolean true if objects are detected. It enables appending of centroids.
-            x_fixed (float): Fixed x pick position.
-            track_frame (int): Frame tracking counter.
-            frames_lim (int): Maximum number of frames for tracking.
-            encoder_pos (float): Current encoder position.
-            track_list (list): List where centroid positions are stored.
-
-        Returns:
-            tuple[float, float, float, Packet]: Updated x, mean y packet pick positions and distance to packet.
-        """
-
-        # Loop over the tracked objects
-        for (objectID, packet) in objects.items():
-            # Draw both the ID and centroid of packet objects
-            centroid_tup = packet.centroid
-            centroid = np.array([centroid_tup[0], centroid_tup[1]]).astype("int")
-            text = "ID {}".format(objectID)
-            cv2.putText(
-                img,
-                text,
-                (centroid[0], centroid[1] - 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (255, 255, 0),
-                2,
-            )
-            cv2.circle(img, (centroid[0], centroid[1]), 4, (255, 255, 0), -1)
-            cv2.circle(
-                img, packet.getCentroidFromEncoder(encoder_pos), 4, (0, 0, 255), -1
-            )
-
-            # Compute homography if it isn't None
-            if homog is not None:
-                new_centroid = np.append(centroid, 1)
-                world_centroid = homog.dot(new_centroid)
-                world_centroid = world_centroid[0], world_centroid[1]
-                cv2.putText(
-                    img,
-                    str(round(world_centroid[0], 2))
-                    + ","
-                    + str(round(world_centroid[1], 2)),
-                    centroid,
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (255, 255, 0),
-                    2,
-                )
-
-                # If objects are being detected
-                if enable:
-                    # Append object id, and centroid id world coordinates to list
-                    track_list.append([objectID, world_centroid[0], world_centroid[1]])
-
-                    # If max number of traking frames has been reached
-                    if track_frame == frames_lim:
-
-                        # Find the most repeated packet according to id
-                        track_array = np.array(track_list)
-                        track_IDs = track_array[:, 0]
-                        max_ID = np.max(track_IDs)
-                        track_data = track_array[track_IDs == max_ID]
-
-                        # Find last recorded x pos and compute mean y
-                        last_x = float(track_data[-1, 1])
-                        mean_y = float(np.mean(track_data[:, 2]))
-
-                        # Set world x to fixed value, convert to milimeters and round
-                        world_x = x_fixed
-                        world_y = round(mean_y * 10.0, 2)
-                        world_last_x = round(last_x * 10.0, 2)
-
-                        # Compute distance to packet
-                        dist_to_pack = world_x - world_last_x
-
-                        # Check if y is range of conveyor width and adjust accordingly
-                        if world_y < 75.0:
-                            world_y = 75.0
-
-                        elif world_y > 470.0:
-                            world_y = 470.0
-
-                        # Empty list for tracking and reset mean variables
-                        track_list.clear()
-                        last_x = 0
-                        mean_y = 0
-                        # Return tuple with packet to be picked data and packet object
-                        return world_x, world_y, dist_to_pack, packet
-
-        # If max number of traking frames hasn't been reached return None
-        return None, None, None, None
-
-    def single_pack_tracking_program_start(
-        self,
-        track_result: tuple,
-        packet: Packet,
-        encoder_pos: float,
-        encoder_vel: float,
-        is_rob_ready: bool,
-        pack_x_offsets: list,
-        pack_depths: list,
-    ):
-        """
-        Triggers start of the program based on track result and robot status.
-
-        Args:
-            track_result (tuple): Updated x, mean y packet pick positions and distance to packet.
-            packet (Packet): Final tracked packet object used for program start.
-            encoder_pos (float): Current encoder position.
-            encoder_vel (float): Current encoder velocity.
-            is_rob_ready (bool): Boolean true if robot is ready to start program.
-            pack_x_offsets (list): List of offsets for pick position.
-            pack_depths (list): List of packet depths.
-        """
-
-        # If track result is available
-        if None not in track_result:
-            # Compute distance to packet and delay required to continue program
-            dist_to_pack = track_result[2]
-            delay = dist_to_pack / (abs(encoder_vel) / 10)
-            delay = round(delay, 2)
-
-            # If the robot is ready
-            if is_rob_ready:
-                # Define packet pos based on track result data
-                packet_x = track_result[0]
-                packet_y = track_result[1]
-
-                # Get gripper rotation and packet type based on last detected packet
-                angle = packet.angle
-                gripper_rot = self.compute_gripper_rot(angle)
-                packet_type = packet.pack_type
-
-                # Compute packet z based on depth frame
-                pack_z_fixed = pack_depths[packet_type]
-                packet_z = self.compute_mean_packet_z(packet, pack_z_fixed)
-
-                print(packet_z, pack_z_fixed)
-                # Change end points of robot
-                self.change_trajectory(
-                    packet_x,
-                    packet_y,
-                    gripper_rot,
-                    packet_type,
-                    x_offset=pack_x_offsets[packet_type],
-                    pack_z=packet_z,
-                )
-
-                # Start robot program
-                self.start_program()
-
     def control_server(self, pipe: multiprocessing.connection.PipeConnection):
         """
         Process to set values on PLC server.
@@ -711,7 +466,7 @@ class RobotControl(RobotCommunication):
 
         To add new command:
         1. Add the command to Enum at top of the file
-        (example: NEW_COMMAND = 50)
+        (example: NEW_COMMAND = auto())
         2. Add new if section to the while loop
         (example: elif command == RcCommand.NEW_COMMAND:)
         3. Send command from the main process, with optional data argument
@@ -788,6 +543,9 @@ class RobotControl(RobotCommunication):
 
                 elif command == RcCommand.GO_TO_HOME:
                     self.go_to_home()
+
+                elif command == RcCommand.PICK_PLACE_SELECT:
+                    self.Pick_Place_Select.set_value(ua.DataValue(data))
 
                 else:
                     print("[WARNING]: Wrong command send to control server")

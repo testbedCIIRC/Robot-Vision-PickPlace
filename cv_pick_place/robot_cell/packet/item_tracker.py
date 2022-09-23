@@ -24,7 +24,7 @@ class ItemTracker:
             max_item_distance (int): Maximal distance which packet can travel when it disappears in frame pixels.
         """
 
-        self.item_database = []
+        self.tracked_item_list = []
         self.next_item_id = 0
 
         self.max_item_distance = max_item_distance
@@ -42,7 +42,7 @@ class ItemTracker:
         item.id = self.next_item_id
         item.disappeared = 0
         self.next_item_id += 1
-        self.item_database.append(item)
+        self.tracked_item_list.append(item)
 
     def deregister_item(self, id: int):
         """
@@ -52,9 +52,9 @@ class ItemTracker:
             id (int): New item object whose parameters are transferred.
         """
 
-        for tracked_item_index, tracked_item in enumerate(self.item_database):
+        for tracked_item_index, tracked_item in enumerate(self.tracked_item_list):
             if tracked_item.id == id:
-                del self.item_database[tracked_item_index]
+                del self.tracked_item_list[tracked_item_index]
                 break
 
     def update_item(
@@ -102,7 +102,7 @@ class ItemTracker:
 
         return tracked_item
 
-    def update_item_database(
+    def update_tracked_item_list(
         self,
         labeled_item_list: list[Packet],
         homography: np.ndarray,
@@ -120,7 +120,7 @@ class ItemTracker:
         """
 
         # Increment disappeared frame on all items
-        for tracked_item in self.item_database:
+        for tracked_item in self.tracked_item_list:
             tracked_item.disappeared += 1
 
         for labeled_item in labeled_item_list:
@@ -130,15 +130,15 @@ class ItemTracker:
                 continue
 
             # Update exitsing item data
-            for tracked_item_index, tracked_item in enumerate(self.item_database):
+            for tracked_item_index, tracked_item in enumerate(self.tracked_item_list):
                 if labeled_item.id == tracked_item.id:
-                    self.item_database[tracked_item_index] = self.update_item(
+                    self.tracked_item_list[tracked_item_index] = self.update_item(
                         labeled_item, tracked_item, homography, encoder_pos
                     )
                     break
 
         # Check for items ready to be deregistered
-        for tracked_item in self.item_database:
+        for tracked_item in self.tracked_item_list:
             if tracked_item.disappeared > self.max_disappeared_frames:
                 self.deregister_item(tracked_item.id)
 
@@ -155,11 +155,11 @@ class ItemTracker:
 
         labeled_item_list = detected_item_list
         # If no packets are being detected or tracked
-        if len(detected_item_list) == 0 or len(self.item_database) == 0:
+        if len(detected_item_list) == 0 or len(self.tracked_item_list) == 0:
             return labeled_item_list
         else:
             # Create a list of tracked and detected centroids
-            trackedCentroids = [item.centroid_px for item in self.item_database]
+            trackedCentroids = [item.centroid_px for item in self.tracked_item_list]
             detectCentroids = [item.centroid_px for item in detected_item_list]
             # Compute the distance between each pair of items
             distances = dist.cdist(
@@ -181,7 +181,7 @@ class ItemTracker:
                 if distances[trac, det] > self.max_item_distance:
                     continue
                 # Assign id to detected item
-                labeled_item_list[det].id = self.item_database[trac].id
+                labeled_item_list[det].id = self.tracked_item_list[trac].id
 
                 # Indicate which items were used
                 usedTracked.add(trac)

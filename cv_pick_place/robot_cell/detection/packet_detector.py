@@ -13,8 +13,10 @@ class PacketDetector:
 
     def __init__(
         self,
-        paths: dict,
-        files: dict,
+        annotation_path: str,
+        checkpoint_path: str,
+        pipeline_config_file: str,
+        labelmap_file: str,
         checkpt: str,
         max_detect: int = 1,
         detect_thres: float = 0.7,
@@ -23,8 +25,10 @@ class PacketDetector:
         PacketDetector object constructor.
 
         Args:
-            paths (dict): Dictionary with annotation and checkpoint paths.
-            files (dict): Dictionary with pipeline and config paths.
+            annotation_path (str): Path to detector annotations.
+            checkpoint_path (str): Path to detector checkpoints.
+            pipeline_config_file (str): Path to detector configuration file.
+            labelmap_file (str): Path to detector labelmap file.
             checkpt (str): Name of training checkpoint to be restored.
             max_detect (int): Maximal ammount of concurrent detections in an image.
             detect_thres (float): Minimal confidence for detected object to be labeled as a packet.
@@ -35,26 +39,20 @@ class PacketDetector:
         # Decorate the detection function with the tf.function decorator
         tf_func_decorator = self.tf.function()
         self.detect_fn = tf_func_decorator(self.detect_fn)
-        self.paths = paths
-        self.files = files
         self.checkpt = checkpt
         self.max_detect = max_detect
         self.detect_thres = detect_thres
         self.world_centroid = None
         self.category_index = self.label_map_util.create_category_index_from_labelmap(
-            self.files["LABELMAP"]
+            labelmap_file
         )
-        configs = self.config_util.get_configs_from_pipeline_file(
-            self.files["PIPELINE_CONFIG"]
-        )
+        configs = self.config_util.get_configs_from_pipeline_file(pipeline_config_file)
         self.detection_model = self.model_builder.build(
             model_config=configs["model"], is_training=False
         )
         # Restore checkpoint
         ckpt = self.tf.compat.v2.train.Checkpoint(model=self.detection_model)
-        ckpt.restore(
-            os.path.join(self.paths["CHECKPOINT_PATH"], self.checkpt)
-        ).expect_partial()
+        ckpt.restore(os.path.join(checkpoint_path, self.checkpt)).expect_partial()
 
     def import_detection_libs(self):
         """

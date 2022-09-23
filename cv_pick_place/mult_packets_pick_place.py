@@ -25,7 +25,7 @@ from robot_cell.graphics_functions import show_boot_screen
 
 
 def packet_tracking(
-    pt: ItemTracker,
+    tracker: ItemTracker,
     detected_packets: list[Packet],
     depth_frame: np.ndarray,
     frame_width: int,
@@ -37,7 +37,7 @@ def packet_tracking(
     Assigns IDs to detected packets and updates packet depth frames.
 
     Args:
-        pt (ItemTracker): ItemTracker class.
+        tracker (ItemTracker): ItemTracker class.
         detected_packets (list[Packet]): List of detected packets.
         depth_frame (np.ndarray): Depth frame from camera.
         frame_width (int): Width of the camera frame in pixels.
@@ -50,11 +50,11 @@ def packet_tracking(
     """
 
     # Update tracked packets from detected packets
-    labeled_packets = pt.track_items(detected_packets)
-    pt.update_item_database(labeled_packets, homography, encoder_pos)
+    labeled_packets = tracker.track_items(detected_packets)
+    tracker.update_tracked_item_list(labeled_packets, homography, encoder_pos)
 
     # Update depth frames of tracked packets
-    for item in pt.item_database:
+    for item in tracker.tracked_item_list:
         if item.disappeared == 0:
             # Check if packet is far enough from edge
             if (
@@ -68,7 +68,7 @@ def packet_tracking(
                 item.set_mask(mask_crop)
 
     # Update registered packet list with new packet info
-    registered_packets = pt.item_database
+    registered_packets = tracker.tracked_item_list
 
     return registered_packets
 
@@ -254,8 +254,8 @@ def process_key_input(
 def main_multi_packets(
     rob_config: dict,
     rob_dict: dict,
-    info_dict: multiprocessing.managers.DictProxy,
-    encoder_pos_m: multiprocessing.managers.ValueProxy,
+    manag_info_dict: multiprocessing.managers.DictProxy,
+    manag_encoder_val: multiprocessing.managers.ValueProxy,
     control_pipe: multiprocessing.connection.PipeConnection,
 ) -> None:
     """
@@ -264,32 +264,26 @@ def main_multi_packets(
     Args:
         rob_config (dict): Dictionary with parameters setting the behaviour of the cell.
         rob_dict (dict): Dictionary of predefined points.
-        info_dict (multiprocessing.managers.DictProxy): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
-        encoder_pos_m (multiprocessing.managers.ValueProxy): Value object from multiprocessing Manager for reading encoder value from another process.
+        manag_info_dict (multiprocessing.managers.DictProxy): Dictionary from multiprocessing Manager for reading OPCUA info from another process.
+        manag_encoder_val (multiprocessing.managers.ValueProxy): Value object from multiprocessing Manager for reading encoder value from another process.
         control_pipe (multiprocessing.connection.PipeConnection): Multiprocessing pipe object for sending commands to RobotControl object process.
     """
 
-    # Load home position from dictionary
-    home_xyz_coords = np.array(
-        [
-            rob_dict["home_pos"][0]["x"],
-            rob_dict["home_pos"][0]["y"],
-            rob_dict["home_pos"][0]["z"],
-        ]
-    )
-
-    # Inititalize objects
+    # Inititalize Apriltag Detector
     apriltag = ProcessingApriltag()
     apriltag.load_world_points(rob_config.path_homography_points)
 
-    pt = ItemTracker(
-        max_disappeared_frames=rob_config.tracker_frames_to_deregister,
-        guard=rob_config.tracker_guard,
-        max_item_distance=rob_config.tracker_max_item_distance,
+    # Initialize object tracker
+    tracker = ItemTracker(
+        rob_config.tracker_frames_to_deregister,
+        rob_config.tracker_guard,
+        rob_config.tracker_max_item_distance,
     )
 
-    dc = DepthCamera(config_path=rob_config.path_camera_config)
+    # Initialize depth camera
+    camera = DepthCamera(config_path=rob_config.path_camera_config)
 
+    # Initialize gripper pose estimator
     gripper_pose_estimator = GripPositionEstimation(
         visualize=rob_config.pos_est_visualize,
         verbose=rob_config.verbose,
@@ -303,6 +297,14 @@ def main_multi_packets(
         save_depth_array=rob_config.pos_est_save_depth_array,
     )
 
+    # Initialize state machine
+    home_xyz_coords = np.array(
+        [
+            rob_dict["home_pos"][0]["x"],
+            rob_dict["home_pos"][0]["y"],
+            rob_dict["home_pos"][0]["z"],
+        ]
+    )
     constants = {
         "frame_limit": rob_config.frame_limit,
         "packet_depths": rob_config.packet_depths,
@@ -316,50 +318,50 @@ def main_multi_packets(
         "min_y": rob_config.min_y,
         "max_y": rob_config.max_y,
     }
-
-    stateMachine = RobotStateMachine(
+    state_machine = RobotStateMachine(
         control_pipe,
         gripper_pose_estimator,
-        encoder_pos_m,
+        manag_encoder_val,
         home_xyz_coords,
-        constants=constants,
-        verbose=rob_config.verbose,
+        constants,
+        rob_config.verbose,
     )
 
+    # Initialize object detector
     if rob_config.detector_type == "NN1":
         show_boot_screen("STARTING NEURAL NET...")
-        nn1_paths = {
-            "ANNOTATION_PATH": rob_config.nn1_annotation_path,
-            "CHECKPOINT_PATH": rob_config.nn1_checkpoint_path,
-        }
-        nn1_files = {
-            "PIPELINE_CONFIG": rob_config.nn1_pipeline_config,
-            "LABELMAP": rob_config.nn1_labelmap,
-        }
-        pack_detect = PacketDetector(
-            nn1_paths,
-            nn1_files,
+        detector = PacketDetector(
+            rob_config.nn1_annotation_path,
+            rob_config.nn1_checkpoint_path,
+            rob_config.nn1_pipeline_config,
+            rob_config.nn1_labelmap,
             rob_config.nn1_checkpoint,
             rob_config.nn1_max_detections,
             rob_config.nn1_detection_threshold,
         )
+        print("[INFO] NN1 detector started")
     elif rob_config.detector_type == "NN2":
-        # TODO Implement new deep detector
-        pass
+        show_boot_screen("STARTING NEURAL NET...")
+        detector = None  # TODO Implement new deep detector
+        print("[INFO] NN2 detector started")
     elif rob_config.detector_type == "HSV":
-        pack_detect = ThresholdDetector(
-            ignore_vertical_px=rob_config.hsv_ignore_vertical,
-            ignore_horizontal_px=rob_config.hsv_ignore_horizontal,
-            max_ratio_error=rob_config.hsv_max_ratio_error,
-            white_lower=rob_config.hsv_white_lower,
-            white_upper=rob_config.hsv_white_upper,
-            brown_lower=rob_config.hsv_brown_lower,
-            brown_upper=rob_config.hsv_brown_upper,
+        detector = ThresholdDetector(
+            rob_config.hsv_ignore_vertical,
+            rob_config.hsv_ignore_horizontal,
+            rob_config.hsv_max_ratio_error,
+            rob_config.hsv_white_lower,
+            rob_config.hsv_white_upper,
+            rob_config.hsv_brown_lower,
+            rob_config.hsv_brown_upper,
         )
+        print("[INFO] HSV detector started")
+    else:
+        detector = None
+        print("[WARNING] No detector selected")
 
-    # Toggles
+    # Toggles for various program functions
     toggles_dict = {
-        "gripper": False,  # Gripper state
+        "gripper": False,  # Gripper enable
         "conv_left": False,  # Conveyor heading left enable
         "conv_right": False,  # Conveyor heading right enable
         "show_bbox": True,  # Bounding box visualization enable
@@ -368,10 +370,13 @@ def main_multi_packets(
         "show_hsv_mask": False,  # Remove pixels not within HSV mask boundaries
     }
 
-    # Variables
+    # Program variables
     frame_count = 1  # Counter of frames for homography update
     text_size = 1
     homography = None  # Homography matrix
+
+    # Tell PLC to use different set of robot instructions
+    control_pipe.send(RcData(RcCommand.PICK_PLACE_SELECT, False))
 
     # Set home position from dictionary on startup
     control_pipe.send(RcData(RcCommand.SET_HOME_POS_SH))
@@ -383,34 +388,34 @@ def main_multi_packets(
         # READ DATA
         ###################
 
-        # Read data dict from PLC server
+        # Read data dict from OPCUA server
         try:
-            rob_stopped = info_dict["rob_stopped"]
-            stop_active = info_dict["stop_active"]
-            prog_done = info_dict["prog_done"]
-            encoder_vel = info_dict["encoder_vel"]
-            pos = info_dict["pos"]
-            speed_override = info_dict["speed_override"]
+            rob_stopped = manag_info_dict["rob_stopped"]
+            stop_active = manag_info_dict["stop_active"]
+            prog_done = manag_info_dict["prog_done"]
+            encoder_vel = manag_info_dict["encoder_vel"]
+            pos = manag_info_dict["pos"]
+            speed_override = manag_info_dict["speed_override"]
+            encoder_pos = manag_encoder_val.value
+            if encoder_pos is None:
+                continue
         except:
             continue
 
-        # Read encoder dict from PLC server
-        encoder_pos = encoder_pos_m.value
-        if encoder_pos is None:
-            continue
-
-        # Get frames from realsense
-        success, depth_frame, rgb_frame, colorized_depth = dc.get_frames()
+        # Get frames from camera
+        success, depth_frame, rgb_frame, colorized_depth = camera.get_frames()
         if not success:
             continue
 
         frame_height, frame_width, frame_channel_count = rgb_frame.shape
         text_size = frame_height / 1000
+
+        # rgb_frame is used for detection, image_frame is used for graphics and displayed
         image_frame = rgb_frame.copy()
 
         # Draw HSV mask over screen if enabled
         if toggles_dict["show_hsv_mask"] and rob_config.detector_type == "HSV":
-            image_frame = pack_detect.draw_hsv_mask(image_frame)
+            image_frame = detector.draw_hsv_mask(image_frame)
 
         # HOMOGRAPHY UPDATE
         ###################
@@ -431,14 +436,14 @@ def main_multi_packets(
 
             # Set homography in HSV detector
             if rob_config.detector_type == "HSV":
-                pack_detect.set_homography(homography)
+                detector.set_homography(homography)
 
         # PACKET DETECTION
         ##################
 
         # Detect packets using neural network
         if rob_config.detector_type == "NN1":
-            image_frame, detected_packets = pack_detect.deep_pack_obj_detector(
+            image_frame, detected_packets = detector.deep_pack_obj_detector(
                 rgb_frame,
                 depth_frame,
                 encoder_pos,
@@ -454,19 +459,22 @@ def main_multi_packets(
         elif rob_config.detector_type == "NN2":
             # TODO Implement new deep detector
             detected_packets = []
-            pass
 
-        # Detect packets using neural HSV thresholding
+        # Detect packets using HSV thresholding
         elif rob_config.detector_type == "HSV":
-            image_frame, detected_packets, mask = pack_detect.detect_packet_hsv(
+            image_frame, detected_packets, mask = detector.detect_packet_hsv(
                 rgb_frame,
                 encoder_pos,
-                draw_box=toggles_dict["show_bbox"],
-                image_frame=image_frame,
+                toggles_dict["show_bbox"],
+                image_frame,
             )
 
+        # In case no valid detector was selected
+        else:
+            detected_packets = []
+
         registered_packets = packet_tracking(
-            pt,
+            tracker,
             detected_packets,
             depth_frame,
             frame_width,
@@ -480,7 +488,9 @@ def main_multi_packets(
 
         # Robot ready when programs are fully finished and it isn't moving
         is_rob_ready = prog_done and (rob_stopped or not stop_active)
-        stateMachine.run(homography, is_rob_ready, registered_packets, encoder_vel, pos)
+        state_machine.run(
+            homography, is_rob_ready, registered_packets, encoder_vel, pos
+        )
 
         # FRAME GRAPHICS
         ################
@@ -491,7 +501,7 @@ def main_multi_packets(
             encoder_pos,
             text_size,
             toggles_dict,
-            info_dict,
+            manag_info_dict,
             colorized_depth,
             start_time,
             frame_width,
@@ -509,5 +519,5 @@ def main_multi_packets(
         if end_prog:
             control_pipe.send(RcData(RcCommand.CLOSE_PROGRAM))
             cv2.destroyAllWindows()
-            dc.release()
+            camera.release()
             break
