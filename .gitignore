@@ -21,3 +21,7 @@ cv_pick_place/weights
 cv_pick_place/onnx_files
 cv_pick_place/results
 cv_pick_place/neural_nets/torch_yolact/weights
+
+pyrealsense2.pyd
+realsense2.lib
+realsense_speed_test.py

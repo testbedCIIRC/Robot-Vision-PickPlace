@@ -253,18 +253,27 @@ class RobotCommunication:
             if type(value) == opcua.Node:
                 value = self.client.register_nodes([value])[0]
 
-    def get_robot_info(self) -> tuple:
+    def robot_server(
+        self,
+        manag_info_dict: multiprocessing.managers.DictProxy,
+        manag_encoder_val: multiprocessing.managers.ValueProxy,
+    ):
         """
-        Reads periodically needed values from the PLC.
-        To add new nodes, append requied node to the end of 'nodes' list,
-        'val' list will then contain new value at the end corresponding to the values of the new node.
-        Acess new values with val[15] and so on.
+        Process to get values from PLC server.
+        Periodically reads robot info from PLC and writes it into 'manag_info_dict', and 'manag_encoder_val.value'
+        which is dictionary read at the same time in the main process.
 
-        Returns:
-            tuple: Tuple of detected variables
+        Args:
+            manag_info_dict (multiprocessing.managers.DictProxy): Dictionary which is used to pass data between threads.
+            manag_encoder_val (multiprocessing.managers.ValueProxy): Value object from multiprocessing Manager for passing encoder value to another process.
         """
 
-        # Define list of nodes
+        # Connect server and get nodes
+        self.connect_OPCUA_server()
+        self.get_nodes()
+        time.sleep(0.5)
+
+        # Define list of nodes read by this server
         nodes = [
             self.Act_Pos_X,
             self.Act_Pos_Y,
@@ -283,101 +292,32 @@ class RobotCommunication:
             self.Prog_Done,
             self.Robot_speed_override,
         ]
-
-        # Get values from defined nodes
-        # Values are ordered in the same way as the nodes
-        val = self.client.get_values(nodes)
-
-        # Assign values from returned list to variables
-        position = (
-            round(val[0], 2),
-            round(val[1], 2),
-            round(val[2], 2),
-            round(val[3], 2),
-            round(val[4], 2),
-            round(val[5], 2),
-            val[6],
-            val[7],
-        )
-        encoder_vel = round(val[8], 2)
-        encoder_pos = round(val[9], 2)
-        start = val[10]
-        abort = val[11]
-        rob_stopped = val[12]
-        stop_active = val[13]
-        prog_done = val[14]
-        speed_override = val[15]
-
-        return (
-            position,
-            encoder_vel,
-            encoder_pos,
-            start,
-            abort,
-            rob_stopped,
-            stop_active,
-            prog_done,
-            speed_override,
-        )
-
-    def robot_server(self, info_dict: multiprocessing.managers.DictProxy):
-        """
-        Process to get values from PLC server.
-        Periodically reads robot info from PLC and writes it into 'info_dict',
-        which is dictionary read at the same time in the main process.
-
-        Args:
-            info_dict (multiprocessing.managers.DictProxy): Dictionary which is used to pass data between threads.
-        """
-
-        # Connect server and get nodes
-        self.connect_OPCUA_server()
-        self.get_nodes()
-        time.sleep(0.5)
         while True:
             try:
-                (
-                    position,
-                    encoder_vel,
-                    encoder_pos,
-                    start,
-                    abort,
-                    rob_stopped,
-                    stop_active,
-                    prog_done,
-                    speed_override,
-                ) = self.get_robot_info()
-                info_dict["pos"] = position
-                info_dict["encoder_vel"] = encoder_vel
-                info_dict["encoder_pos"] = encoder_pos
-                info_dict["start"] = start
-                info_dict["abort"] = abort
-                info_dict["rob_stopped"] = rob_stopped
-                info_dict["stop_active"] = stop_active
-                info_dict["prog_done"] = prog_done
-                info_dict["speed_override"] = speed_override
-            except Exception as e:
-                print("[ERROR]", e)
-                print("[INFO] OPCUA disconnected")
-                break
+                # Get values from defined nodes
+                # Values are ordered in the same way as the nodes
+                val = self.client.get_values(nodes)
 
-    def encoder_server(self, encoder_pos: multiprocessing.managers.ValueProxy):
-        """
-        Process to get encoder value from PLC server.
-        Periodically reads encoder value from PLC and writes it into 'encoder_pos.value',
-        which is variable read at the same time in the main process.
+                # Assign values from returned list to variables
+                manag_info_dict["pos"] = (
+                    round(val[0], 2),  # X
+                    round(val[1], 2),  # Y
+                    round(val[2], 2),  # Z
+                    round(val[3], 2),  # A
+                    round(val[4], 2),  # B
+                    round(val[5], 2),  # X
+                    val[6],  # Robot Status
+                    val[7],  # Robot Turn
+                )
+                manag_info_dict["encoder_vel"] = round(val[8], 2)
+                manag_encoder_val.value = round(val[9], 2)
+                manag_info_dict["start"] = val[10]
+                manag_info_dict["abort"] = val[11]
+                manag_info_dict["rob_stopped"] = val[12]
+                manag_info_dict["stop_active"] = val[13]
+                manag_info_dict["prog_done"] = val[14]
+                manag_info_dict["speed_override"] = val[15]
 
-        Args:
-            encoder_pos (multiprocessing.managers.ValueProxy): Value which is used to pass data between threads.
-        """
-
-        # Connect server and get nodes
-        self.connect_OPCUA_server()
-        self.get_nodes()
-        time.sleep(0.5)
-        while True:
-            try:
-                encoder_pos.value = round(self.Encoder_Pos.get_value(), 2)
             except Exception as e:
                 print("[ERROR]", e)
                 print("[INFO] OPCUA disconnected")

@@ -50,7 +50,7 @@
     "frame_limit": {
         "help": "Number of frames object must be tracked for to start pick & place.",
         "arg": "--frame-limit",
-        "default": 10
+        "default": 30
     },
 
     "packet_depths": {
@@ -74,25 +74,25 @@
     "z_offset": {
         "help": "Z height offset from pick height for all positions except for pick position.",
         "arg": "--z-offset",
-        "default": 50.0
+        "default": 150.0
     },
 
     "x_pick_offset": {
         "help": "X offset between prepick and pick position.",
         "arg": "--x-pick-offset",
-        "default": 140
+        "default": 70
     },
 
     "grip_time_offset": {
         "help": "X offset from current packet position to prepick position.",
         "arg": "--grip-time-offset",
-        "default": 400
+        "default": 350
     },
 
     "pick_start_x_offset": {
         "help": "Offset between robot and packet for starting the pick move.",
         "arg": "--pick-start-x-offset",
-        "default": 25
+        "default": 100
     },
 
     "max_z": {
@@ -116,7 +116,7 @@
     "tracker_frames_to_deregister": {
         "help": "Number of frames after which the packet is deregistered.",
         "arg": "--tracker-frames-to-deregister",
-        "default": 20
+        "default": 90
     },
 
     "tracker_guard": {
@@ -308,7 +308,7 @@
     "hsv_max_ratio_error": {
         "help": "When checking squareness of the packet, the HSV detector allows the ratio of packet sides to be off by this ammount.",
         "arg": "--hsv-max-ratio-error",
-        "default": 0.15
+        "default": 0.5
     },
 
     "hsv_white_lower": {
