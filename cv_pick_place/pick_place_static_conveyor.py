@@ -397,7 +397,6 @@ def main_pick_place(
                 bpressed += 1
                 # If begin key is held for 30 frames, start program
                 if bpressed == 30:
-                    print(registered_packets)
                     packet = registered_packets[0]
                     packet_x = packet.centroid_mm.x
                     packet_y = packet.centroid_mm.y
@@ -418,6 +417,7 @@ def main_pick_place(
                         RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict)
                     )
                     control_pipe.send(RcData(RcCommand.START_PROGRAM, False))
+                    print("[INFO] Program started")
                     bpressed = 0
             else:
                 bpressed = 0
