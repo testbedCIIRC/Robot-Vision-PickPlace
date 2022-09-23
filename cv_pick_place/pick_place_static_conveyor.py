@@ -347,11 +347,11 @@ def main_pick_place(
                 # If begin key is held for 30 frames, start program
                 if bpressed == 30:
                     print(registered_packets)
-                    world_centroid = registered_packets[0][2]
-                    packet_x = round(world_centroid[0] * 10.0, 2)
-                    packet_y = round(world_centroid[1] * 10.0, 2)
-                    angle = registered_packets[0][3]
-                    packet_type = registered_packets[0][4]
+                    world_centroid = registered_packets[0].centroid_px
+                    packet_x = round(world_centroid.x * 10.0, 2)
+                    packet_y = round(world_centroid.y * 10.0, 2)
+                    angle = registered_packets[0].avg_angle_deg
+                    packet_type = registered_packets[0].type
                     gripper_rot = compute_gripper_rot(angle)
                     trajectory_dict = {
                         "x": packet_x,
