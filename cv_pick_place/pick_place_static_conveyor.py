@@ -238,10 +238,10 @@ def main_pick_place(
         #################
 
         labeled_packets = tracker.track_items(detected_packets)
-        tracker.update_item_database(labeled_packets)
+        tracker.update_tracked_item_list(labeled_packets, homography, encoder_pos)
 
         # Update depth frames of tracked packets
-        for item in tracker.item_database:
+        for item in tracker.tracked_item_list:
             if item.disappeared == 0:
                 # Check if packet is far enough from edge
                 if (
@@ -255,7 +255,7 @@ def main_pick_place(
                     item.set_mask(mask_crop)
 
         # Update registered packet list with new packet info
-        registered_packets = tracker.item_database
+        registered_packets = tracker.tracked_item_list
 
         # FRAME GRAPHICS
         ################
