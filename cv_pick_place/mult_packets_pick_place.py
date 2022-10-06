@@ -148,11 +148,11 @@ def draw_frame(
             )
 
     # Draw packet depth crop to separate frame
-    cv2.imshow("Depth Crop", np.zeros((500, 500)))
+    cv2.imshow("Depth Crop", np.zeros((650, 650)))
     for packet in registered_packets:
         if packet.avg_depth_crop is not None:
             depth_img = colorizeDepthFrame(packet.avg_depth_crop)
-            depth_img = cv2.resize(depth_img, (500, 500))
+            depth_img = cv2.resize(depth_img, (650, 650))
             cv2.imshow("Depth Crop", depth_img)
             break
 
@@ -506,7 +506,7 @@ def main_multi_packets(
             start_time,
             frame_width,
             frame_height,
-            (frame_width // 2, frame_height // 2),
+            (frame_width, frame_height),
         )
 
         # Keyboard inputs

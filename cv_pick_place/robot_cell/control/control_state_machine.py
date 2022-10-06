@@ -178,7 +178,7 @@ class RobotStateMachine:
                 (pick_point[0] - 30, pick_point[1] + 20),
                 text_size,
             )
-            image_frame = cv2.resize(image_frame, (500, 500))
+            image_frame = cv2.resize(image_frame, (650, 650))
             cv2.imshow("Pick Pos", image_frame)
 
     def _get_pick_positions(self, packet_to_pick: Packet) -> dict:
@@ -237,6 +237,10 @@ class RobotStateMachine:
         pick_pos_y = np.clip(pick_pos_y, 75.0, 470.0)
         # Offset pick height by position on belt
         pick_pos_z = self._offset_packet_depth_by_x(pick_pos_x, pick_pos_z)
+        pick_pos_z -= 5
+
+        if pick_pos_z < 5:
+            pick_pos_z = 5
 
         self._draw_depth_map(packet_to_pick, pick_pos_z, pick_point)
         # Change end points of robot
