@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import os
+
 # import cv2
 
 from robot_cell.detection.realsense_depth import DepthCamera
@@ -10,7 +11,7 @@ from robot_cell.detection.realsense_depth import DepthCamera
 
 dc = DepthCamera()
 
-count = 0
+count = -1
 while True:
     start_time = time.time()
 
@@ -38,7 +39,7 @@ while True:
     # key = cv2.waitKey(10)
     fps = 1.0 / (time.time() - start_time)
     if fps < 5.0:
-        count += 1 
+        count += 1
     text_fps = "FPS: {:.2f}".format(fps)
     print(text_fps, "\t", count)
 
