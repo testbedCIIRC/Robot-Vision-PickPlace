@@ -1,15 +1,17 @@
 import numpy as np
 import cv2
 import time
-
+import os
 
 recording = []
-with open('recording_2022_07_13.npy', 'rb') as f:
+with open(
+    os.path.join("recordings", "recording_10fps_2022-10-06_13-33-53-863327.npy"), "rb"
+) as f:
     recording = np.load(f)
 
 frame_count = recording.shape[3]
 frame_index = 0
-fps = 5
+fps = 20
 
 while True:
     rgb_frame = recording[:, :, 0:3, frame_index].astype(np.uint8)
@@ -21,12 +23,14 @@ while True:
 
     frame_height, frame_width, frame_channel_count = rgb_frame.shape
     rgb_frame = cv2.resize(rgb_frame, (frame_width // 2, frame_height // 2))
-    cv2_colorized_depth = cv2.resize(cv2_colorized_depth, (frame_width // 2, frame_height // 2))
+    cv2_colorized_depth = cv2.resize(
+        cv2_colorized_depth, (frame_width // 2, frame_height // 2)
+    )
     cv2.imshow("RGB Frame", rgb_frame)
     cv2.imshow("Depth Frame", cv2_colorized_depth)
 
     frame_index += 1
-    time.sleep(1/fps)
+    time.sleep(1 / fps)
 
     if frame_index >= frame_count:
         frame_index = 0
