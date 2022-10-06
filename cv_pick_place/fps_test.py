@@ -41,7 +41,7 @@ while True:
     if fps < 5.0:
         count += 1
     text_fps = "FPS: {:.2f}".format(fps)
-    print(text_fps, "\t", count)
+    print(text_fps, "\t stutters:", count)
 
     # Stop program
     # if key == 27:
