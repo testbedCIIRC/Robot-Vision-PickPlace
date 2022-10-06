@@ -68,7 +68,8 @@ class GripPositionEstimation:
             height_th (float): Distance between camera and belt.
             num_bins (int): Number of bins for height thresholding (20 is good enough, 10 works as well).
             black_list_radius (float): Distance for blacklisting points.
-            #TODO: Update docstring
+            save_depth_array (bool): Saves the depth array.
+            mask_probabiloty_ratio (float): Threshold for determining the binary mask.
         """
 
         self.visualization = visualize
@@ -1167,7 +1168,11 @@ class GripPositionEstimation:
         """
         self.item_type = item.type
         print(self.item_type)
-        self.pick_type = "line"  # if item.type in LINE_LIST else "circle"
+        self.pick_type = "line" 
+
+        
+
+        # if item.type in LINE_LIST else "circle"
 
     def estimate_from_images(
         self,
@@ -1218,8 +1223,6 @@ class GripPositionEstimation:
         Returns:
             tuple[np.ndarray]: Point and normal for picking.
         """
-        # TODO: Later add to this stuff detection from packet
-        # Now here due to the debugging purposes
 
         if packet_mask.shape != depth_array.shape:
             if self.verbose:
