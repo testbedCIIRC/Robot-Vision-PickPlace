@@ -375,11 +375,8 @@ def main_multi_packets(
     text_size = 1
     homography = None  # Homography matrix
 
-    # Tell PLC to use different set of robot instructions
-    control_pipe.send(RcData(RcCommand.PICK_PLACE_SELECT, False))
-
     # Set home position from dictionary on startup
-    control_pipe.send(RcData(RcCommand.SET_HOME_POS_SH))
+    control_pipe.send(RcData(RcCommand.SET_HOME_POS))
 
     while True:
         # Start timer for FPS estimation
@@ -392,9 +389,8 @@ def main_multi_packets(
         try:
             rob_stopped = manag_info_dict["rob_stopped"]
             stop_active = manag_info_dict["stop_active"]
-            prog_done = manag_info_dict["prog_done"]
+            prog_busy = manag_info_dict["prog_busy"]
             encoder_vel = manag_info_dict["encoder_vel"]
-            pos = manag_info_dict["pos"]
             speed_override = manag_info_dict["speed_override"]
             encoder_pos = manag_encoder_val.value
             if encoder_pos is None:
@@ -487,10 +483,8 @@ def main_multi_packets(
         ###############
 
         # Robot ready when programs are fully finished and it isn't moving
-        is_rob_ready = prog_done and (rob_stopped or not stop_active)
-        state_machine.run(
-            homography, is_rob_ready, registered_packets, encoder_vel, pos
-        )
+        is_rob_ready = not prog_busy and (rob_stopped or not stop_active)
+        state_machine.run(homography, is_rob_ready, registered_packets, encoder_vel)
 
         # FRAME GRAPHICS
         ################

@@ -247,15 +247,13 @@ class RobotStateMachine:
         trajectory_dict = {
             "x": pick_pos_x,
             "y": pick_pos_y,
-            "rot": angle,
-            "packet_type": packet_type,
-            "x_offset": self.constants["x_pick_offset"],
-            "pack_z": pick_pos_z,
+            "z": pick_pos_z,
             "a": roll,
             "b": pitch,
             "c": yaw,
+            "x_offset": self.constants["x_pick_offset"],
             "z_offset": self.constants["z_offset"],
-            "shift_x": shift_x,
+            "packet_type": packet_type,
         }
 
         return trajectory_dict
@@ -280,7 +278,7 @@ class RobotStateMachine:
         trajectory_dict = self._get_pick_positions(packet_to_pick)
         if trajectory_dict:
             # Set trajectory
-            self.cp.send(RcData(RcCommand.CHANGE_SHORT_TRAJECTORY, trajectory_dict))
+            self.cp.send(RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict))
             # Start robot program
             self.cp.send(RcData(RcCommand.START_PROGRAM, True))
 
@@ -308,7 +306,6 @@ class RobotStateMachine:
         is_rob_ready: bool,
         registered_packets: list[Packet],
         encoder_vel: float,
-        pos: np.ndarray,
     ) -> str:
         """
         Run one iteration of the state machine.
@@ -318,7 +315,6 @@ class RobotStateMachine:
             is_rob_ready (bool): Indication if robot is ready to start.
             registered_packets (list[Packet]): List of tracked packet objects.
             encoder_vel (float): Encoder velocity.
-            pos (np.ndarray): Current robot position.
 
         Returns:
             state (str): Current state.
@@ -339,40 +335,23 @@ class RobotStateMachine:
                     pick_list_positions
                 )
                 if self.trajectory_dict:
-                    # Save prepick position for use in TO_PREPICK state
+                    # Save prepick position for use in WAIT_FOR_PACKET state
                     self.prepick_xyz_coords = np.array(
                         [
                             self.trajectory_dict["x"],
                             self.trajectory_dict["y"],
-                            self.trajectory_dict["pack_z"] + self.constants["z_offset"],
+                            self.trajectory_dict["z"] + self.constants["z_offset"],
                         ]
                     )
-                    self.is_in_home_pos = False
-                    self.state = "TO_PREPICK"
+                    self.state = "WAIT_FOR_PACKET"
                     if self.verbose:
-                        print("[INFO]: State: TO_PREPICK")
+                        print("[INFO]: State: WAIT_FOR_PACKET")
             # Send robot to home position if it isn't home already
-            elif not self.is_in_home_pos:
-                self.cp.send(RcData(RcCommand.GO_TO_HOME))
-                self.state = "TO_HOME_POS"
-                if self.verbose:
-                    print("[INFO]: State: TO_HOME_POS")
-
-        # Moving to home position
-        if self.state == "TO_HOME_POS":
-            if is_rob_ready and self._is_rob_in_pos(pos, self.home_xyz_coords):
-                self.is_in_home_pos = True
-                self.state = "READY"
-                if self.verbose:
-                    print("[INFO]: State: READY")
-
-        # Moving to prepick position
-        if self.state == "TO_PREPICK":
-            # Check if robot arrived to prepick position
-            if self._is_rob_in_pos(pos, self.prepick_xyz_coords):
-                self.state = "WAIT_FOR_PACKET"
-                if self.verbose:
-                    print("[INFO]: State: WAIT_FOR_PACKET")
+            # elif not self.is_in_home_pos:
+            #     self.cp.send(RcData(RcCommand.GO_TO_HOME))
+            #     self.state = "TO_HOME_POS"
+            #     if self.verbose:
+            #         print("[INFO]: State: TO_HOME_POS")
 
         # Waiting for packet
         if self.state == "WAIT_FOR_PACKET":
@@ -395,9 +374,7 @@ class RobotStateMachine:
             # If packet is close enough continue picking operation
             elif (
                 packet_pos_x
-                > self.trajectory_dict["x"]
-                - self.constants["pick_start_x_offset"]
-                - self.trajectory_dict["shift_x"]
+                > self.trajectory_dict["x"] - self.constants["pick_start_x_offset"]
             ):
                 self.cp.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 self.state = "PLACING"
