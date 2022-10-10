@@ -392,6 +392,7 @@ def main_multi_packets(
             prog_busy = manag_info_dict["prog_busy"]
             encoder_vel = manag_info_dict["encoder_vel"]
             speed_override = manag_info_dict["speed_override"]
+            robot_interrupted = manag_info_dict["robot_interrupted"]
             encoder_pos = manag_encoder_val.value
             if encoder_pos is None:
                 continue
@@ -484,7 +485,9 @@ def main_multi_packets(
 
         # Robot ready when programs are fully finished and it isn't moving
         is_rob_ready = not prog_busy and (rob_stopped or not stop_active)
-        state_machine.run(homography, is_rob_ready, registered_packets, encoder_vel)
+        state_machine.run(
+            homography, is_rob_ready, registered_packets, encoder_vel, robot_interrupted
+        )
 
         # FRAME GRAPHICS
         ################

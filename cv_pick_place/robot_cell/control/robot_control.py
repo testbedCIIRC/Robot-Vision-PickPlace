@@ -180,6 +180,7 @@ class RobotControl(RobotCommunication):
         x_offset: float,
         z_offset: float,
         packet_type: int,
+        previous_packet_type: int,
     ):
         """
         Updates the trajectory points for the robot program.
@@ -200,6 +201,23 @@ class RobotControl(RobotCommunication):
         values = []
 
         # fmt: off
+        nodes.append(self.Start_X)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['x'], ua.VariantType.Float)))
+        nodes.append(self.Start_Y)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['y'] - 50, ua.VariantType.Float)))
+        nodes.append(self.Start_Z)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['z'], ua.VariantType.Float)))
+        nodes.append(self.Start_A)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['a'], ua.VariantType.Float)))
+        nodes.append(self.Start_B)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['b'], ua.VariantType.Float)))
+        nodes.append(self.Start_C)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['c'], ua.VariantType.Float)))
+        nodes.append(self.Start_Status)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['status'], ua.VariantType.Int16)))
+        nodes.append(self.Start_Turn)
+        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['turn'], ua.VariantType.Int16)))
+
         nodes.append(self.PrePick_X)
         values.append(ua.DataValue(ua.Variant(x, ua.VariantType.Float)))
         nodes.append(self.PrePick_Y)
@@ -280,21 +298,21 @@ class RobotControl(RobotCommunication):
         values = []
 
         # fmt: off
-        nodes.append(self.Home_X)
+        nodes.append(self.Start_X)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['x'], ua.VariantType.Float)))
-        nodes.append(self.Home_Y)
+        nodes.append(self.Start_Y)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['y'], ua.VariantType.Float)))
-        nodes.append(self.Home_Z)
+        nodes.append(self.Start_Z)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['z'], ua.VariantType.Float)))
-        nodes.append(self.Home_A)
+        nodes.append(self.Start_A)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['a'], ua.VariantType.Float)))
-        nodes.append(self.Home_B)
+        nodes.append(self.Start_B)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['b'], ua.VariantType.Float)))
-        nodes.append(self.Home_C)
+        nodes.append(self.Start_C)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['c'], ua.VariantType.Float)))
-        nodes.append(self.Home_Status)
+        nodes.append(self.Start_Status)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['status'], ua.VariantType.Int16)))
-        nodes.append(self.Home_Turn)
+        nodes.append(self.Start_Turn)
         values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['turn'], ua.VariantType.Int16)))
         # fmt: on
 
@@ -399,6 +417,7 @@ class RobotControl(RobotCommunication):
                         data["x_offset"],
                         data["z_offset"],
                         data["packet_type"],
+                        data["previous_packet_type"],
                     )
 
                 elif command == RcCommand.SET_HOME_POS:

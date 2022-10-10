@@ -46,6 +46,7 @@ class RobotStateMachine:
         self.is_in_home_pos = False
         self.packet_to_pick = None
         self.trajectory_dict = {}
+        self.previous_packet_type = 0
 
         # Init variables from inputs
         self.cp = control_pipe
@@ -254,6 +255,7 @@ class RobotStateMachine:
             "x_offset": self.constants["x_pick_offset"],
             "z_offset": self.constants["z_offset"],
             "packet_type": packet_type,
+            "previous_packet_type": self.previous_packet_type,
         }
 
         return trajectory_dict
@@ -281,6 +283,7 @@ class RobotStateMachine:
             self.cp.send(RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict))
             # Start robot program
             self.cp.send(RcData(RcCommand.START_PROGRAM, True))
+            self.previous_packet_type = trajectory_dict["packet_type"]
 
         return packet_to_pick, trajectory_dict
 
@@ -306,6 +309,7 @@ class RobotStateMachine:
         is_rob_ready: bool,
         registered_packets: list[Packet],
         encoder_vel: float,
+        robot_interrupted: bool,
     ) -> str:
         """
         Run one iteration of the state machine.
@@ -364,6 +368,7 @@ class RobotStateMachine:
             if (
                 packet_pos_x
                 > self.trajectory_dict["x"] + self.constants["x_pick_offset"]
+                and robot_interrupted
             ):
                 self.cp.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 self.cp.send(RcData(RcCommand.ABORT_PROGRAM))
@@ -375,6 +380,7 @@ class RobotStateMachine:
             elif (
                 packet_pos_x
                 > self.trajectory_dict["x"] - self.constants["pick_start_x_offset"]
+                and robot_interrupted
             ):
                 self.cp.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 self.state = "PLACING"

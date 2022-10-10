@@ -86,7 +86,7 @@
     "grip_time_offset": {
         "help": "X offset from current packet position to prepick position.",
         "arg": "--grip-time-offset",
-        "default": 350
+        "default": 150
     },
 
     "pick_start_x_offset": {

@@ -64,24 +64,26 @@ class RobotCommunication:
             'ns=3;s="Encoder_1".ActualPosition')
         self.Robot_speed_override = self.client.get_node(
             'ns=3;s="HMIKuka"."robot"."powerRobot"."status"."override"."actualOverride"')
+        self.Robot_Interrupted = self.client.get_node(
+            'ns=3;s="Robot_Data"."Interrupted"')
 
 
-        self.Home_X = self.client.get_node(
-            'ns=3;s="Robot_Positions"."Home"."X"')
-        self.Home_Y = self.client.get_node(
-            'ns=3;s="Robot_Positions"."Home"."Y"')
-        self.Home_Z = self.client.get_node(
-            'ns=3;s="Robot_Positions"."Home"."Z"')
-        self.Home_A = self.client.get_node(
-            'ns=3;s="Robot_Positions"."Home"."A"')
-        self.Home_B = self.client.get_node(
-            'ns=3;s="Robot_Positions"."Home"."B"')
-        self.Home_C = self.client.get_node(
-            'ns=3;s="Robot_Positions"."Home"."C"')
-        self.Home_Status = self.client.get_node(
-            'ns=3;s="Robot_Positions"."Home"."Status"')
-        self.Home_Turn = self.client.get_node(
-            'ns=3;s="Robot_Positions"."Home"."Turn"')
+        self.Start_X = self.client.get_node(
+            'ns=3;s="Robot_Positions"."Start"."X"')
+        self.Start_Y = self.client.get_node(
+            'ns=3;s="Robot_Positions"."Start"."Y"')
+        self.Start_Z = self.client.get_node(
+            'ns=3;s="Robot_Positions"."Start"."Z"')
+        self.Start_A = self.client.get_node(
+            'ns=3;s="Robot_Positions"."Start"."A"')
+        self.Start_B = self.client.get_node(
+            'ns=3;s="Robot_Positions"."Start"."B"')
+        self.Start_C = self.client.get_node(
+            'ns=3;s="Robot_Positions"."Start"."C"')
+        self.Start_Status = self.client.get_node(
+            'ns=3;s="Robot_Positions"."Start"."Status"')
+        self.Start_Turn = self.client.get_node(
+            'ns=3;s="Robot_Positions"."Start"."Turn"')
 
         self.PrePick_X = self.client.get_node(
             'ns=3;s="Robot_Positions"."PrePick"."X"')
@@ -190,6 +192,7 @@ class RobotCommunication:
             self.Stop_Active,
             self.Prog_Busy,
             self.Robot_speed_override,
+            self.Robot_Interrupted,
         ]
         while True:
             try:
@@ -206,6 +209,7 @@ class RobotCommunication:
                 manag_info_dict["stop_active"] = val[5]
                 manag_info_dict["prog_busy"] = val[6]
                 manag_info_dict["speed_override"] = val[7]
+                manag_info_dict["robot_interrupted"] = val[8]
 
             except Exception as e:
                 print("[ERROR]", e)

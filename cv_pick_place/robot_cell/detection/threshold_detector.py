@@ -133,20 +133,20 @@ class ThresholdDetector:
         """
         if draw_box:
             # Draw bounding rectangle
-            cv2.rectangle(
-                image_frame,
-                (
-                    packet.centroid[0] - int(packet.width / 2),
-                    packet.centroid[1] - int(packet.height / 2),
-                ),
-                (
-                    packet.centroid[0] + int(packet.width / 2),
-                    packet.centroid[1] + int(packet.height / 2),
-                ),
-                (255, 0, 0),
-                2,
-                lineType=cv2.LINE_AA,
-            )
+            # cv2.rectangle(
+            #     image_frame,
+            #     (
+            #         packet.centroid[0] - int(packet.width / 2),
+            #         packet.centroid[1] - int(packet.height / 2),
+            #     ),
+            #     (
+            #         packet.centroid[0] + int(packet.width / 2),
+            #         packet.centroid[1] + int(packet.height / 2),
+            #     ),
+            #     (255, 0, 0),
+            #     2,
+            #     lineType=cv2.LINE_AA,
+            # )
 
             # Draw item contours
             cv2.drawContours(
@@ -219,11 +219,11 @@ class ThresholdDetector:
             area_cm2 = abs(cv2.contourArea(contour) * self.homography_determinant)
             object_type = 0
 
-            if 110 > area_cm2 > 90:
+            if 130 > area_cm2 > 70:
                 object_type = 1
-            elif 180 > area_cm2 > 160:
+            elif 200 > area_cm2 > 140:
                 object_type = 2
-            elif 380 > area_cm2 > 350:
+            elif 430 > area_cm2 > 300:
                 object_type = 0
             else:
                 continue
@@ -260,7 +260,7 @@ class ThresholdDetector:
             area_cm2 = abs(cv2.contourArea(contour) * self.homography_determinant)
             object_type = 0
 
-            if 165 > area_cm2 > 145:
+            if 195 > area_cm2 > 115:
                 object_type = 3
             else:
                 continue
