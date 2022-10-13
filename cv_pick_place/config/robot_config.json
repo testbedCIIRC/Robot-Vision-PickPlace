@@ -314,7 +314,7 @@
     "hsv_white_lower": {
         "help": "List of 3 integer values representing Hue (0 to 179), Saturation (0 to 255), Value (0 to 255) of bottom threshold for white color when using the HSV detector.",
         "arg": "--hsv-white-lower",
-        "default": [ 60, 0, 85 ]
+        "default": [ 60, 0, 50 ]
     },
 
     "hsv_white_upper": {
