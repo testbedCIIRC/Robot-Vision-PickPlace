@@ -15,9 +15,7 @@ class RcCommand(Enum):
     GRIPPER = auto()
     CONVEYOR_LEFT = auto()
     CONVEYOR_RIGHT = auto()
-    ABORT_PROGRAM = auto()
     CONTINUE_PROGRAM = auto()
-    STOP_PROGRAM = auto()
     CLOSE_PROGRAM = auto()
     START_PROGRAM = auto()
     CHANGE_TRAJECTORY = auto()
@@ -79,30 +77,8 @@ class RobotControl(RobotCommunication):
         """
 
         self.Conti_Prog.set_value(ua.DataValue(True))
-        time.sleep(0.5)
-        self.Conti_Prog.set_value(ua.DataValue(False))
         if self.verbose:
             print("[INFO]: Program continued.")
-
-    def stop_program(self):
-        """
-        Stop robot action.
-        """
-
-        self.Stop_Prog.set_value(ua.DataValue(True))
-        print("[INFO]: Program interrupted.")
-        time.sleep(0.5)
-        self.Stop_Prog.set_value(ua.DataValue(False))
-
-    def abort_program(self):
-        """
-        Abort robot action.
-        """
-
-        self.Abort_Prog.set_value(ua.DataValue(True))
-        print("[INFO]: Program aborted.")
-        time.sleep(0.5)
-        self.Abort_Prog.set_value(ua.DataValue(False))
 
     def start_program(self, mode: bool = False):
         """
@@ -115,22 +91,14 @@ class RobotControl(RobotCommunication):
         self.Start_Prog.set_value(ua.DataValue(True))
         if self.verbose:
             print("[INFO]: Program started.")
-        time.sleep(0.5)
-        self.Start_Prog.set_value(ua.DataValue(False))
-        time.sleep(0.5)
 
     def close_program(self):
         """
         Close robot program.
         """
 
-        self.Abort_Prog.set_value(ua.DataValue(True))
-        print("[INFO]: Program aborted.")
-        self.Abort_Prog.set_value(ua.DataValue(False))
-        self.Conti_Prog.set_value(ua.DataValue(False))
         self.client.disconnect()
         print("[INFO]: Client disconnected.")
-        time.sleep(0.5)
 
     def change_gripper_state(self, state: bool):
         """
@@ -143,7 +111,6 @@ class RobotControl(RobotCommunication):
         self.Gripper_State.set_value(ua.DataValue(state))
         if self.verbose:
             print("[INFO]: Gripper state is {}.".format(state))
-        time.sleep(0.1)
 
     def change_conveyor_right(self, conv_right: bool):
         """
@@ -153,9 +120,7 @@ class RobotControl(RobotCommunication):
             conv_right (bool): If the conveyor should be turned on or off in the right direction.
         """
 
-        self.Conveyor_Left.set_value(ua.DataValue(False))
         self.Conveyor_Right.set_value(ua.DataValue(conv_right))
-        time.sleep(0.4)
 
     def change_conveyor_left(self, conv_left: bool):
         """
@@ -165,9 +130,7 @@ class RobotControl(RobotCommunication):
             conv_left (bool): If the conveyor should be turned on or off in the left direction.
         """
 
-        self.Conveyor_Right.set_value(ua.DataValue(False))
         self.Conveyor_Left.set_value(ua.DataValue(conv_left))
-        time.sleep(0.4)
 
     def set_trajectory(
         self,
@@ -374,8 +337,8 @@ class RobotControl(RobotCommunication):
         # Connect server and get nodes
         self.connect_OPCUA_server()
         self.get_nodes()
-
         time.sleep(0.5)
+
         while True:
             try:
                 input = pipe.recv()
@@ -391,14 +354,8 @@ class RobotControl(RobotCommunication):
                 elif command == RcCommand.CONVEYOR_RIGHT:
                     self.change_conveyor_right(data)
 
-                elif command == RcCommand.ABORT_PROGRAM:
-                    self.abort_program()
-
                 elif command == RcCommand.CONTINUE_PROGRAM:
                     self.continue_program()
-
-                elif command == RcCommand.STOP_PROGRAM:
-                    self.stop_program()
 
                 elif command == RcCommand.CLOSE_PROGRAM:
                     self.close_program()
@@ -428,5 +385,5 @@ class RobotControl(RobotCommunication):
 
             except Exception as e:
                 print("[ERROR]", e)
-                print("[INFO] OPCUA disconnected")
+                print("[INFO] OPCUA Control Server disconnected")
                 break

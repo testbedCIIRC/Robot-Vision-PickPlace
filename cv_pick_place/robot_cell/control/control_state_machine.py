@@ -371,11 +371,10 @@ class RobotStateMachine:
                 and robot_interrupted
             ):
                 self.cp.send(RcData(RcCommand.CONTINUE_PROGRAM))
-                self.cp.send(RcData(RcCommand.ABORT_PROGRAM))
                 self.cp.send(RcData(RcCommand.GRIPPER, False))
                 self.state = "READY"
                 if self.verbose:
-                    print("[INFO]: missed packet, State: READY")
+                    print("[INFO]: Missed packet, State: READY")
             # If packet is close enough continue picking operation
             elif (
                 packet_pos_x
