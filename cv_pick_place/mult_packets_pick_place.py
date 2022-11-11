@@ -74,6 +74,7 @@ def packet_tracking(
 
 
 def draw_frame(
+    cell_config: dict,
     image_frame: np.ndarray,
     registered_packets: list[Packet],
     encoder_pos: int,
@@ -82,8 +83,6 @@ def draw_frame(
     info_dict: dict,
     colorized_depth: np.ndarray,
     start_time: float,
-    frame_width: int,
-    frame_height: int,
     resolution: tuple[int, int],
 ) -> None:
     """
@@ -116,6 +115,14 @@ def draw_frame(
                 cv2.LINE_4,
             )
 
+            # cv2.circle(
+            #     image_frame,
+            #     packet.getCentroidFromEncoder(encoder_pos),
+            #     cell_config.tracker_max_item_distance,
+            #     (255, 255, 0),
+            #     cv2.LINE_4,
+            # )
+
             # Draw packet ID and type
             text_id = "ID {}, Type {}".format(packet.id, packet.type)
             drawText(
@@ -137,8 +144,9 @@ def draw_frame(
             )
 
             # Draw packet centroid value in milimeters
+            centroid_mm = packet.get_centroid_in_mm()
             text_centroid = "X: {:.2f}, Y: {:.2f} (mm)".format(
-                packet.centroid_mm.x, packet.centroid_mm.y
+                centroid_mm.x, centroid_mm.y
             )
             drawText(
                 image_frame,
@@ -181,6 +189,7 @@ def process_key_input(
     control_pipe: multiprocessing.connection.PipeConnection,
     toggles_dict: dict,
     is_rob_ready: bool,
+    tracker: ItemTracker,
 ) -> tuple[bool, dict]:
     """
     Process input from keyboard.
@@ -244,6 +253,12 @@ def process_key_input(
     # Print info
     if key == ord("i"):
         print("[INFO]: Is robot ready = {}".format(is_rob_ready))
+
+    # Print info
+    if key == ord("r"):
+        tracker.tracked_item_list = []
+        tracker.next_item_id = 0
+        print("[INFO]: Cleared tracked object list")
 
     if key == 27:  # Esc
         end_prog = True
@@ -491,6 +506,7 @@ def main_multi_packets(
         ################
 
         draw_frame(
+            rob_config,
             image_frame,
             registered_packets,
             encoder_pos,
@@ -499,15 +515,13 @@ def main_multi_packets(
             manag_info_dict,
             colorized_depth,
             start_time,
-            frame_width,
-            frame_height,
             (frame_width, frame_height),
         )
 
         # Keyboard inputs
         key = cv2.waitKey(1)
         end_prog, toggles_dict = process_key_input(
-            key, control_pipe, toggles_dict, is_rob_ready
+            key, control_pipe, toggles_dict, is_rob_ready, tracker
         )
 
         # End main

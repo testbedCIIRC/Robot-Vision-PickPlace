@@ -90,23 +90,15 @@ class ThresholdDetector:
         x, y, w, h = cv2.boundingRect(contour)
 
         packet = Packet(
-            box=box,
-            pack_type=type,
-            centroid=centroid,
-            angle=angle,
-            ymin=y,
-            ymax=y + w,
-            xmin=x,
-            xmax=x + h,
             width=w,
             height=h,
-            encoder_position=encoder_pos,
+            box=box,
         )
 
         packet.set_type(type)
-        packet.set_centroid(
-            centroid[0], centroid[1], self.homography_matrix, encoder_pos
-        )
+        packet.set_centroid(centroid[0], centroid[1])
+        packet.set_homography(self.homography_matrix)
+        packet.set_base_encoder_position(encoder_pos)
         packet.set_bounding_size(w, h, self.homography_matrix)
         packet.add_angle_to_average(angle)
 
@@ -132,21 +124,6 @@ class ThresholdDetector:
             np.ndarray: Image frame with information drawn into it.
         """
         if draw_box:
-            # Draw bounding rectangle
-            # cv2.rectangle(
-            #     image_frame,
-            #     (
-            #         packet.centroid[0] - int(packet.width / 2),
-            #         packet.centroid[1] - int(packet.height / 2),
-            #     ),
-            #     (
-            #         packet.centroid[0] + int(packet.width / 2),
-            #         packet.centroid[1] + int(packet.height / 2),
-            #     ),
-            #     (255, 0, 0),
-            #     2,
-            #     lineType=cv2.LINE_AA,
-            # )
 
             # Draw item contours
             cv2.drawContours(
@@ -155,7 +132,12 @@ class ThresholdDetector:
 
         # Draw centroid
         cv2.drawMarker(
-            image_frame, packet.centroid, (0, 0, 255), cv2.MARKER_CROSS, 20, cv2.LINE_4
+            image_frame,
+            packet.get_centroid_in_px(),
+            (0, 0, 255),
+            cv2.MARKER_CROSS,
+            20,
+            cv2.LINE_4,
         )
 
         return image_frame
@@ -239,12 +221,10 @@ class ThresholdDetector:
                 continue
 
             # Check if packet is far enough from edge
-            if packet.centroid[
-                0
-            ] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[
-                0
-            ] + packet.width / 2 > (
-                frame_width - self.ignore_horizontal_px
+            if (
+                packet.centroid_px.x - packet.width / 2 < self.ignore_horizontal_px
+                or packet.centroid_px.x + packet.width / 2
+                > frame_width - self.ignore_horizontal_px
             ):
                 continue
 
@@ -276,12 +256,10 @@ class ThresholdDetector:
                 continue
 
             # Check if packet is far enough from edge
-            if packet.centroid[
-                0
-            ] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[
-                0
-            ] + packet.width / 2 > (
-                frame_width - self.ignore_horizontal_px
+            if (
+                packet.centroid_px.x - packet.width / 2 < self.ignore_horizontal_px
+                or packet.centroid_px.x + packet.width / 2
+                > (frame_width - self.ignore_horizontal_px)
             ):
                 continue
 

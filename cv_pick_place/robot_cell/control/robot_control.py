@@ -78,9 +78,9 @@ class RobotControl(RobotCommunication):
 
         self.Conti_Prog.set_value(ua.DataValue(True))
         if self.verbose:
-            print("[INFO]: Program continued.")
+            print("[INFO] Program continued")
 
-    def start_program(self, mode: bool = False):
+    def start_program(self):
         """
         Start robot program.
 
@@ -90,7 +90,7 @@ class RobotControl(RobotCommunication):
 
         self.Start_Prog.set_value(ua.DataValue(True))
         if self.verbose:
-            print("[INFO]: Program started.")
+            print("[INFO] Program started")
 
     def close_program(self):
         """
@@ -98,7 +98,6 @@ class RobotControl(RobotCommunication):
         """
 
         self.client.disconnect()
-        print("[INFO]: Client disconnected.")
 
     def change_gripper_state(self, state: bool):
         """
@@ -110,7 +109,7 @@ class RobotControl(RobotCommunication):
 
         self.Gripper_State.set_value(ua.DataValue(state))
         if self.verbose:
-            print("[INFO]: Gripper state is {}.".format(state))
+            print("[INFO] Gripper state is {}.".format(state))
 
     def change_conveyor_right(self, conv_right: bool):
         """
@@ -361,7 +360,7 @@ class RobotControl(RobotCommunication):
                     self.close_program()
 
                 elif command == RcCommand.START_PROGRAM:
-                    self.start_program(data)
+                    self.start_program()
 
                 elif command == RcCommand.CHANGE_TRAJECTORY:
                     self.set_trajectory(

@@ -82,9 +82,9 @@ class ItemTracker:
             return
 
         # NEW parameters
-        tracked_item.set_centroid(
-            new_item.centroid_px.x, new_item.centroid_px.y, homography, encoder_pos
-        )
+        tracked_item.set_centroid(new_item.centroid_px.x, new_item.centroid_px.y)
+        tracked_item.set_homography(homography)
+        tracked_item.set_base_encoder_position(encoder_pos)
 
         tracked_item.width_bnd_px = new_item.width_bnd_px
         tracked_item.width_bnd_mm = new_item.width_bnd_mm
@@ -96,7 +96,6 @@ class ItemTracker:
         # OLD parameters
         tracked_item.width = new_item.width
         tracked_item.height = new_item.height
-        tracked_item.centroid = new_item.centroid
         tracked_item.disappeared = 0
         tracked_item.box = new_item.box
 

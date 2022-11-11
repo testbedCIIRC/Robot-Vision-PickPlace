@@ -111,11 +111,12 @@ class RobotStateMachine:
         # Update pick list to current positions
         for packet in self.pick_list:
             x, y = packet.getCentroidFromEncoder(encoder_pos)
-            packet.set_centroid(x, y, homography)
+            packet.set_centroid(x, y)
+            packet.set_homography(homography)
 
         # Get list of current world x coordinates
         pick_list_positions = np.array(
-            [packet.centroid_mm.x for packet in self.pick_list]
+            [packet.get_centroid_in_mm().x for packet in self.pick_list]
         )
 
         # If item is too far remove it from list
@@ -194,7 +195,7 @@ class RobotStateMachine:
         """
 
         # Set positions and Start robot
-        packet_x, pick_pos_y = packet_to_pick.centroid_mm
+        packet_x, pick_pos_y = packet_to_pick.get_centroid_in_mm()
         pick_pos_x = packet_x + self.constants["grip_time_offset"]
 
         angle = packet_to_pick.avg_angle_deg
@@ -362,8 +363,9 @@ class RobotStateMachine:
             encoder_pos = self.enc_pos.value
             # Check encoder and activate robot
             x, y = self.packet_to_pick.getCentroidFromEncoder(encoder_pos)
-            self.packet_to_pick.set_centroid(x, y, homography)
-            packet_pos_x = self.packet_to_pick.centroid_mm.x
+            self.packet_to_pick.set_centroid(x, y)
+            self.packet_to_pick.set_homography(homography)
+            packet_pos_x = self.packet_to_pick.get_centroid_in_mm().x
             # If packet is too far abort and return to ready
             if (
                 packet_pos_x

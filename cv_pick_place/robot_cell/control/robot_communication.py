@@ -22,11 +22,18 @@ class RobotCommunication:
 
         """
         password = "CIIRC"
+        address = "10.35.91.101:4840"
+        timeout = 4  # Every request expects answer in this time (in seconds)
+        secure_channel_timeout = 300000  # Timeout for the secure channel (in milliseconds), it should be equal to the timeout set on the PLC
+        session_timeout = 30000  # Timeout for the session (in milliseconds), it should be equal to the timeout set on the PLC
         self.client = opcua.Client(
-            "opc.tcp://user:" + str(password) + "@10.35.91.101:4840/"
+            "opc.tcp://user:" + str(password) + "@" + str(address) + "/",
+            timeout,
         )
+        self.client.secure_channel_timeout = secure_channel_timeout
+        self.client.session_timeout = session_timeout
         self.client.connect()
-        print("[INFO]: Client connected.")
+        print("[INFO] OPCUA client connected to server at", str(address))
 
     def get_nodes(self):
         """

@@ -10,18 +10,9 @@ class Packet:
 
     def __init__(
         self,
-        box: np.ndarray = np.empty(()),
-        pack_type: int = None,
-        centroid: tuple[int, int] = (0, 0),
-        centroid_depth: int = 0,
-        angle: float = 0,
         width: int = 0,
         height: int = 0,
-        ymin: int = 0,
-        ymax: int = 0,
-        xmin: int = 0,
-        xmax: int = 0,
-        encoder_position: float = 0,
+        box: np.ndarray = np.empty(()),
         crop_border_px: int = 50,
     ):
         """
@@ -29,7 +20,6 @@ class Packet:
 
         Args:
             box (np.ndarray): Packet bounding box.
-            pack_type (bool): Class of detected packet.
             centroid (tuple): Centroid of packet.
             centroid_depth (int): Depth of centroid from depth frame.
             angle (float): Angle of bounding box.
@@ -53,14 +43,13 @@ class Packet:
         self.id = None
         # Type of the packet
         self.type = None
+        # Homography matrix used to transform packet data in pixels to millimeters
+        self.homography = None
 
         # X Y centroid value in frame pixels
         # X increases from left to right
         # Y increases from top to bottom
         self.centroid_px = None
-        # X Y centroid value in milimeters
-        # Depends on detected apriltags and computed homography
-        self.centroid_mm = None
 
         # Width of horizontally aligned bounding box in pixels
         self.width_bnd_px = None
@@ -96,101 +85,65 @@ class Packet:
 
         self.in_pick_list = False
 
+        # Number of frames the packet has disappeared for
+        self.disappeared = 0
+
         # OBSOLETE PACKET PARAMETERS
         ############################
-        # Tuple of 2 numbers describing center of the packet
-        self.centroid = centroid
-
-        # List of angles for averaging
-        self.angles = [angle]
-        self.angle = angle
 
         # Width and height of packet bounding box
         self.width = width
         self.height = height
 
-        self.yminbbx = ymin
-        self.ymaxbbx = ymax
-        self.xminbbx = xmin
-        self.xmaxbbx = xmax
-
-        # Numpy array of cropped depth maps
-        self.depth_maps = np.empty(())
-        self.color_frames = np.empty(())
-
-        # Number of frames the packet has disappeared for
-        self.disappeared = 0
-
-        self.time_of_disappearance = None
-
         self.box = box
 
-        self.pack_type = pack_type
-
-        # Encoder data
-        self.starting_encoder_position = encoder_position
-
-        # Used for offsetting centroid position calculated using encoder
-        self.first_centroid_position = centroid
-
-    def set_id(self, id: int) -> None:
+    def set_id(self, packet_id: int) -> None:
         """
         Sets packet ID.
 
         Args:
-            id (int): Unique integer greater then or equal to 0.
+            packet_id (int): Unique integer greater then or equal to 0.
         """
 
-        if not isinstance(id, int):
+        if not isinstance(packet_id, int):
             print(
-                "[WARNING] Tried to set packet ID to {} (Should be integer)".format(id)
+                f"[WARNING] Tried to set packet ID to {packet_id} (Should be integer)"
             )
             return
 
-        if id < 0:
+        if packet_id < 0:
             print(
-                "[WARNING] Tried to set packet ID to {} (Should be greater than or equal to 0)".format(
-                    id
-                )
+                f"[WARNING] Tried to set packet ID to {packet_id} (Should be greater than or equal to 0)"
             )
             return
 
-        self.id = id
+        self.id = packet_id
 
-    def set_type(self, type: int) -> None:
+    def set_type(self, packet_type: int) -> None:
         """
         Sets packet type.
 
         Args:
-            type (int): Integer representing type of the packet.
+            packet_type (int): Integer representing type of the packet.
         """
 
         # Check input validity
-        if not isinstance(type, int):
+        if not isinstance(packet_type, int):
             print(
-                "[WARNING] Tried to set packet TYPE to {} (Should be integer)".format(
-                    type
-                )
+                f"[WARNING] Tried to set packet TYPE to {packet_type} (Should be integer)"
             )
             return
 
         # Set parameter
-        self.type = type
+        self.type = packet_type
 
-        # OBSOLETE PARAM
-        self.pack_type = type
-
-    def set_centroid(
-        self, x: int, y: int, homography: np.ndarray = None, encoder_pos: int = None
-    ) -> None:
+    def set_centroid(self, x: int, y: int) -> None:
         """
         Sets packet centroid.
 
         Args:
             x (int): X coordinate of centroid in pixels.
-            x (int): Y coordinate of centroid in pixels.
-            homography (np.ndarray): Homography matrix converting from pixels to centimeters.
-            encoder_pos (float): Position of encoder.
+            y (int): Y coordinate of centroid in pixels.
         """
 
         # Check input validity
@@ -205,30 +158,36 @@ class Packet:
         # Set parameter
         self.centroid_px = self.PointTuple(x, y)
 
-        # Set initial values if not set
-        if encoder_pos is not None:
-            self.centroid_initial_px = self.centroid_px
-            self.encoder_initial_position = encoder_pos
+    def set_homography(self, homography: np.ndarray) -> None:
+        """
+        Sets packet homography.
 
-        # Compute parameter in world coordinates
-        if homography is not None:
-            if not isinstance(homography, np.ndarray):
-                print(
-                    "[WARNING] Tried to compute packet CENTROID with homography \n{} \n(Not a np.ndarray)".format(
-                        homography
-                    )
-                )
-                return
-
-            transformed_centroid = np.matmul(homography, np.array([x, y, 1]))
-            self.centroid_mm = self.PointTuple(
-                transformed_centroid[0] * 10, transformed_centroid[1] * 10
+        Args:
+            homography (int): 3x3 homography matrix converting from pixels to millimeters.
+        """
+        if not isinstance(homography, np.ndarray):
+            print(
+                f"[WARNING] Tried set HOMOGRAPHY to \n{homography} \n(Not a np.ndarray)"
             )
-        else:
-            self.centroid_mm = self.PointTuple(None, None)
+            return
 
-        # OBSOLETE PARAM
-        self.centroid = (x, y)
+        self.homography = homography
+
+    def set_base_encoder_position(self, encoder_position: float) -> None:
+        """
+        Sets packet initial encoder position and associated centroid position.
+
+        Args:
+            encoder_pos (float): Position of encoder.
+        """
+        if not isinstance(encoder_position, float):
+            print(
+                f"[WARNING] Tried to set packet ENCODER_POSITION to {encoder_position} (Should be float)"
+            )
+            return
+
+        self.centroid_initial_px = self.centroid_px
+        self.encoder_initial_position = encoder_position
 
     def set_bounding_size(
         self, width: int, height: int, homography: np.ndarray = None
@@ -422,6 +381,16 @@ class Packet:
 
         return crop
 
+    def get_centroid_in_px(self) -> tuple[int, int]:
+        return self.centroid_px
+
+    def get_centroid_in_mm(self) -> tuple[float, float]:
+        transformed_centroid = np.matmul(
+            self.homography, np.array([self.centroid_px.x, self.centroid_px.y, 1])
+        )
+        centroid_mm = self.PointTuple(transformed_centroid[0] * 10, transformed_centroid[1] * 10)
+        return centroid_mm
+
     def getCentroidFromEncoder(self, encoder_position: float) -> tuple[float, float]:
         """
         Computes actual centroid of packet from the encoder data.
@@ -458,7 +427,7 @@ class Packet:
         """
 
         centroid_robot_frame = np.matmul(
-            homography, np.array([self.centroid[0], self.centroid[1], 1])
+            homography, np.array([self.centroid_px.x, self.centroid_px.y, 1])
         )
 
         packet_x = centroid_robot_frame[0] * 10

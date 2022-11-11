@@ -519,21 +519,14 @@ class PacketDetector:
                     2,
                 )
                 packet = Packet(
-                    box=box,
-                    pack_type=detections["detection_classes"][i],
-                    centroid=centroid,
-                    centroid_depth=distance,
-                    angle=angle,
-                    ymin=ymin,
-                    ymax=ymax,
-                    xmin=xmin,
-                    xmax=xmax,
                     width=w,
                     height=h,
-                    encoder_position=encoder_pos,
+                    box=box,
                 )
                 packet.set_type(int(detections["detection_classes"][i]))
-                packet.set_centroid(centroid[0], centroid[1], homography, encoder_pos)
+                packet.set_centroid(centroid[0], centroid[1])
+                packet.set_homography(self.homography_matrix)
+                packet.set_base_encoder_position(encoder_pos)
                 packet.set_bounding_size(int(w * width), int(h * height), homography)
                 packet.add_angle_to_average(angle)
                 if centroid[0] - w / 2 > guard and centroid[0] + w / 2 < (

@@ -348,8 +348,9 @@ def main_pick_place(
                 )
 
                 # Draw packet centroid value in milimeters
+                centroid_mm = packet.get_centroid_in_mm()
                 text_centroid = "X: {:.2f}, Y: {:.2f} (mm)".format(
-                    packet.centroid_mm.x, packet.centroid_mm.y
+                    centroid_mm.x, centroid_mm.y
                 )
                 drawText(
                     image_frame,
@@ -398,8 +399,9 @@ def main_pick_place(
                 # If begin key is held for 30 frames, start program
                 if bpressed == 30:
                     packet = registered_packets[0]
-                    packet_x = packet.centroid_mm.x
-                    packet_y = packet.centroid_mm.y
+                    centroid_mm = packet.get_centroid_in_mm()
+                    packet_x = centroid_mm.x
+                    packet_y = centroid_mm.y
                     angle = packet.avg_angle_deg
                     packet_type = packet.type
                     gripper_rot = compute_gripper_rot(angle)

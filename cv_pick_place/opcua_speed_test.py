@@ -1,18 +1,26 @@
-import opcua
-from opcua.ua.uatypes import DataValue, Variant, VariantType
+from asyncua import sync
 
-opcua.ua.uatypes.DataValue
-
-client = opcua.Client("opc.tcp://user:CIIRC@10.35.91.101:4840/")
+client = sync.Client("opc.tcp://user:CIIRC@10.35.91.101:4840/", 4)
+client.aio_obj.secure_channel_timeout = 300000
+client.aio_obj.session_timeout = 30000
 client.connect()
 
-Home_Pos_X = client.get_node('ns=3;s="Robot_Positions"."Home"."X"')
+Start_Pos_X = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"')
+E6POS_Node = client.get_node('ns=3;s=DT_"E6POS"')
 
-val = Home_Pos_X.get_value()
+val = Start_Pos_X.get_value()
 print(val)
-val = Home_Pos_X.set_value(DataValue(Variant(50, VariantType.Float)))
+
+node_types = client.load_data_type_definitions()
+pos = node_types["E6POS"]
+pos.Status = 42
+pos.X = 15
+
+# for t in node_types:
+#     print(t)
 
 
 
 
 client.disconnect()
+exit()
