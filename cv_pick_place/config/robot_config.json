@@ -29,6 +29,12 @@
         "default": "2"
     },
 
+    "auto_exit": {
+        "help": "If True, the script exits after stopping the program. If False, mode selection appears after stopping the program.",
+        "arg": "--auto-exit",
+        "default": true
+    },
+
     "detector_type": {
         "help": "Selection of object detector. Valid values are 'NN1', 'NN2' and 'HSV'.",
         "arg": "--detector-type",

@@ -49,7 +49,7 @@ def program_mode(
         # Set robot positions and robot program
         r_control.rob_dict = modes_dict[mode]["dict"]
         robot_prog = modes_dict[mode]["func"]
-        print(f"[INFO]: Starting mode {mode} ({modes_dict[mode]['help']})")
+        print(f"[INFO] Starting mode {mode} ({modes_dict[mode]['help']})")
 
         with Manager() as manager:
             # Dictionary Manager for passing data between processes
@@ -92,6 +92,9 @@ def program_mode(
             main_proc.join()
             info_server_proc.kill()
             control_server_proc.kill()
+
+        if rob_config.auto_exit:
+            exit()
 
     # If input is exit, exit python
     elif mode == "e":
