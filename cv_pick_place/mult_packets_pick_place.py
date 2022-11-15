@@ -404,9 +404,15 @@ def main_multi_packets(
         try:
             encoder_pos = manag_encoder_val.value
             encoder_vel = manag_info_dict["encoder_vel"]
+            conveyor_left = manag_info_dict["conveyor_left"]
+            conveyor_right = manag_info_dict["conveyor_right"]
+            gripper_state = manag_info_dict["gripper_state"]
+            start_prog = manag_info_dict["start_prog"]
+            conti_prog = manag_info_dict["conti_prog"]
             prog_busy = manag_info_dict["prog_busy"]
             prog_interrupted = manag_info_dict["prog_interrupted"]
             prog_done = manag_info_dict["prog_done"]
+            safe_operational_stop = manag_info_dict["safe_operational_stop"]
             if encoder_pos is None:
                 continue
         except:
@@ -483,6 +489,12 @@ def main_multi_packets(
         else:
             detected_packets = []
 
+        # Disable detection during safe operational stop
+        # This is to allow packet placement in front of camera
+        # without detection glitches from hand movement
+        if safe_operational_stop:
+            detected_packets = []
+
         registered_packets = packet_tracking(
             tracker,
             detected_packets,
@@ -499,7 +511,7 @@ def main_multi_packets(
         # Robot ready when programs are fully finished and it isn't moving
         is_rob_ready = not prog_busy
         state_machine.run(
-            homography, is_rob_ready, registered_packets, encoder_vel, prog_interrupted
+            homography, is_rob_ready, registered_packets, encoder_vel, prog_interrupted, safe_operational_stop
         )
 
         # FRAME GRAPHICS

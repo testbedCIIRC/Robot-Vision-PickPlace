@@ -53,6 +53,8 @@ class RobotCommunication:
             'ns=3;s="Robot_Data"."Pick_Place"."Status"."Busy"')
         self.Prog_Interrupted = self.client.get_node(
             'ns=3;s="Robot_Data"."Pick_Place"."Status"."Interrupted"')
+        self.Safe_Operational_Stop = self.client.get_node(
+            'ns=3;s="Robot_Data"."Status"."Safe_Operational_Stop"')
 
         self.Conveyor_Left = self.client.get_node(
             'ns=3;s="Program_Data"."Conveyor_Left_Toggle"')
@@ -183,9 +185,15 @@ class RobotCommunication:
         nodes = [
             self.Encoder_Pos,
             self.Encoder_Vel,
+            self.Conveyor_Left,
+            self.Conveyor_Right,
+            self.Gripper_State,
+            self.Start_Prog,
+            self.Conti_Prog,
             self.Prog_Busy,
             self.Prog_Interrupted,
             self.Prog_Done,
+            self.Safe_Operational_Stop,
         ]
 
         while True:
@@ -197,9 +205,15 @@ class RobotCommunication:
                 # Assign values from returned list to variables
                 manag_encoder_val.value = round(val[0], 2)
                 manag_info_dict["encoder_vel"] = round(val[1], 2)
-                manag_info_dict["prog_busy"] = val[2]
-                manag_info_dict["prog_interrupted"] = val[3]
-                manag_info_dict["prog_done"] = val[4]
+                manag_info_dict["conveyor_left"] = val[2]
+                manag_info_dict["conveyor_right"] = val[3]
+                manag_info_dict["gripper_state"] = val[4]
+                manag_info_dict["start_prog"] = val[5]
+                manag_info_dict["conti_prog"] = val[6]
+                manag_info_dict["prog_busy"] = val[7]
+                manag_info_dict["prog_interrupted"] = val[8]
+                manag_info_dict["prog_done"] = val[9]
+                manag_info_dict["safe_operational_stop"] = val[10]
 
             except Exception as e:
                 print("[ERROR]", e)

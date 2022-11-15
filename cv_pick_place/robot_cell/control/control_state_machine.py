@@ -311,6 +311,7 @@ class RobotStateMachine:
         registered_packets: list[Packet],
         encoder_vel: float,
         robot_interrupted: bool,
+        safe_operational_stop: bool,
     ) -> str:
         """
         Run one iteration of the state machine.
@@ -387,6 +388,11 @@ class RobotStateMachine:
                 self.state = "PLACING"
                 if self.verbose:
                     print("[INFO]: State: PLACING")
+            
+            if safe_operational_stop:
+                self.state = "READY"
+                if self.verbose:
+                    print("[ERROR]: Unable to start program in the PLC due to Operational Stop")
 
         # Placing packet
         if self.state == "PLACING":
