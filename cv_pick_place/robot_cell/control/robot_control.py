@@ -5,7 +5,9 @@ from enum import Enum, unique, auto
 
 import cv2
 import numpy as np
-from opcua import ua
+
+import opcua
+import opcua.ua
 
 from robot_cell.control.robot_communication import RobotCommunication
 
@@ -76,7 +78,7 @@ class RobotControl(RobotCommunication):
         Continue robot action.
         """
 
-        self.Conti_Prog.set_value(ua.DataValue(True))
+        self.Conti_Prog.set_value(opcua.ua.DataValue(True))
         if self.verbose:
             print("[INFO] Program continued")
 
@@ -88,7 +90,7 @@ class RobotControl(RobotCommunication):
             mode (bool): PLC program mode selection.
         """
 
-        self.Start_Prog.set_value(ua.DataValue(True))
+        self.Start_Prog.set_value(opcua.ua.DataValue(True))
         if self.verbose:
             print("[INFO] Program started")
 
@@ -107,7 +109,7 @@ class RobotControl(RobotCommunication):
             state (bool): If the gripper should be turned on or off.
         """
 
-        self.Gripper_State.set_value(ua.DataValue(state))
+        self.Gripper_State.set_value(opcua.ua.DataValue(state))
         if self.verbose:
             print("[INFO] Gripper state is {}.".format(state))
 
@@ -119,7 +121,7 @@ class RobotControl(RobotCommunication):
             conv_right (bool): If the conveyor should be turned on or off in the right direction.
         """
 
-        self.Conveyor_Right.set_value(ua.DataValue(conv_right))
+        self.Conveyor_Right.set_value(opcua.ua.DataValue(conv_right))
 
     def change_conveyor_left(self, conv_left: bool):
         """
@@ -129,7 +131,7 @@ class RobotControl(RobotCommunication):
             conv_left (bool): If the conveyor should be turned on or off in the left direction.
         """
 
-        self.Conveyor_Left.set_value(ua.DataValue(conv_left))
+        self.Conveyor_Left.set_value(opcua.ua.DataValue(conv_left))
 
     def set_trajectory(
         self,
@@ -162,92 +164,68 @@ class RobotControl(RobotCommunication):
         nodes = []
         values = []
 
-        # fmt: off
-        nodes.append(self.Start_X)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['x'], ua.VariantType.Float)))
-        nodes.append(self.Start_Y)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['y'] - 50, ua.VariantType.Float)))
-        nodes.append(self.Start_Z)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['z'], ua.VariantType.Float)))
-        nodes.append(self.Start_A)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['a'], ua.VariantType.Float)))
-        nodes.append(self.Start_B)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['b'], ua.VariantType.Float)))
-        nodes.append(self.Start_C)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['c'], ua.VariantType.Float)))
-        nodes.append(self.Start_Status)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['status'], ua.VariantType.Int16)))
-        nodes.append(self.Start_Turn)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][previous_packet_type]['turn'], ua.VariantType.Int16)))
+        # Create E6POS type instance for writing into struct nodes
+        # In order for the opcua.ua.E6POS class to be available, client.load_type_definitions() has to be called first,
+        # which downloads the struct definitions (E6POS and others) from the PLC OPCUA server
+        start_E6POS = opcua.ua.E6POS()
+        start_E6POS.X = self.rob_dict["place_pos"][previous_packet_type]["x"]
+        start_E6POS.Y = self.rob_dict["place_pos"][previous_packet_type]["y"] - 50
+        start_E6POS.Z = self.rob_dict["place_pos"][previous_packet_type]["z"]
+        start_E6POS.A = self.rob_dict["place_pos"][previous_packet_type]["a"]
+        start_E6POS.B = self.rob_dict["place_pos"][previous_packet_type]["b"]
+        start_E6POS.C = self.rob_dict["place_pos"][previous_packet_type]["c"]
+        start_E6POS.Status = self.rob_dict["place_pos"][previous_packet_type]["status"]
+        start_E6POS.Turn = self.rob_dict["place_pos"][previous_packet_type]["turn"]
+        values.append(opcua.ua.DataValue(start_E6POS))
+        nodes.append(self.Pos_Start)
 
-        nodes.append(self.PrePick_X)
-        values.append(ua.DataValue(ua.Variant(x, ua.VariantType.Float)))
-        nodes.append(self.PrePick_Y)
-        values.append(ua.DataValue(ua.Variant(y, ua.VariantType.Float)))
-        nodes.append(self.PrePick_Z)
-        values.append(ua.DataValue(ua.Variant(z + z_offset, ua.VariantType.Float)))
-        nodes.append(self.PrePick_A)
-        values.append(ua.DataValue(ua.Variant(a, ua.VariantType.Float)))
-        nodes.append(self.PrePick_B)
-        values.append(ua.DataValue(ua.Variant(b, ua.VariantType.Float)))
-        nodes.append(self.PrePick_C)
-        values.append(ua.DataValue(ua.Variant(c, ua.VariantType.Float)))
-        nodes.append(self.PrePick_Status)
-        values.append(ua.DataValue(ua.Variant(2, ua.VariantType.Int16)))
-        nodes.append(self.PrePick_Turn)
-        values.append(ua.DataValue(ua.Variant(0, ua.VariantType.Int16)))
+        prepick_E6POS = opcua.ua.E6POS()
+        prepick_E6POS.X = x
+        prepick_E6POS.Y = y
+        prepick_E6POS.Z = z + z_offset
+        prepick_E6POS.A = a
+        prepick_E6POS.B = b
+        prepick_E6POS.C = c
+        prepick_E6POS.Status = 2
+        prepick_E6POS.Turn = 0
+        values.append(opcua.ua.DataValue(prepick_E6POS))
+        nodes.append(self.Pos_PrePick)
 
-        nodes.append(self.Pick_X)
-        values.append(ua.DataValue(ua.Variant(x + x_offset, ua.VariantType.Float)))
-        nodes.append(self.Pick_Y)
-        values.append(ua.DataValue(ua.Variant(y, ua.VariantType.Float)))
-        nodes.append(self.Pick_Z)
-        values.append(ua.DataValue(ua.Variant(z, ua.VariantType.Float)))
-        nodes.append(self.Pick_A)
-        values.append(ua.DataValue(ua.Variant(a, ua.VariantType.Float)))
-        nodes.append(self.Pick_B)
-        values.append(ua.DataValue(ua.Variant(b, ua.VariantType.Float)))
-        nodes.append(self.Pick_C)
-        values.append(ua.DataValue(ua.Variant(c, ua.VariantType.Float)))
-        nodes.append(self.Pick_Status)
-        values.append(ua.DataValue(ua.Variant(2, ua.VariantType.Int16)))
-        nodes.append(self.Pick_Turn)
-        values.append(ua.DataValue(ua.Variant(0, ua.VariantType.Int16)))
+        pick_E6POS = opcua.ua.E6POS()
+        pick_E6POS.X = x + x_offset
+        pick_E6POS.Y = y
+        pick_E6POS.Z = z
+        pick_E6POS.A = a
+        pick_E6POS.B = b
+        pick_E6POS.C = c
+        pick_E6POS.Status = 2
+        pick_E6POS.Turn = 0
+        values.append(opcua.ua.DataValue(pick_E6POS))
+        nodes.append(self.Pos_Pick)
 
-        nodes.append(self.PostPick_X)
-        values.append(ua.DataValue(ua.Variant(x + 1.5 * x_offset, ua.VariantType.Float)))
-        nodes.append(self.PostPick_Y)
-        values.append(ua.DataValue(ua.Variant(y, ua.VariantType.Float)))
-        nodes.append(self.PostPick_Z)
-        values.append(ua.DataValue(ua.Variant(z + z_offset, ua.VariantType.Float)))
-        nodes.append(self.PostPick_A)
-        values.append(ua.DataValue(ua.Variant(a, ua.VariantType.Float)))
-        nodes.append(self.PostPick_B)
-        values.append(ua.DataValue(ua.Variant(b, ua.VariantType.Float)))
-        nodes.append(self.PostPick_C)
-        values.append(ua.DataValue(ua.Variant(c, ua.VariantType.Float)))
-        nodes.append(self.PostPick_Status)
-        values.append(ua.DataValue(ua.Variant(2, ua.VariantType.Int16)))
-        nodes.append(self.PostPick_Turn)
-        values.append(ua.DataValue(ua.Variant(0, ua.VariantType.Int16)))
+        postpick_E6POS = opcua.ua.E6POS()
+        postpick_E6POS.X = x + 1.5 * x_offset
+        postpick_E6POS.Y = y
+        postpick_E6POS.Z = z + z_offset
+        postpick_E6POS.A = a
+        postpick_E6POS.B = b
+        postpick_E6POS.C = c
+        postpick_E6POS.Status = 2
+        postpick_E6POS.Turn = 0
+        values.append(opcua.ua.DataValue(postpick_E6POS))
+        nodes.append(self.Pos_PostPick)
 
-        nodes.append(self.Place_X)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['x'], ua.VariantType.Float)))
-        nodes.append(self.Place_Y)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['y'], ua.VariantType.Float)))
-        nodes.append(self.Place_Z)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['z'], ua.VariantType.Float)))
-        nodes.append(self.Place_A)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['a'], ua.VariantType.Float)))
-        nodes.append(self.Place_B)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['b'], ua.VariantType.Float)))
-        nodes.append(self.Place_C)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['c'], ua.VariantType.Float)))
-        nodes.append(self.Place_Status)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['status'], ua.VariantType.Int16)))
-        nodes.append(self.Place_Turn)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['place_pos'][packet_type]['turn'], ua.VariantType.Int16)))
-        # fmt: on
+        place_E6POS = opcua.ua.E6POS()
+        place_E6POS.X = self.rob_dict["place_pos"][packet_type]["x"]
+        place_E6POS.Y = self.rob_dict["place_pos"][packet_type]["y"]
+        place_E6POS.Z = self.rob_dict["place_pos"][packet_type]["z"]
+        place_E6POS.A = self.rob_dict["place_pos"][packet_type]["a"]
+        place_E6POS.B = self.rob_dict["place_pos"][packet_type]["b"]
+        place_E6POS.C = self.rob_dict["place_pos"][packet_type]["c"]
+        place_E6POS.Status = self.rob_dict["place_pos"][packet_type]["status"]
+        place_E6POS.Turn = self.rob_dict["place_pos"][packet_type]["turn"]
+        values.append(opcua.ua.DataValue(place_E6POS))
+        nodes.append(self.Pos_Place)
 
         self.client.set_values(nodes, values)
 
@@ -256,29 +234,16 @@ class RobotControl(RobotCommunication):
         Set home position for short pick place to position in dictionary.
         """
 
-        nodes = []
-        values = []
-
-        # fmt: off
-        nodes.append(self.Start_X)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['x'], ua.VariantType.Float)))
-        nodes.append(self.Start_Y)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['y'], ua.VariantType.Float)))
-        nodes.append(self.Start_Z)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['z'], ua.VariantType.Float)))
-        nodes.append(self.Start_A)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['a'], ua.VariantType.Float)))
-        nodes.append(self.Start_B)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['b'], ua.VariantType.Float)))
-        nodes.append(self.Start_C)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['c'], ua.VariantType.Float)))
-        nodes.append(self.Start_Status)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['status'], ua.VariantType.Int16)))
-        nodes.append(self.Start_Turn)
-        values.append(ua.DataValue(ua.Variant(self.rob_dict['home_pos'][0]['turn'], ua.VariantType.Int16)))
-        # fmt: on
-
-        self.client.set_values(nodes, values)
+        start_E6POS = opcua.ua.E6POS()
+        start_E6POS.X = self.rob_dict["home_pos"][0]["x"]
+        start_E6POS.Y = self.rob_dict["home_pos"][0]["y"]
+        start_E6POS.Z = self.rob_dict["home_pos"][0]["z"]
+        start_E6POS.A = self.rob_dict["home_pos"][0]["a"]
+        start_E6POS.B = self.rob_dict["home_pos"][0]["b"]
+        start_E6POS.C = self.rob_dict["home_pos"][0]["c"]
+        start_E6POS.Status = self.rob_dict["home_pos"][0]["status"]
+        start_E6POS.Turn = self.rob_dict["home_pos"][0]["turn"]
+        self.Pos_Start.set_value(opcua.ua.DataValue(start_E6POS))
 
     def compute_gripper_rot(self, angle: float):
         """

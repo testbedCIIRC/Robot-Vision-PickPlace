@@ -1,10 +1,10 @@
-#fmt: off
+# fmt: off
 
 import time
 import random
 import asyncio
 
-numWrites = 1000
+numWrites = 1
 
 ######################################
 ## ASYNCUA, ONE NODE, WITH REGISTERING
@@ -127,31 +127,31 @@ client.connect()
 
 Start_Pos_X = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."X"')
 Start_Pos_Y = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."Y"')
-Start_Pos_Z = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."Z"')
-Start_Pos_A = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."A"')
-Start_Pos_B = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."B"')
-Start_Pos_C = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."C"')
-Start_Pos_Status = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."Status"')
-Start_Pos_Turn = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."Turn"')
+# Start_Pos_Z = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."Z"')
+# Start_Pos_A = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."A"')
+# Start_Pos_B = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."B"')
+# Start_Pos_C = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."C"')
+# Start_Pos_Status = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."Status"')
+# Start_Pos_Turn = client.get_node('ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."Turn"')
 
 Start_Pos_X = client.register_nodes([Start_Pos_X])[0]
 Start_Pos_Y = client.register_nodes([Start_Pos_Y])[0]
-Start_Pos_Z = client.register_nodes([Start_Pos_Z])[0]
-Start_Pos_A = client.register_nodes([Start_Pos_A])[0]
-Start_Pos_B = client.register_nodes([Start_Pos_B])[0]
-Start_Pos_C = client.register_nodes([Start_Pos_C])[0]
-Start_Pos_Status = client.register_nodes([Start_Pos_Status])[0]
-Start_Pos_Turn = client.register_nodes([Start_Pos_Turn])[0]
+# Start_Pos_Z = client.register_nodes([Start_Pos_Z])[0]
+# Start_Pos_A = client.register_nodes([Start_Pos_A])[0]
+# Start_Pos_B = client.register_nodes([Start_Pos_B])[0]
+# Start_Pos_C = client.register_nodes([Start_Pos_C])[0]
+# Start_Pos_Status = client.register_nodes([Start_Pos_Status])[0]
+# Start_Pos_Turn = client.register_nodes([Start_Pos_Turn])[0]
 
 nodes = []
 nodes.append(Start_Pos_X)
 nodes.append(Start_Pos_Y)
-nodes.append(Start_Pos_Z)
-nodes.append(Start_Pos_A)
-nodes.append(Start_Pos_B)
-nodes.append(Start_Pos_C)
-nodes.append(Start_Pos_Status)
-nodes.append(Start_Pos_Turn)
+# nodes.append(Start_Pos_Z)
+# nodes.append(Start_Pos_A)
+# nodes.append(Start_Pos_B)
+# nodes.append(Start_Pos_C)
+# nodes.append(Start_Pos_Status)
+# nodes.append(Start_Pos_Turn)
 
 start_time = time.time()
 
@@ -159,12 +159,12 @@ for _ in range(numWrites):
     values = []
     values.append(opcua.ua.DataValue(opcua.ua.Variant(round(random.random() * 100, 2), opcua.ua.VariantType.Float)))
     values.append(opcua.ua.DataValue(opcua.ua.Variant(round(random.random() * 100, 2), opcua.ua.VariantType.Float)))
-    values.append(opcua.ua.DataValue(opcua.ua.Variant(round(random.random() * 100, 2), opcua.ua.VariantType.Float)))
-    values.append(opcua.ua.DataValue(opcua.ua.Variant(round(random.random() * 100, 2), opcua.ua.VariantType.Float)))
-    values.append(opcua.ua.DataValue(opcua.ua.Variant(round(random.random() * 100, 2), opcua.ua.VariantType.Float)))
-    values.append(opcua.ua.DataValue(opcua.ua.Variant(round(random.random() * 100, 2), opcua.ua.VariantType.Float)))
-    values.append(opcua.ua.DataValue(opcua.ua.Variant(42, opcua.ua.VariantType.Int16)))
-    values.append(opcua.ua.DataValue(opcua.ua.Variant(2, opcua.ua.VariantType.Int16)))
+    # values.append(opcua.ua.DataValue(opcua.ua.Variant(round(random.random() * 100, 2), opcua.ua.VariantType.Float)))
+    # values.append(opcua.ua.DataValue(opcua.ua.Variant(round(random.random() * 100, 2), opcua.ua.VariantType.Float)))
+    # values.append(opcua.ua.DataValue(opcua.ua.Variant(round(random.random() * 100, 2), opcua.ua.VariantType.Float)))
+    # values.append(opcua.ua.DataValue(opcua.ua.Variant(round(random.random() * 100, 2), opcua.ua.VariantType.Float)))
+    # values.append(opcua.ua.DataValue(opcua.ua.Variant(42, opcua.ua.VariantType.Int16)))
+    # values.append(opcua.ua.DataValue(opcua.ua.Variant(2, opcua.ua.VariantType.Int16)))
     client.set_values(nodes, values)
 
 end_time = time.time()

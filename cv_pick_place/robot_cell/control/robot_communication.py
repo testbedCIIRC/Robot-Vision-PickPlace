@@ -5,7 +5,6 @@ import multiprocessing.managers
 
 import opcua
 
-
 class RobotCommunication:
     """
     Class for OPCUA communication with the PLC.
@@ -15,6 +14,7 @@ class RobotCommunication:
         """
         RobotCommunication object constructor.
         """
+
 
     def connect_OPCUA_server(self):
         """
@@ -26,6 +26,7 @@ class RobotCommunication:
         timeout = 4  # Every request expects answer in this time (in seconds)
         secure_channel_timeout = 300000  # Timeout for the secure channel (in milliseconds), it should be equal to the timeout set on the PLC
         session_timeout = 30000  # Timeout for the session (in milliseconds), it should be equal to the timeout set on the PLC
+        
         self.client = opcua.Client(
             "opc.tcp://user:" + str(password) + "@" + str(address) + "/",
             timeout,
@@ -33,6 +34,7 @@ class RobotCommunication:
         self.client.secure_channel_timeout = secure_channel_timeout
         self.client.session_timeout = session_timeout
         self.client.connect()
+        self.client.load_type_definitions()
         print("[INFO] OPCUA client connected to server at", str(address))
 
     def get_nodes(self):
@@ -67,97 +69,23 @@ class RobotCommunication:
         self.Encoder_Pos = self.client.get_node(
             'ns=3;s="Encoder_1".ActualPosition')
 
-        self.Start_X = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."X"')
-        self.Start_Y = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."Y"')
-        self.Start_Z = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."Z"')
-        self.Start_A = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."A"')
-        self.Start_B = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."B"')
-        self.Start_C = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."C"')
-        self.Start_Status = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."Status"')
-        self.Start_Turn = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"."Turn"')
-
-        self.PrePick_X = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PrePick"."X"')
-        self.PrePick_Y = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PrePick"."Y"')
-        self.PrePick_Z = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PrePick"."Z"')
-        self.PrePick_A = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PrePick"."A"')
-        self.PrePick_B = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PrePick"."B"')
-        self.PrePick_C = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PrePick"."C"')
-        self.PrePick_Status = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PrePick"."Status"')
-        self.PrePick_Turn = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PrePick"."Turn"')
-
-        self.Pick_X = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Pick"."X"')
-        self.Pick_Y = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Pick"."Y"')
-        self.Pick_Z = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Pick"."Z"')
-        self.Pick_A = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Pick"."A"')
-        self.Pick_B = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Pick"."B"')
-        self.Pick_C = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Pick"."C"')
-        self.Pick_Status = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Pick"."Status"')
-        self.Pick_Turn = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Pick"."Turn"')
-
-        self.PostPick_X = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PostPick"."X"')
-        self.PostPick_Y = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PostPick"."Y"')
-        self.PostPick_Z = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PostPick"."Z"')
-        self.PostPick_A = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PostPick"."A"')
-        self.PostPick_B = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PostPick"."B"')
-        self.PostPick_C = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PostPick"."C"')
-        self.PostPick_Status = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PostPick"."Status"')
-        self.PostPick_Turn = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PostPick"."Turn"')
-
-        self.Place_X = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Place"."X"')
-        self.Place_Y = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Place"."Y"')
-        self.Place_Z = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Place"."Z"')
-        self.Place_A = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Place"."A"')
-        self.Place_B = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Place"."B"')
-        self.Place_C = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Place"."C"')
-        self.Place_Status = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Place"."Status"')
-        self.Place_Turn = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Place"."Turn"')
+        self.Pos_Start = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"')
+        self.Pos_PrePick = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PrePick"')
+        self.Pos_Pick = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Pick"')
+        self.Pos_PostPick = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PostPick"')
+        self.Pos_Place = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Place"')
         # fmt: on
 
         # Register all nodes for faster read / write access.
         # The client.register_nodes() only takes a list of nodes as input, and returns list of
         # registered nodes as output, so single node is wrapped in a list and then received
         # as first element of a list.
-        for key, value in self.__dict__.items():
+        for _, value in self.__dict__.items():
             if type(value) == opcua.Node:
                 value = self.client.register_nodes([value])[0]
 
