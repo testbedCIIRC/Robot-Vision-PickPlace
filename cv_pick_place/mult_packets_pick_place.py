@@ -166,7 +166,7 @@ def draw_frame(
 
     # Show depth frame overlay
     if toggles_dict["show_depth_map"]:
-        image_frame = cv2.addWeighted(image_frame, 0.8, colorized_depth, 0.3, 0)
+        image_frame = cv2.addWeighted(image_frame, 0.8, colorized_depth, 0.8, 0)
 
     # Show FPS and robot position data
     if toggles_dict["show_frame_data"]:
