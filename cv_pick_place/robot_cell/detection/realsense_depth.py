@@ -1,6 +1,5 @@
 import json
 
-import cv2
 import numpy as np
 import pyrealsense2 as rs
 
@@ -130,7 +129,8 @@ class DepthCamera:
         self.hole_filling.set_option(rs.option.holes_fill, 2)
 
         # Create object for colorizing depth frames
-        self.clahe = cv2.createCLAHE(clipLimit=20.0, tileGridSize=(5, 5))
+        self.colorizer = rs.colorizer()
+        self.colorizer.set_option(rs.option.color_scheme, 0)
 
         # Start video stream
         self.profile = self.pipeline.start(self.config)
@@ -160,14 +160,9 @@ class DepthCamera:
         # Apply hole filling filter
         depth_frame = self.hole_filling.process(depth_frame)
 
+        colorized_depth_frame = np.asanyarray(self.colorizer.colorize(depth_frame).get_data())
         depth_frame = np.asanyarray(depth_frame.get_data())
         color_frame = np.asanyarray(color_frame.get_data())
-
-        # Colorize depth frame
-        colorized_depth_hist = self.clahe.apply(depth_frame.astype(np.uint8))
-        colorized_depth_frame = cv2.applyColorMap(
-            colorized_depth_hist, cv2.COLORMAP_JET
-        )
 
         return True, depth_frame, color_frame, colorized_depth_frame
 
