@@ -22,6 +22,8 @@ class RcCommand(Enum):
     START_PROGRAM = auto()
     CHANGE_TRAJECTORY = auto()
     SET_HOME_POS = auto()
+    TRACKING_TOGGLE = auto()
+    SET_TRACKING_POS = auto()
 
 
 class RcData:
@@ -281,6 +283,23 @@ class RobotControl(RobotCommunication):
             rot = 90 + angle
         return rot
 
+    def toggle_tracking(self, track: bool):
+        self.Tracking_Exec_Prog.set_value(opcua.ua.DataValue(track))
+        if self.verbose:
+            print("[INFO] Tracking program state is {}.".format(track))
+
+    def set_tracking_position(self, x, y, z):
+        track_E6POS = opcua.ua.E6POS()
+        track_E6POS.X = x
+        track_E6POS.Y = y
+        track_E6POS.Z = z
+        track_E6POS.A = 0.0
+        track_E6POS.B = 0.0
+        track_E6POS.C = 0.0
+        track_E6POS.Status = 0
+        track_E6POS.Turn = 0
+        self.Tracking_Pos_Track.set_value(opcua.ua.DataValue(track_E6POS))
+
     def control_server(self, pipe: multiprocessing.connection.PipeConnection):
         """
         Process to set values on PLC server.
@@ -343,6 +362,12 @@ class RobotControl(RobotCommunication):
 
                 elif command == RcCommand.SET_HOME_POS:
                     self.set_home_pos()
+
+                elif command == RcCommand.TRACKING_TOGGLE:
+                    self.toggle_tracking(data)
+
+                elif command == RcCommand.SET_TRACKING_POS:
+                    self.set_tracking_position(data["x"], data["y"], data["z"])
 
                 else:
                     print("[WARNING]: Wrong command send to control server")

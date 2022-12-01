@@ -138,7 +138,7 @@ class ItemTracker:
 
         # Check for items ready to be deregistered
         for tracked_item in self.tracked_item_list:
-            if tracked_item.disappeared > self.max_disappeared_frames:
+            if tracked_item.disappeared > self.max_disappeared_frames and self.max_disappeared_frames >= 1:
                 self.deregister_item(tracked_item.id)
 
     def track_items(self, detected_item_list: list[Packet]) -> list[Packet]:

@@ -7,6 +7,7 @@ from multiprocessing import Manager
 from multiprocessing import Pipe
 
 from mult_packets_pick_place import main_multi_packets
+from tracking_program import tracking_program
 from pick_place_static_conveyor import main_pick_place
 from robot_cell.control.robot_control import RobotControl
 from robot_cell.control.robot_communication import RobotCommunication
@@ -196,19 +197,14 @@ if __name__ == "__main__":
     # Create dictionary with program modes, functions and robot positions they use
     modes_dict = {
         "1": {
-            "help": "Object sorting with static conveyor",
-            "dict": robot_poses["pick_place_dict"],
-            "func": main_pick_place,
-        },
-        "2": {
             "help": "Object sorting with moving conveyor",
             "dict": robot_poses["short_pick_place_dict"],
             "func": main_multi_packets,
         },
-        "3": {
-            "help": "Loop with moving conveyor (TODO)",
-            "dict": robot_poses["short_pick_place_dict_loop"],
-            "func": main_multi_packets,
+        "2": {
+            "help": "Tracking packet with robot gripper",
+            "dict": robot_poses["short_pick_place_dict"],
+            "func": tracking_program,
         },
     }
 

@@ -45,19 +45,9 @@ class RobotCommunication:
         """
 
         # fmt: off
-        self.Start_Prog = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Control"."Start"')
-        self.Conti_Prog = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Control"."Continue"')
-        self.Prog_Done = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Status"."Done"')
-        self.Prog_Busy = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Status"."Busy"')
-        self.Prog_Interrupted = self.client.get_node(
-            'ns=3;s="Robot_Data"."Pick_Place"."Status"."Interrupted"')
+        # General
         self.Safe_Operational_Stop = self.client.get_node(
             'ns=3;s="Robot_Data"."Status"."Safe_Operational_Stop"')
-
         self.Conveyor_Left = self.client.get_node(
             'ns=3;s="Program_Data"."Conveyor_Left_Toggle"')
         self.Conveyor_Right = self.client.get_node(
@@ -69,6 +59,18 @@ class RobotCommunication:
         self.Encoder_Pos = self.client.get_node(
             'ns=3;s="Encoder_1".ActualPosition')
 
+        # Pick & Place Program
+        self.Start_Prog = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Control"."Start"')
+        self.Conti_Prog = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Control"."Continue"')
+        self.Prog_Done = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Status"."Done"')
+        self.Prog_Busy = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Status"."Busy"')
+        self.Prog_Interrupted = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Status"."Interrupted"')
+
         self.Pos_Start = self.client.get_node(
             'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"')
         self.Pos_PrePick = self.client.get_node(
@@ -79,6 +81,14 @@ class RobotCommunication:
             'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PostPick"')
         self.Pos_Place = self.client.get_node(
             'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Place"')
+
+        # Tracking Program
+        self.Tracking_Exec_Prog = self.client.get_node(
+            'ns=3;s="Robot_Data"."Tracking"."Control"."Execute"')
+        self.Tracking_Prog_Active = self.client.get_node(
+            'ns=3;s="Robot_Data"."Tracking"."Status"."Actuve"')
+        self.Tracking_Pos_Track = self.client.get_node(
+            'ns=3;s="Robot_Data"."Tracking"."Positions"."Track"')
         # fmt: on
 
         # Register all nodes for faster read / write access.
@@ -122,6 +132,7 @@ class RobotCommunication:
             self.Prog_Interrupted,
             self.Prog_Done,
             self.Safe_Operational_Stop,
+            self.Tracking_Prog_Active,
         ]
 
         while True:
@@ -142,6 +153,7 @@ class RobotCommunication:
                 manag_info_dict["prog_interrupted"] = val[8]
                 manag_info_dict["prog_done"] = val[9]
                 manag_info_dict["safe_operational_stop"] = val[10]
+                manag_info_dict["tracking_prog_active"] = val[11]
 
             except Exception as e:
                 print("[ERROR]", e)
