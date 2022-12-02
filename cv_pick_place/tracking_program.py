@@ -470,7 +470,7 @@ def tracking_program(
             tracked_packet.set_homography(homography)
             packet_pos_x = tracked_packet.get_centroid_in_mm().x
             packet_pos_y = tracked_packet.get_centroid_in_mm().y
-            packet_pos_z = 10.0
+            packet_pos_z = 100.0
             position_dict = {
                 "x": packet_pos_x,
                 "y": packet_pos_y,
@@ -478,7 +478,7 @@ def tracking_program(
             }
             control_pipe.send(RcData(RcCommand.SET_TRACKING_POS, position_dict))
 
-            if packet_pos_x < rob_config.max_pick_distance and packet_pos_x > rob_config.min_pick_distance:
+            if packet_pos_x < rob_config.max_pick_distance - 100 and packet_pos_x > rob_config.min_pick_distance + 100:
                 control_pipe.send(RcData(RcCommand.TRACKING_TOGGLE, True))
             else:
                 control_pipe.send(RcData(RcCommand.TRACKING_TOGGLE, False))
