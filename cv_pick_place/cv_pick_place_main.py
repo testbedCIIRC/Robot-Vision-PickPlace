@@ -8,101 +8,10 @@ from multiprocessing import Pipe
 
 from mult_packets_pick_place import main_multi_packets
 from tracking_program import tracking_program
-from pick_place_static_conveyor import main_pick_place
 from robot_cell.control.robot_control import RobotControl
 from robot_cell.control.robot_communication import RobotCommunication
 
 ROB_CONFIG_FILE = os.path.join("config", "robot_config.json")
-
-
-def program_mode(
-    rob_config: dict,
-    modes_dict: dict,
-    r_control: RobotControl,
-    r_comm_info: RobotCommunication,
-) -> None:
-    """
-    Program selection function.
-    Allows user to select a demo and starts appropriate functions.
-    At the end this function starts again, recursively.
-
-    Args:
-        rob_config (dict): Dictionary with parameters setting the behaviour of the cell.
-        modes_dict (dict): Dictionary with program modes, functions and robot positions they use.
-        r_control (RobotControl): RobotControl for controlling the robot cell with commands.
-        r_comm_info (RobotCommunication): RobotCommunication object for reading robot cell information.
-    """
-
-    # Read mode input
-    if rob_config.mode in modes_dict:
-        mode = rob_config.mode
-        rob_config.mode = "0"
-    else:
-        # Show message about robot programs
-        print("Select pick and place mode:")
-        for mode in modes_dict:
-            print(f"{mode} : {modes_dict[mode]['help']}")
-        print("e : Exit")
-        mode = input()
-
-    # If mode is a program key
-    if mode in modes_dict:
-        # Set robot positions and robot program
-        r_control.rob_dict = modes_dict[mode]["dict"]
-        robot_prog = modes_dict[mode]["func"]
-        print(f"[INFO] Starting mode {mode} ({modes_dict[mode]['help']})")
-
-        with Manager() as manager:
-            # Dictionary Manager for passing data between processes
-            manag_info_dict = manager.dict()
-
-            # Value Manager separate from dictionary for passing encoder value between processes
-            # Encoder value needs to be updated more often
-            manag_encoder_val = manager.Value("d", None)
-
-            # Pipe objects for passing commands from main to robot server
-            # One object goes into main, the other into the server
-            # Pipe is buffered, which makes it better than Manager in this case
-            pipe_main, pipe_server = Pipe()
-
-            # Create and start processes
-            main_proc = Process(
-                target=robot_prog,
-                args=(
-                    rob_config,
-                    r_control.rob_dict,
-                    manag_info_dict,
-                    manag_encoder_val,
-                    pipe_main,
-                ),
-            )
-            info_server_proc = Process(
-                target=r_comm_info.robot_server,
-                args=(manag_info_dict, manag_encoder_val),
-            )
-            control_server_proc = Process(
-                target=r_control.control_server,
-                args=(pipe_server,),
-            )
-
-            main_proc.start()
-            info_server_proc.start()
-            control_server_proc.start()
-
-            # Wait for the main process to end
-            main_proc.join()
-            info_server_proc.kill()
-            control_server_proc.kill()
-
-        if rob_config.auto_exit:
-            exit()
-
-    # If input is exit, exit python
-    elif mode == "e":
-        exit()
-
-    # Return function recursively
-    return program_mode(rob_config, modes_dict, r_control, r_comm_info)
 
 
 def bool_str(string: str) -> bool:
@@ -202,7 +111,7 @@ if __name__ == "__main__":
             "func": main_multi_packets,
         },
         "2": {
-            "help": "Tracking packet with robot gripper",
+            "help": "Tracking packet with robot gripper (Does not work)",
             "dict": robot_poses["short_pick_place_dict"],
             "func": tracking_program,
         },
@@ -213,4 +122,71 @@ if __name__ == "__main__":
     r_comm_info = RobotCommunication()
 
     # Start program mode selection
-    program_mode(rob_config, modes_dict, r_control, r_comm_info)
+    while True:
+        # Read mode input
+        if rob_config.mode in modes_dict:
+            mode = rob_config.mode
+            rob_config.mode = "0"
+        else:
+            # Show message about robot programs
+            print("Select pick and place mode:")
+            for mode in modes_dict:
+                print(f"{mode} : {modes_dict[mode]['help']}")
+            print("e : Exit")
+            mode = input()
+
+        # If mode is a program key
+        if mode in modes_dict:
+            # Set robot positions and robot program
+            r_control.rob_dict = modes_dict[mode]["dict"]
+            robot_prog = modes_dict[mode]["func"]
+            print(f"[INFO] Starting mode {mode} ({modes_dict[mode]['help']})")
+
+            with Manager() as manager:
+                # Dictionary Manager for passing data between processes
+                manag_info_dict = manager.dict()
+
+                # Value Manager separate from dictionary for passing encoder value between processes
+                # Encoder value needs to be updated more often
+                manag_encoder_val = manager.Value("d", None)
+
+                # Pipe objects for passing commands from main to robot server
+                # One object goes into main, the other into the server
+                # Pipe is buffered, which makes it better than Manager in this case
+                pipe_main, pipe_server = Pipe()
+
+                # Create and start processes
+                main_proc = Process(
+                    target=robot_prog,
+                    args=(
+                        rob_config,
+                        r_control.rob_dict,
+                        manag_info_dict,
+                        manag_encoder_val,
+                        pipe_main,
+                    ),
+                )
+                info_server_proc = Process(
+                    target=r_comm_info.robot_server,
+                    args=(manag_info_dict, manag_encoder_val),
+                )
+                control_server_proc = Process(
+                    target=r_control.control_server,
+                    args=(pipe_server,),
+                )
+
+                main_proc.start()
+                info_server_proc.start()
+                control_server_proc.start()
+
+                # Wait for the main process to end
+                main_proc.join()
+                info_server_proc.kill()
+                control_server_proc.kill()
+
+            if rob_config.auto_exit:
+                exit()
+
+        # If input is exit, exit python
+        elif mode == "e":
+            exit()

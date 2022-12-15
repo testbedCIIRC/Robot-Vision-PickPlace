@@ -530,7 +530,9 @@ def main_multi_packets(
             (frame_width, frame_height),
         )
 
-        # Keyboard inputs
+        # KEYBOARD INPUTS
+        #################
+
         key = cv2.waitKey(1)
         end_prog, toggles_dict = process_key_input(
             key, control_pipe, toggles_dict, is_rob_ready, tracker
