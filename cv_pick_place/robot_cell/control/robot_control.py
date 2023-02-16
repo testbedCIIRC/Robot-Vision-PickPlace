@@ -103,37 +103,35 @@ class RobotControl(RobotCommunication):
 
         self.client.disconnect()
 
-    def change_gripper_state(self, state: bool):
+    def change_gripper_state(self):
         """
         Switch gripper on/off.
-
-        Args:
-            state (bool): If the gripper should be turned on or off.
         """
 
-        self.Gripper_State.set_value(opcua.ua.DataValue(state))
+        self.Gripper_State.set_value(opcua.ua.DataValue(True))
+        self.Gripper_State.set_value(opcua.ua.DataValue(False))
         if self.verbose:
-            print("[INFO] Gripper state is {}.".format(state))
+            print("[INFO] Toggled gripper.")
 
-    def change_conveyor_right(self, conv_right: bool):
+    def change_conveyor_right(self):
         """
         Switch conveyor right direction on/off.
-
-        Args:
-            conv_right (bool): If the conveyor should be turned on or off in the right direction.
         """
 
-        self.Conveyor_Right.set_value(opcua.ua.DataValue(conv_right))
+        self.Conveyor_Right.set_value(opcua.ua.DataValue(True))
+        self.Conveyor_Right.set_value(opcua.ua.DataValue(False))
+        if self.verbose:
+            print("[INFO] Toggled conveyor belt.")
 
-    def change_conveyor_left(self, conv_left: bool):
+    def change_conveyor_left(self):
         """
         Switch conveyor left direction on/off.
-
-        Args:
-            conv_left (bool): If the conveyor should be turned on or off in the left direction.
         """
 
-        self.Conveyor_Left.set_value(opcua.ua.DataValue(conv_left))
+        self.Conveyor_Left.set_value(opcua.ua.DataValue(True))
+        self.Conveyor_Left.set_value(opcua.ua.DataValue(False))
+        if self.verbose:
+            print("[INFO] Toggled conveyor belt.")
 
     def set_trajectory(
         self,
@@ -329,13 +327,13 @@ class RobotControl(RobotCommunication):
                 data = input.data
 
                 if command == RcCommand.GRIPPER:
-                    self.change_gripper_state(data)
+                    self.change_gripper_state()
 
                 elif command == RcCommand.CONVEYOR_LEFT:
-                    self.change_conveyor_left(data)
+                    self.change_conveyor_left()
 
                 elif command == RcCommand.CONVEYOR_RIGHT:
-                    self.change_conveyor_right(data)
+                    self.change_conveyor_right()
 
                 elif command == RcCommand.CONTINUE_PROGRAM:
                     self.continue_program()

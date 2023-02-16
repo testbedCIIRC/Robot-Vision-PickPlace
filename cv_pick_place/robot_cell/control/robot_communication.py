@@ -49,11 +49,11 @@ class RobotCommunication:
         self.Safe_Operational_Stop = self.client.get_node(
             'ns=3;s="Robot_Data"."Status"."Safe_Operational_Stop"')
         self.Conveyor_Left = self.client.get_node(
-            'ns=3;s="Program_Data"."Conveyor_Left_Toggle"')
+            'ns=3;s="Program_Data"."OPCUA"."Conveyor_Left"')
         self.Conveyor_Right = self.client.get_node(
-            'ns=3;s="Program_Data"."Conveyor_Right_Toggle"')
+            'ns=3;s="Program_Data"."OPCUA"."Conveyor_Right"')
         self.Gripper_State = self.client.get_node(
-            'ns=3;s="Program_Data"."Gripper_Toggle"')
+            'ns=3;s="Program_Data"."OPCUA"."Gripper"')
         self.Encoder_Vel = self.client.get_node(
             'ns=3;s="Encoder_1".ActualVelocity')
         self.Encoder_Pos = self.client.get_node(

@@ -135,6 +135,17 @@ class DepthCamera:
         # Start video stream
         self.profile = self.pipeline.start(self.config)
 
+        # Code for getting camera intrinsic parameters
+        # self.stream_profile_color = self.profile.get_stream(rs.stream.color, 0)
+        # self.stream_profile_depth = self.profile.get_stream(rs.stream.depth, 0)
+        # self.video_stream_profile = self.stream_profile_color.as_video_stream_profile()
+        # ; = self.video_stream_profile.get_intrinsics()
+        # print("fx =", intrinsics.fx, "; fy =", intrinsics.fy)
+        # print("ppx =", intrinsics.ppx, "; ppy =", intrinsics.ppy)
+        # print("height =", intrinsics.height, "; width =", intrinsics.width)
+        # print("coeffs =", intrinsics.coeffs)
+        # print("model =", intrinsics.model)
+
     def get_frames(self) -> tuple[bool, np.ndarray, np.ndarray, np.ndarray]:
         """
         Reads and processes frames from connected camera.
@@ -160,7 +171,9 @@ class DepthCamera:
         # Apply hole filling filter
         depth_frame = self.hole_filling.process(depth_frame)
 
-        colorized_depth_frame = np.asanyarray(self.colorizer.colorize(depth_frame).get_data())
+        colorized_depth_frame = np.asanyarray(
+            self.colorizer.colorize(depth_frame).get_data()
+        )
         depth_frame = np.asanyarray(depth_frame.get_data())
         color_frame = np.asanyarray(color_frame.get_data())
 
