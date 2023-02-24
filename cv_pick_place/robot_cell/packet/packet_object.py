@@ -180,11 +180,12 @@ class Packet:
         Args:
             encoder_pos (float): Position of encoder.
         """
-        if not isinstance(encoder_position, float):
-            print(
-                f"[WARNING] Tried to set packet ENCODER_POSITION to {encoder_position} (Should be float)"
-            )
-            return
+        # TODO: Find out how to check check if something is number
+        # if not isinstance(encoder_position, float) or not isinstance(encoder_position, int):
+        #     print(
+        #         f"[WARNING] Tried to set packet ENCODER_POSITION to {encoder_position} (Should be float or int)"
+        #     )
+        #     return
 
         self.centroid_initial_px = self.centroid_px
         self.encoder_initial_position = encoder_position
@@ -388,7 +389,9 @@ class Packet:
         transformed_centroid = np.matmul(
             self.homography, np.array([self.centroid_px.x, self.centroid_px.y, 1])
         )
-        centroid_mm = self.PointTuple(transformed_centroid[0] * 10, transformed_centroid[1] * 10)
+        centroid_mm = self.PointTuple(
+            transformed_centroid[0] * 10, transformed_centroid[1] * 10
+        )
         return centroid_mm
 
     def getCentroidFromEncoder(self, encoder_position: float) -> tuple[float, float]:

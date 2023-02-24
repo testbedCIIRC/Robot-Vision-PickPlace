@@ -5,6 +5,7 @@ import multiprocessing.managers
 
 import opcua
 
+
 class RobotCommunication:
     """
     Class for OPCUA communication with the PLC.
@@ -15,27 +16,32 @@ class RobotCommunication:
         RobotCommunication object constructor.
         """
 
-
     def connect_OPCUA_server(self):
         """
         Connects OPCUA Client to Server on PLC.
 
         """
+        self.connected = False
         password = "CIIRC"
         address = "10.35.91.101:4840"
         timeout = 4  # Every request expects answer in this time (in seconds)
         secure_channel_timeout = 300000  # Timeout for the secure channel (in milliseconds), it should be equal to the timeout set on the PLC
         session_timeout = 30000  # Timeout for the session (in milliseconds), it should be equal to the timeout set on the PLC
-        
+
         self.client = opcua.Client(
             "opc.tcp://user:" + str(password) + "@" + str(address) + "/",
             timeout,
         )
         self.client.secure_channel_timeout = secure_channel_timeout
         self.client.session_timeout = session_timeout
-        self.client.connect()
-        self.client.load_type_definitions()
-        print("[INFO] OPCUA client connected to server at", str(address))
+        try:
+            self.connected = True
+            self.client.connect()
+            self.client.load_type_definitions()
+            print("[INFO] OPCUA client connected to server at", str(address))
+        except:
+            self.connected = False
+            print("[WARN] OPCUA client failed to connect")
 
     def get_nodes(self):
         """
@@ -116,6 +122,24 @@ class RobotCommunication:
 
         # Connect server and get nodes
         self.connect_OPCUA_server()
+
+        if not self.connected:
+            manag_encoder_val.value = 0.0
+            manag_info_dict["encoder_vel"] = 0.0
+            manag_info_dict["conveyor_left"] = False
+            manag_info_dict["conveyor_right"] = False
+            manag_info_dict["gripper_state"] = False
+            manag_info_dict["start_prog"] = False
+            manag_info_dict["conti_prog"] = False
+            manag_info_dict["prog_busy"] = False
+            manag_info_dict["prog_interrupted"] = False
+            manag_info_dict["prog_done"] = False
+            manag_info_dict["safe_operational_stop"] = False
+            manag_info_dict["tracking_prog_active"] = False
+            while True:
+                time.sleep(0.1)
+                pass
+
         self.get_nodes()
         time.sleep(0.5)
 

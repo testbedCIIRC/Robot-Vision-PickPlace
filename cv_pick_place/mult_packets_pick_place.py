@@ -492,7 +492,7 @@ def main_multi_packets(
         # Disable detection during safe operational stop
         # This is to allow packet placement in front of camera
         # without detection glitches from hand movement
-        if safe_operational_stop:
+        if safe_operational_stop and rob_config.safe_detection_stop:
             detected_packets = []
 
         registered_packets = packet_tracking(
@@ -511,7 +511,12 @@ def main_multi_packets(
         # Robot ready when programs are fully finished and it isn't moving
         is_rob_ready = not prog_busy
         state_machine.run(
-            homography, is_rob_ready, registered_packets, encoder_vel, prog_interrupted, safe_operational_stop
+            homography,
+            is_rob_ready,
+            registered_packets,
+            encoder_vel,
+            prog_interrupted,
+            safe_operational_stop,
         )
 
         # FRAME GRAPHICS

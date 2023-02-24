@@ -145,20 +145,23 @@ class RobotControl(RobotCommunication):
         z_offset: float,
         packet_type: int,
         previous_packet_type: int,
+        packet_angle: float,
     ):
         """
         Updates the trajectory points for the robot program.
 
         Args:
             x (float): The pick x coordinate of the packet.
-            x_offset (float): X offset between prepick and pick position.
             y (float): The pick y coordinate of the packet.
             z (float): Pick height.
+            a (float): Angle in degrees for the pick position.
+            b (float): Angle in degrees for the pick position.
+            c (float): Angle in degrees for the pick position.
+            x_offset (float): X offset between prepick and pick position.
             z_offset (float): Z height offset from pick height for all positions except for pick position.
-            a (float): Angle in degrees.
-            b (float): Angle in degrees.
-            c (float): Angle in degrees.
             packet_type (int): The detected packet class.
+            previous_packet_type (int): Packet class of the previous trajectory.
+            packet_angle (float): Detected angle of rotation of the packet in the RGB image frame.
         """
 
         nodes = []
@@ -219,7 +222,7 @@ class RobotControl(RobotCommunication):
         place_E6POS.X = self.rob_dict["place_pos"][packet_type]["x"]
         place_E6POS.Y = self.rob_dict["place_pos"][packet_type]["y"]
         place_E6POS.Z = self.rob_dict["place_pos"][packet_type]["z"]
-        place_E6POS.A = self.rob_dict["place_pos"][packet_type]["a"]
+        place_E6POS.A = packet_angle
         place_E6POS.B = self.rob_dict["place_pos"][packet_type]["b"]
         place_E6POS.C = self.rob_dict["place_pos"][packet_type]["c"]
         place_E6POS.Status = self.rob_dict["place_pos"][packet_type]["status"]
@@ -317,6 +320,13 @@ class RobotControl(RobotCommunication):
 
         # Connect server and get nodes
         self.connect_OPCUA_server()
+
+        if not self.connected:
+            while True:
+                input = pipe.recv()
+                time.sleep(0.1)
+                pass
+
         self.get_nodes()
         time.sleep(0.5)
 
@@ -356,6 +366,7 @@ class RobotControl(RobotCommunication):
                         data["z_offset"],
                         data["packet_type"],
                         data["previous_packet_type"],
+                        data["packet_angle"],
                     )
 
                 elif command == RcCommand.SET_HOME_POS:

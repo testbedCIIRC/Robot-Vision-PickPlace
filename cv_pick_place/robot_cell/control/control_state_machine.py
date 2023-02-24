@@ -257,6 +257,7 @@ class RobotStateMachine:
             "z_offset": self.constants["z_offset"],
             "packet_type": packet_type,
             "previous_packet_type": self.previous_packet_type,
+            "packet_angle": angle
         }
 
         return trajectory_dict

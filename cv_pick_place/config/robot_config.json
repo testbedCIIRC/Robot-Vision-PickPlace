@@ -35,6 +35,12 @@
         "default": true
     },
 
+    "safe_detection_stop": {
+        "help": "If True, the script will delete all detections if Operation Stop is enabled on the robot.",
+        "arg": "--safe-detection-stop",
+        "default": false
+    },
+
     "detector_type": {
         "help": "Selection of object detector. Valid values are 'NN1', 'NN2' and 'HSV'.",
         "arg": "--detector-type",
@@ -245,58 +251,10 @@
         "default": 544
     },
 
-    "nn2_visual_threshold": {
-        "help": "Detections with a score under this threshold will be removed when using the NN2 detector.",
-        "arg": "--nn2-visual-threshold",
-        "default": 0.8
-    },
-
-    "nn2_traditional_nms": {
-        "help": "Whether to use traditional nms when using the NN2 detector.",
-        "arg": "--nn2-traditional-nms",
-        "default": false
-    },
-
-    "nn2_hide_mask": {
-        "help": "Hide masks in results of the NN2 detector.",
-        "arg": "--nn2-hide-mask",
-        "default": true
-    },
-
-    "nn2_hide_bbox": {
-        "help": "Hide boxes in results of the NN2 detector.",
-        "arg": "--nn2-hide-box",
-        "default": false
-    },
-
-    "nn2_hide_score": {
-        "help": "Hide scores in results of the NN2 detector.",
-        "arg": "--nn2-hide-score",
-        "default": false
-    },
-
-    "nn2_cutout": {
-        "help": "Cut out each object and save when using the NN2 detector.",
-        "arg": "--nn2-cutout",
-        "default": false
-    },
-
-    "nn2_save_lincomb": {
-        "help": "Show the generating process of masks when using the NN2 detector.",
-        "arg": "--nn2-save-lincomb",
-        "default": false
-    },
-
-    "nn2_no_crop": {
-        "help": "Do not crop the output masks with the predicted bounding box when using the NN2 detector.",
-        "arg": "--nn2-no-crop",
-        "default": false
-    },
-
-    "nn2_real_time": {
-        "help": "Show the detection results real-timely when using the NN2 detector.",
-        "arg": "--nn2-real-time",
-        "default": true
+    "nn2_example_value": {
+        "help": "Example Value.",
+        "arg": "--nn2-example-value",
+        "default": 1
     },
 
     "hsv_ignore_vertical": {

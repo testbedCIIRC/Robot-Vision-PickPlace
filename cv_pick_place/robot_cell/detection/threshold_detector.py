@@ -87,6 +87,7 @@ class ThresholdDetector:
         centroid = (int(rectangle[0][0]), int(rectangle[0][1]))
         box = np.int0(cv2.boxPoints(rectangle))
         angle = int(rectangle[2])
+        angle = 90 if angle == 0 else angle
         x, y, w, h = cv2.boundingRect(contour)
 
         packet = Packet(
