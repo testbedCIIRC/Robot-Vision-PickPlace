@@ -51,7 +51,7 @@ def packet_tracking(
 
     # Update tracked packets from detected packets
     labeled_packets = tracker.track_items(detected_packets)
-    tracker.update_tracked_item_list(labeled_packets, homography, encoder_pos)
+    tracker.update_tracked_item_list(labeled_packets, encoder_pos)
 
     # Update depth frames of tracked packets
     for item in tracker.tracked_item_list:
@@ -82,8 +82,9 @@ def draw_frame(
     toggles_dict: dict,
     info_dict: dict,
     colorized_depth: np.ndarray,
-    start_time: float,
+    cycle_start_time: float,
     resolution: tuple[int, int],
+    homography_matrix: np.ndarray,
 ) -> None:
     """
     Draw information on image frame.
@@ -96,7 +97,7 @@ def draw_frame(
         toggles_dict (dict): Dictionary of variables toggling various drawing functions.
         info_dict (dict): Dictionary of variables containing information about the cell.
         colorized_depth (np.ndarray): Frame containing colorized depth values.
-        start_time (float): Start time of current frame. Should be measured at start of every while loop.
+        cycle_start_time (float): Start time of current frame. Should be measured at start of every while loop.
         frame_width (int): Width of the camera frame in pixels.
         frame_height (int): Height of the camera frame in pixels.
         resolution (tuple[int, int]): Resolution of the on screen window.
@@ -108,7 +109,7 @@ def draw_frame(
             # Draw centroid estimated with encoder position
             cv2.drawMarker(
                 image_frame,
-                packet.getCentroidFromEncoder(encoder_pos),
+                packet.get_centroid_from_encoder_in_px(encoder_pos),
                 (255, 255, 0),
                 cv2.MARKER_CROSS,
                 10,
@@ -117,7 +118,7 @@ def draw_frame(
 
             # cv2.circle(
             #     image_frame,
-            #     packet.getCentroidFromEncoder(encoder_pos),
+            #     packet.get_centroid_from_encoder_in_px(encoder_pos),
             #     cell_config.tracker_max_item_distance,
             #     (255, 255, 0),
             #     cv2.LINE_4,
@@ -171,7 +172,7 @@ def draw_frame(
     # Show FPS and robot position data
     if toggles_dict["show_frame_data"]:
         # Draw FPS to screen
-        text_fps = "FPS: {:.2f}".format(1.0 / (time.time() - start_time))
+        text_fps = "FPS: {:.2f}".format(1.0 / (time.time() - cycle_start_time))
         drawText(image_frame, text_fps, (10, int(35 * text_size)), text_size)
 
         # Draw OPCUA data to screen
@@ -357,7 +358,7 @@ def main_multi_packets(
         print("[INFO] NN1 detector started")
     elif rob_config.detector_type == "NN2":
         show_boot_screen("STARTING NEURAL NET...")
-        detector = None  # TODO Implement new deep detector
+        detector = None  # TODO: Implement new deep detector (init)
         print("[INFO] NN2 detector started")
     elif rob_config.detector_type == "HSV":
         detector = ThresholdDetector(
@@ -395,7 +396,7 @@ def main_multi_packets(
 
     while True:
         # Start timer for FPS estimation
-        start_time = time.time()
+        cycle_start_time = time.time()
 
         # READ DATA
         ###################
@@ -419,7 +420,13 @@ def main_multi_packets(
             continue
 
         # Get frames from camera
-        success, depth_frame, rgb_frame, colorized_depth = camera.get_frames()
+        (
+            success,
+            frame_timestamp,
+            depth_frame,
+            rgb_frame,
+            colorized_depth,
+        ) = camera.get_frames()
         if not success:
             continue
 
@@ -473,7 +480,7 @@ def main_multi_packets(
 
         # Detect packets using neural network
         elif rob_config.detector_type == "NN2":
-            # TODO Implement new deep detector
+            # TODO: Implement new deep detector (detection)
             detected_packets = []
 
         # Detect packets using HSV thresholding
@@ -492,7 +499,7 @@ def main_multi_packets(
         # Disable detection during safe operational stop
         # This is to allow packet placement in front of camera
         # without detection glitches from hand movement
-        if safe_operational_stop and rob_config.safe_detection_stop:
+        if safe_operational_stop and rob_config.detection_stop:
             detected_packets = []
 
         registered_packets = packet_tracking(
@@ -531,8 +538,9 @@ def main_multi_packets(
             toggles_dict,
             manag_info_dict,
             colorized_depth,
-            start_time,
+            cycle_start_time,
             (frame_width, frame_height),
+            homography,
         )
 
         # KEYBOARD INPUTS

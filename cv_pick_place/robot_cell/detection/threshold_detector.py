@@ -69,7 +69,10 @@ class ThresholdDetector:
         self.homography_determinant = np.linalg.det(homography_matrix[0:2, 0:2])
 
     def get_packet_from_contour(
-        self, contour: np.array, type: int, encoder_pos: float
+        self,
+        contour: np.array,
+        type: int,
+        encoder_pos: float,
     ) -> Packet:
         """
         Creates Packet object from a contour.
@@ -90,17 +93,12 @@ class ThresholdDetector:
         angle = 90 if angle == 0 else angle
         x, y, w, h = cv2.boundingRect(contour)
 
-        packet = Packet(
-            width=w,
-            height=h,
-            box=box,
-        )
-
+        packet = Packet()
         packet.set_type(type)
         packet.set_centroid(centroid[0], centroid[1])
-        packet.set_homography(self.homography_matrix)
+        packet.set_homography_matrix(self.homography_matrix)
         packet.set_base_encoder_position(encoder_pos)
-        packet.set_bounding_size(w, h, self.homography_matrix)
+        packet.set_bounding_size(w, h)
         packet.add_angle_to_average(angle)
 
         return packet
@@ -124,12 +122,12 @@ class ThresholdDetector:
         Returns:
             np.ndarray: Image frame with information drawn into it.
         """
-        if draw_box:
-
-            # Draw item contours
-            cv2.drawContours(
-                image_frame, [packet.box], -1, (0, 255, 0), 2, lineType=cv2.LINE_AA
-            )
+        # TODO: Redo box drawing to not depend on the "box" variable
+        # if draw_box:
+        #     # Draw item contours
+        #     cv2.drawContours(
+        #         image_frame, [packet.box], -1, (0, 255, 0), 2, lineType=cv2.LINE_AA
+        #     )
 
         # Draw centroid
         cv2.drawMarker(

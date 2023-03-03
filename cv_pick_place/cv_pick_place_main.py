@@ -7,7 +7,7 @@ from multiprocessing import Manager
 from multiprocessing import Pipe
 
 from mult_packets_pick_place import main_multi_packets
-from tracking_program import tracking_program
+# from tracking_program import tracking_program
 from robot_cell.control.robot_control import RobotControl
 from robot_cell.control.robot_communication import RobotCommunication
 
@@ -113,7 +113,7 @@ if __name__ == "__main__":
         "2": {
             "help": "Tracking packet with robot gripper (Does not work)",
             "dict": robot_poses["short_pick_place_dict"],
-            "func": tracking_program,
+            "func": None,
         },
     }
 

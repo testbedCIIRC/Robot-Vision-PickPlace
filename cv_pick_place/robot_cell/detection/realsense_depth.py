@@ -152,6 +152,7 @@ class DepthCamera:
 
         Returns:
             bool: True if frame was succesfully read
+            float: Time in milliseconds when the frame was captured
             np.ndarray: RGB frame
             np.ndarray: Depth frame
             np.ndarray: Colorized depth frame
@@ -164,6 +165,7 @@ class DepthCamera:
         # Extract RGB and depth frames from frameset
         depth_frame = frameset.get_depth_frame()
         color_frame = frameset.get_color_frame()
+        frame_timestamp = frameset.get_timestamp()
 
         if not depth_frame or not color_frame:
             return False, None, None, None
@@ -177,7 +179,7 @@ class DepthCamera:
         depth_frame = np.asanyarray(depth_frame.get_data())
         color_frame = np.asanyarray(color_frame.get_data())
 
-        return True, depth_frame, color_frame, colorized_depth_frame
+        return True, frame_timestamp, depth_frame, color_frame, colorized_depth_frame
 
     def release(self):
         """

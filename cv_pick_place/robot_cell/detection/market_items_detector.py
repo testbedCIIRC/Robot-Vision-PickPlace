@@ -327,17 +327,12 @@ class ItemsDetector:
                 angle = int(rectangle[2])
 
         cv2.polylines(img, [box], True, (255, 0, 0), 3)
-        item = Packet(
-            width=bbox["w"],
-            height=bbox["h"],
-            box=box,
-        )
+        item = Packet()
 
         item.set_type(self.detect_classes[type])
         item.set_centroid(centroid[0], centroid[1])
-        item.set_homography(self.homography_matrix)
         item.set_base_encoder_position(encoder_pos)
-        item.set_bounding_size(bbox["w"], bbox["h"], self.homography_matrix)
+        item.set_bounding_size(bbox["w"], bbox["h"])
         item.add_angle_to_average(angle)
 
         return item

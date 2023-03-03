@@ -17,12 +17,6 @@
         "default": "config/D435_camera_config.json"
     },
 
-    "path_camera_config_demos": {
-        "help": "Path to file containing camera configuration for demo functions.",
-        "arg": "--path-camera-config-demos",
-        "default": "config/D435_camera_config_demos.json"
-    },
-
     "mode": {
         "help": "Selection of default mode. '0' or undefined mode allows mode selection, '1', '2' and '3' start specified program immediately.",
         "arg": "--mode",
@@ -35,9 +29,9 @@
         "default": true
     },
 
-    "safe_detection_stop": {
-        "help": "If True, the script will delete all detections if Operation Stop is enabled on the robot.",
-        "arg": "--safe-detection-stop",
+    "detection_stop": {
+        "help": "If True, the script will delete all detections if Operational Stop is enabled in the PLC.",
+        "arg": "--detection-stop",
         "default": false
     },
 
@@ -56,7 +50,7 @@
     "homography_frame_count": {
         "help": "Number of frames between homography updates.",
         "arg": "--homography-frame-count",
-        "default": 500
+        "default": 100
     },
 
     "frame_limit": {

@@ -518,16 +518,11 @@ class PacketDetector:
                     (255, 255, 0),
                     2,
                 )
-                packet = Packet(
-                    width=w,
-                    height=h,
-                    box=box,
-                )
+                packet = Packet()
                 packet.set_type(int(detections["detection_classes"][i]))
                 packet.set_centroid(centroid[0], centroid[1])
-                packet.set_homography(self.homography_matrix)
                 packet.set_base_encoder_position(encoder_pos)
-                packet.set_bounding_size(int(w * width), int(h * height), homography)
+                packet.set_bounding_size(int(w * width), int(h * height))
                 packet.add_angle_to_average(angle)
                 if centroid[0] - w / 2 > guard and centroid[0] + w / 2 < (
                     width - guard

@@ -91,13 +91,10 @@ class RobotStateMachine:
                         packet.in_pick_list = True
                         self.pick_list.append(packet)
 
-    def _prep_pick_list(self, homography: np.ndarray) -> list[int]:
+    def _prep_pick_list(self) -> list[int]:
         """
         Prepare the list for choosing a packet by updating packet positions
         and removing packets which are too far.
-
-        Args:
-            homography (np.ndarray): Homography matrix.
 
         Returns:
             pick_list_positions (list[int]): List of current positions of packets.
@@ -110,9 +107,9 @@ class RobotStateMachine:
 
         # Update pick list to current positions
         for packet in self.pick_list:
-            x, y = packet.getCentroidFromEncoder(encoder_pos)
+            # TODO: Check why is this necessary
+            x, y = packet.get_centroid_from_encoder_in_px(encoder_pos)
             packet.set_centroid(x, y)
-            packet.set_homography(homography)
 
         # Get list of current world x coordinates
         pick_list_positions = np.array(
@@ -257,7 +254,7 @@ class RobotStateMachine:
             "z_offset": self.constants["z_offset"],
             "packet_type": packet_type,
             "previous_packet_type": self.previous_packet_type,
-            "packet_angle": angle
+            "packet_angle": angle,
         }
 
         return trajectory_dict
@@ -331,7 +328,7 @@ class RobotStateMachine:
 
         # Robot is ready to recieve commands
         if self.state == "READY" and is_rob_ready and homography is not None:
-            pick_list_positions = self._prep_pick_list(homography)
+            pick_list_positions = self._prep_pick_list()
             # Choose a item for picking
             if (
                 self.pick_list
@@ -364,9 +361,9 @@ class RobotStateMachine:
         if self.state == "WAIT_FOR_PACKET":
             encoder_pos = self.enc_pos.value
             # Check encoder and activate robot
-            x, y = self.packet_to_pick.getCentroidFromEncoder(encoder_pos)
+            # TODO: Use the new function get_centroid_from_encoder_in_mm() here
+            x, y = self.packet_to_pick.get_centroid_from_encoder_in_px(encoder_pos)
             self.packet_to_pick.set_centroid(x, y)
-            self.packet_to_pick.set_homography(homography)
             packet_pos_x = self.packet_to_pick.get_centroid_in_mm().x
             # If packet is too far abort and return to ready
             if (
@@ -389,11 +386,13 @@ class RobotStateMachine:
                 self.state = "PLACING"
                 if self.verbose:
                     print("[INFO]: State: PLACING")
-            
+
             if safe_operational_stop:
                 self.state = "READY"
                 if self.verbose:
-                    print("[ERROR]: Unable to start program in the PLC due to Operational Stop")
+                    print(
+                        "[WARNING]: Unable to start program in the PLC due to Operational Stop"
+                    )
 
         # Placing packet
         if self.state == "PLACING":
