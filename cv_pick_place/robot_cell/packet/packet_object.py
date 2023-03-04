@@ -354,6 +354,9 @@ class Packet:
         packet_y = centroid_robot_frame[1] * CM2MM
         return packet_x, packet_y
 
+    def get_angle(self) -> float:
+        return self.avg_angle_deg
+
     def get_width_in_px(self) -> int:
         return self.bounding_width_px
 

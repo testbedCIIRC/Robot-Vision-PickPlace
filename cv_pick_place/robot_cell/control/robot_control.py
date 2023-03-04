@@ -174,7 +174,7 @@ class RobotControl(RobotCommunication):
         start_E6POS.X = self.rob_dict["place_pos"][previous_packet_type]["x"]
         start_E6POS.Y = self.rob_dict["place_pos"][previous_packet_type]["y"] - 50
         start_E6POS.Z = self.rob_dict["place_pos"][previous_packet_type]["z"]
-        start_E6POS.A = self.rob_dict["place_pos"][previous_packet_type]["a"]
+        start_E6POS.A = a
         start_E6POS.B = self.rob_dict["place_pos"][previous_packet_type]["b"]
         start_E6POS.C = self.rob_dict["place_pos"][previous_packet_type]["c"]
         start_E6POS.Status = self.rob_dict["place_pos"][previous_packet_type]["status"]
@@ -222,7 +222,7 @@ class RobotControl(RobotCommunication):
         place_E6POS.X = self.rob_dict["place_pos"][packet_type]["x"]
         place_E6POS.Y = self.rob_dict["place_pos"][packet_type]["y"]
         place_E6POS.Z = self.rob_dict["place_pos"][packet_type]["z"]
-        place_E6POS.A = packet_angle
+        place_E6POS.A = (a + packet_angle) if packet_angle < 45 else packet_angle
         place_E6POS.B = self.rob_dict["place_pos"][packet_type]["b"]
         place_E6POS.C = self.rob_dict["place_pos"][packet_type]["c"]
         place_E6POS.Status = self.rob_dict["place_pos"][packet_type]["status"]

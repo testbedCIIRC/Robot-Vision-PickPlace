@@ -62,7 +62,7 @@
     "packet_depths": {
         "help": "List of minimal expected depth sizes in millimeters of each packet type. Index corresponds to type of packet.",
         "arg": "--packet-depths",
-        "default": [ 10.0, 3.0, 5.0, 5.0 ]
+        "default": [ 7.0, 3.0, 5.0, 5.0 ]
     },
 
     "min_pick_distance": {
@@ -86,19 +86,19 @@
     "x_pick_offset": {
         "help": "X offset between prepick and pick position.",
         "arg": "--x-pick-offset",
-        "default": 70
+        "default": 45
     },
 
     "grip_time_offset": {
         "help": "X offset from current packet position to prepick position.",
         "arg": "--grip-time-offset",
-        "default": 150
+        "default": 180
     },
 
     "pick_start_x_offset": {
         "help": "Offset between robot and packet for starting the pick move.",
         "arg": "--pick-start-x-offset",
-        "default": 15
+        "default": 25
     },
 
     "max_z": {

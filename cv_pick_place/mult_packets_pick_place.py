@@ -116,16 +116,8 @@ def draw_frame(
                 cv2.LINE_4,
             )
 
-            # cv2.circle(
-            #     image_frame,
-            #     packet.get_centroid_from_encoder_in_px(encoder_pos),
-            #     cell_config.tracker_max_item_distance,
-            #     (255, 255, 0),
-            #     cv2.LINE_4,
-            # )
-
             # Draw packet ID and type
-            text_id = "ID {}, Type {}".format(packet.id, packet.type)
+            text_id = f"ID {packet.id}, Type {packet.type}"
             drawText(
                 image_frame,
                 text_id,
@@ -134,25 +126,37 @@ def draw_frame(
             )
 
             # Draw packet centroid value in pixels
-            text_centroid = "X: {}, Y: {} (px)".format(
-                packet.centroid_px.x, packet.centroid_px.y
+            packet_centroid_px = packet.get_centroid_in_px()
+            text_centroid_px = (
+                f"X: {packet_centroid_px.x}, Y: {packet_centroid_px.y} (px)"
             )
             drawText(
                 image_frame,
-                text_centroid,
+                text_centroid_px,
                 (packet.centroid_px.x + 10, packet.centroid_px.y + int(45 * text_size)),
                 text_size,
             )
 
             # Draw packet centroid value in milimeters
-            centroid_mm = packet.get_centroid_in_mm()
-            text_centroid = "X: {:.2f}, Y: {:.2f} (mm)".format(
-                centroid_mm.x, centroid_mm.y
-            )
+            packet_centroid_mm = packet.get_centroid_in_mm()
+            text_centroid_mm = f"X: {round(packet_centroid_mm.x, 2)}, Y: {round(packet_centroid_mm.y, 2)} (mm)"
             drawText(
                 image_frame,
-                text_centroid,
+                text_centroid_mm,
                 (packet.centroid_px.x + 10, packet.centroid_px.y + int(80 * text_size)),
+                text_size,
+            )
+
+            # Draw packet angle
+            packet_angle = packet.get_angle()
+            text_angle = f"Angle: {round(packet_angle, 2)} (deg)"
+            drawText(
+                image_frame,
+                text_angle,
+                (
+                    packet.centroid_px.x + 10,
+                    packet.centroid_px.y + int(115 * text_size),
+                ),
                 text_size,
             )
 

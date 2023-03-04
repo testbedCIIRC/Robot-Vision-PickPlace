@@ -133,7 +133,14 @@ class GripPositionEstimation:
         Returns:
             o3d.geometry.PointCloud: Pointcloud.
         """
-
+        print("INTRINSICS")
+        print(
+            o3d.camera.PinholeCameraIntrinsic(
+                o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault
+            ).intrinsic_matrix
+        )
+        print("____")
+        print(o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault)
         depth = o3d.geometry.Image(np.ascontiguousarray(depth_frame).astype(np.uint16))
         pcd = o3d.geometry.PointCloud.create_from_depth_image(
             depth,
@@ -870,7 +877,7 @@ class GripPositionEstimation:
                 dx, dy, z = point_relative
                 shift_x, shift_y = -1 * dx * mm_width, -1 * dy * mm_height
                 # Changes the z value to be positive ,converts m to mm and shifts by the conv2cam_dist
-                pack_z = abs(-1.0 * M2MM * z + self.th_val * M2MM) - 5.0
+                pack_z = abs(-1.0 * M2MM * z + self.th_val * M2MM) - 8.0
                 pack_z = np.clip(pack_z, z_min, z_max)
                 roll, pitch, yaw = self._vectors2RPYrot(normal)
                 point_relative[0] += anchor[0]

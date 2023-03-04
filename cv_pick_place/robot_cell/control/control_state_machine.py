@@ -147,7 +147,12 @@ class RobotStateMachine:
         return offset_z
 
     def _draw_depth_map(
-        self, packet: Packet, depth: float, pick_point: tuple[float, float]
+        self,
+        packet: Packet,
+        depth: float,
+        pick_point: tuple[float, float],
+        shift_x,
+        shift_y,
     ) -> None:
         """
         Draw depth map, position and depth of the grip used for grip estimation.
@@ -167,8 +172,18 @@ class RobotStateMachine:
             pick_point = int(dx * img_width), int(dy * img_height)
 
             cv2.drawMarker(
+                image_frame,
+                (int((img_width // 2) + shift_x), int((img_height // 2) + shift_y)),
+                (0, 0, 0),
+                cv2.MARKER_CROSS,
+                10,
+                cv2.LINE_4,
+            )
+
+            cv2.drawMarker(
                 image_frame, pick_point, (0, 0, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4
             )
+
             # Draw packet depth value in milimeters
             text_centroid = "Z: {:.2f} (mm)".format(depth)
             drawText(
@@ -218,10 +233,15 @@ class RobotStateMachine:
         ) = self.gpe.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
         if shift_x is not None:
             print(
-                f"[INFO]: Estimated optimal point:\n\tx, y shifts: {shift_x:.2f}, {shift_y:.2f},\
-                    \n\tz position: {pick_pos_z:.2f}\n\tRPY angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}"
+                f"[INFO]: Estimated optimal point:\n\tZ position: {pick_pos_z:.2f}\n\tRPY angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}"
             )
-            pick_pos_y += shift_y
+            # NOTE: Pick position is always centroid for now, position estimation pick offsets are ignored
+            # print(
+            #     f"[INFO]: Estimated optimal point:\n\tx, y shifts: {shift_x:.2f}, {shift_y:.2f},\
+            #         \n\tz position: {pick_pos_z:.2f}\n\tRPY angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}"
+            # )
+            # pick_pos_x += shift_x
+            # pick_pos_y += shift_y
         else:
             # No pick position has been found, skip packet
             return None
@@ -241,7 +261,7 @@ class RobotStateMachine:
         if pick_pos_z < 5:
             pick_pos_z = 5
 
-        self._draw_depth_map(packet_to_pick, pick_pos_z, pick_point)
+        # self._draw_depth_map(packet_to_pick, pick_pos_z, pick_point, shift_x, shift_y)
         # Change end points of robot
         trajectory_dict = {
             "x": pick_pos_x,
