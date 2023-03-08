@@ -257,7 +257,7 @@ if __name__ == '__main__':
          for robot for optimal picking"""
         # TODO: Implement this transformation matrix in your code, give option to user if they want to use this
         # TODO: Homograpy or Extrinsic calibration
-        #
+
         # transformation_marker = np.eye(4)
         #
         # for (tag_corners, tag_id) in zip(corners, ids):
