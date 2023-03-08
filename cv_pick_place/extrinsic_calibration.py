@@ -197,7 +197,6 @@ if __name__ == '__main__':
     with open(rob_config.path_robot_positions) as file:
         robot_poses = json.load(file)
 
-
     # Program variables
     frame_count = 1  # Counter of frames for homography update
     text_size = 1
@@ -225,6 +224,9 @@ if __name__ == '__main__':
     dist = np.array(camera.intr.coeffs)
     print(K)
 
+    file_tran = f = open('extrinsic_matrix.json','r')
+    transformation_marker = np.array(json.load(file_tran))
+
     while True:
 
         # Get frames from camera
@@ -239,9 +241,6 @@ if __name__ == '__main__':
         # rgb_frame is used for detection, image_frame is used for graphics and displayed
         image_frame = rgb_frame.copy()
 
-        # HOMOGRAPHY UPDATE
-        ##################
-
         apriltag.detect_tags(rgb_frame)
         homography = apriltag.compute_homog()
 
@@ -252,11 +251,18 @@ if __name__ == '__main__':
             parameters=cv2.aruco.DetectorParameters_create(),
         )
 
-
-        transformation_marker = np.eye(4)
-
+        # Extrinsics calibration
+        """ Use this part to save the transformation matrix from convyor to the camera and use as you use homography,
+        use the function 'camera.pixel_to_3d_point(pixel)' to get 3d point along with height, use this height for z axis
+         for robot for optimal picking"""
+        # TODO: Implement this transformation matrix in your code, give option to user if they want to use this
+        # TODO: Homograpy or Extrinsic calibration
+        #
+        # transformation_marker = np.eye(4)
+        #
         # for (tag_corners, tag_id) in zip(corners, ids):
         #
+        #     # calibration repect to tag id 1 assumping its origin of convyor
         #     if tag_id == 1:
         #         # Get (x, y) corners of the tag
         #         corners = tag_corners.reshape((4, 2))
@@ -277,34 +283,35 @@ if __name__ == '__main__':
         #         rvec, tvec, markerPoints =cv2.aruco.estimatePoseSingleMarkers(tag_corners, 0.0325, K, dist)
         #         tdp_marker_center = camera.pixel_to_3d_point(marker_centroid, camera.get_raw_depth_frame())
         #
-        #         rotation_matrix, idk = cv2.Rodrigues(rvec)
-        #         angle_marker_w2c = rotation_angles(rotation_matrix, 'zyx')  # zxy
+        #         rotation_matrix, jacobian = cv2.Rodrigues(rvec)
+        #
+        #         # print angles to see the orientation of marker
+        #         # angle_marker_w2c = rotation_angles(rotation_matrix, 'zyx')  # zxy
         #         # print(angle_marker_w2c)
         #
         #         transformation_marker[:3, :3] = rotation_matrix
         #         transformation_marker[:3,3:] = tvec.reshape(3,1)
         #
-        #
+        #         # convert it from w2c to c2w transformation
         #         transformation_marker = np.linalg.inv(transformation_marker)
+        #
+        #         # project the centroid of marker to 3d space
         #         marker_point = camera.pixel_to_3d_point(marker_centroid, camera.get_raw_depth_frame())
+        #
+        #         # TO make sure they corresponds
         #         # print(marker_point)
         #         # print(tvec[0][0])
         #         file =  open('extrinsic_matrix.json', 'w')
         #         json.dump(transformation_marker.tolist(), file, indent=2)
         #         file.close()
-        #
-        #         # TODO: save this transformation matrix
 
+
+        file_tran = f = open('extrinsic_matrix.json','r')
+        transformation_marker = np.array(json.load(file_tran))
 
         image_frame = apriltag.draw_tags(image_frame)
         detector.set_homography(homography)
         image_frame, detected_packets, mask = detector.detect_packet_hsv(rgb_frame,0,True)
-
-
-
-        file_tran = f = open('extrinsic_matrix.json','r')
-
-        transformation_marker = np.array(json.load(file_tran))
 
 
         for packet in detected_packets:
