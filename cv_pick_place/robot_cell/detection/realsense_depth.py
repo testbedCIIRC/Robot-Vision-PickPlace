@@ -136,7 +136,7 @@ class DepthCamera:
         self.profile = self.pipeline.start(self.config)
 
         # Get intrinsic parameter
-        profile = self.profile.get_stream(rs.stream.depth)  # Fetch stream profile for depth stream
+        profile = self.profile.get_stream(rs.stream.color)  # Fetch stream profile for depth stream
         self.intr = profile.as_video_stream_profile().get_intrinsics()  # Downcast to video_stream_profile and fetch intrinsics
         # self.depth_scale = profile.get_device().first_depth_sensor().get_depth_scale()
 

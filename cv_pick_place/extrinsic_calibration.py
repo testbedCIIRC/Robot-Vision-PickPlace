@@ -255,47 +255,56 @@ if __name__ == '__main__':
 
         transformation_marker = np.eye(4)
 
-        for (tag_corners, tag_id) in zip(corners, ids):
+        # for (tag_corners, tag_id) in zip(corners, ids):
+        #
+        #     if tag_id == 1:
+        #         # Get (x, y) corners of the tag
+        #         corners = tag_corners.reshape((4, 2))
+        #         (top_left, top_right, bottom_right, bottom_left) = corners
+        #
+        #         top_left = (int(top_left[0]), int(top_left[1]))
+        #         top_right = (int(top_right[0]), int(top_right[1]))
+        #         bottom_right = (int(bottom_right[0]), int(bottom_right[1]))
+        #         bottom_left = (int(bottom_left[0]), int(bottom_left[1]))
+        #
+        #         # Compute centroid
+        #         cX = int((top_left[0] + bottom_right[0]) / 2.0)
+        #         cY = int((top_left[1] + bottom_right[1]) / 2.0)
+        #
+        #         cv2.circle(image_frame, (cX,cY), 10, (255, 0, 0), -1)
+        #
+        #         marker_centroid = [cX, cY]
+        #         rvec, tvec, markerPoints =cv2.aruco.estimatePoseSingleMarkers(tag_corners, 0.0325, K, dist)
+        #         tdp_marker_center = camera.pixel_to_3d_point(marker_centroid, camera.get_raw_depth_frame())
+        #
+        #         rotation_matrix, idk = cv2.Rodrigues(rvec)
+        #         angle_marker_w2c = rotation_angles(rotation_matrix, 'zyx')  # zxy
+        #         # print(angle_marker_w2c)
+        #
+        #         transformation_marker[:3, :3] = rotation_matrix
+        #         transformation_marker[:3,3:] = tvec.reshape(3,1)
+        #
+        #
+        #         transformation_marker = np.linalg.inv(transformation_marker)
+        #         marker_point = camera.pixel_to_3d_point(marker_centroid, camera.get_raw_depth_frame())
+        #         # print(marker_point)
+        #         # print(tvec[0][0])
+        #         file =  open('extrinsic_matrix.json', 'w')
+        #         json.dump(transformation_marker.tolist(), file, indent=2)
+        #         file.close()
+        #
+        #         # TODO: save this transformation matrix
 
-
-            if tag_id == 1:
-                # Get (x, y) corners of the tag
-                corners = tag_corners.reshape((4, 2))
-                (top_left, top_right, bottom_right, bottom_left) = corners
-
-                top_left = (int(top_left[0]), int(top_left[1]))
-                top_right = (int(top_right[0]), int(top_right[1]))
-                bottom_right = (int(bottom_right[0]), int(bottom_right[1]))
-                bottom_left = (int(bottom_left[0]), int(bottom_left[1]))
-
-                # Compute centroid
-                cX = int((top_left[0] + bottom_right[0]) / 2.0)
-                cY = int((top_left[1] + bottom_right[1]) / 2.0)
-
-                cv2.circle(image_frame, (cX,cY), 10, (255, 0, 0), -1)
-
-                # TODO : check why 3d points from depth camera and tvec doesnt corresponds
-                marker_centroid = [cX, cY]
-                rvec, tvec, markerPoints =cv2.aruco.estimatePoseSingleMarkers(tag_corners, 0.05, K, dist)
-                tdp_marker_center = camera.pixel_to_3d_point(marker_centroid, camera.get_raw_depth_frame())
-
-                rotation_matrix, idk = cv2.Rodrigues(rvec)
-                angle_marker_w2c = rotation_angles(rotation_matrix, 'zyx')  # zxy
-                # print(angle_marker_w2c)
-
-                transformation_marker[:3, :3] = rotation_matrix
-                transformation_marker[:3,3:] = tvec.reshape(3,1)
-                transformation_marker = np.linalg.inv(transformation_marker)
-
-                # marker_point = camera.pixel_to_3d_point(marker_centroid, camera.get_raw_depth_frame())
-                # print(marker_point, tvec)
-
-                # TODO: save this transformation matrix
 
         image_frame = apriltag.draw_tags(image_frame)
         detector.set_homography(homography)
         image_frame, detected_packets, mask = detector.detect_packet_hsv(rgb_frame,0,True)
 
+
+
+        file_tran = f = open('extrinsic_matrix.json','r')
+
+        transformation_marker = np.array(json.load(file_tran))
 
 
         for packet in detected_packets:
@@ -313,7 +322,6 @@ if __name__ == '__main__':
             pixel = [packet.centroid_px.x, packet.centroid_px.y]
             threed_point = np.array(camera.pixel_to_3d_point(pixel, camera.get_raw_depth_frame())).reshape(3, 1)
             threed_point = np.append(threed_point, 1)
-
 
             transformed_3d_point = np.matmul(transformation_marker, threed_point)
             print(transformed_3d_point * 1000)
