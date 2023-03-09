@@ -2,6 +2,7 @@ import json
 
 import numpy as np
 import pyrealsense2 as rs
+import scipy.ndimage as ndimg
 
 
 class IntelConfig:
@@ -115,6 +116,9 @@ class DepthCamera:
         self.pipeline = rs.pipeline()
         self.config = rs.config()
 
+        with open("extrinsic_matrix.json", "r") as f:
+            self.transformation_marker = np.array(json.load(f))
+
         # Setup RGB and Depth stream resolution, format and FPS
         # Maximal supported Depth stream resolution of D435 camera is 1280 x 720
         # Maximal supported RGB stream resolution of D435 camera is 1920 x 1080
@@ -136,10 +140,13 @@ class DepthCamera:
         self.profile = self.pipeline.start(self.config)
 
         # Get intrinsic parameter
-        profile = self.profile.get_stream(rs.stream.color)  # Fetch stream profile for depth stream
-        self.intr = profile.as_video_stream_profile().get_intrinsics()  # Downcast to video_stream_profile and fetch intrinsics
+        profile = self.profile.get_stream(
+            rs.stream.color
+        )  # Fetch stream profile for depth stream
+        self.intr = (
+            profile.as_video_stream_profile().get_intrinsics()
+        )  # Downcast to video_stream_profile and fetch intrinsics
         # self.depth_scale = profile.get_device().first_depth_sensor().get_depth_scale()
-
 
     def get_frames(self) -> tuple[bool, np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -190,7 +197,50 @@ class DepthCamera:
         coordinates_3d = [coordinates_3d[0], coordinates_3d[1], coordinates_3d[2]]
 
         return coordinates_3d
-    
+
+    def pixel_to_3d_conveyor_frame(self, pixel: tuple[int, int]):
+        depth_frame_raw = self.get_raw_depth_frame()
+
+        center_e = np.array(self.pixel_to_3d_point(pixel, depth_frame_raw)).reshape(
+            3, 1
+        )
+        center_p = np.append(center_e, 1)
+
+        resolution = (1920, 1080)  # TODO fill somehow
+        radius = 2
+
+        ones = np.ones(resolution)
+        ones[pixel.x, pixel.y] = 0
+        dsts = ndimg.distance_transform_edt(ones)
+        close_idx = np.nonzero(dsts <= radius)
+        pts = np.vstack(close_idx)
+        # print(pts.shape)
+
+        _, num_pts = pts.shape
+        pts_p = np.zeros((4, num_pts))
+
+        for i in range(num_pts):
+            pixel = pts[:, i]
+            pt_e = np.array(self.pixel_to_3d_point(pixel, depth_frame_raw)).reshape(
+                3, 1
+            )
+            pt_p = np.append(pt_e, 1)
+            pts_p[:, i] = pt_p
+
+        frame_pts_p = self.transformation_marker @ pts_p
+        x_avg = np.mean(frame_pts_p[0, :]) * 1000
+        y_avg = np.mean(frame_pts_p[1, :]) * 1000
+        depth_avg = np.mean(frame_pts_p[2, :]) * 1000
+
+        frame_point_p = self.transformation_marker @ center_p
+        frame_point_p = frame_point_p.flatten() * 1000  # m2mm
+
+        transformed_text = f"X: {frame_point_p[0]:.2f}, Y: {frame_point_p[1]:.2f},Z: {frame_point_p[2]:.2f} (mm)"
+        depth_text = f"AVG Centroid: X {x_avg:.2f}, Y: {y_avg:.2f} (mm)"
+        avg_pos = np.array([x_avg, y_avg])
+
+        return transformed_text, depth_text, avg_pos
+
     def release(self):
         """
         Disconnects the camera.

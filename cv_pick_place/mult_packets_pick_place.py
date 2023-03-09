@@ -8,7 +8,6 @@ import json
 # Third party libraries
 import cv2
 import numpy as np
-import scipy.ndimage as ndimg
 
 # Local
 from robot_cell.control.control_state_machine import RobotStateMachine
@@ -32,7 +31,6 @@ def packet_tracking(
     depth_frame: np.ndarray,
     frame_width: int,
     mask: np.ndarray,
-    homography: np.ndarray,
     encoder_pos: int,
 ) -> None:
     """
@@ -44,7 +42,6 @@ def packet_tracking(
         depth_frame (np.ndarray): Depth frame from camera.
         frame_width (int): Width of the camera frame in pixels.
         mask (np.ndarray): Binary mask of packet.
-        homography (np.ndarray): Homography matrix converting from pixels to centimeters.
         encoder_pos (float): Position of encoder.
 
     Returns:
@@ -86,8 +83,7 @@ def draw_frame(
     colorized_depth: np.ndarray,
     cycle_start_time: float,
     resolution: tuple[int, int],
-    homography_matrix: np.ndarray,
-) -> None:
+) -> np.ndarray:
     """
     Draw information on image frame.
 
@@ -103,8 +99,11 @@ def draw_frame(
         frame_width (int): Width of the camera frame in pixels.
         frame_height (int): Height of the camera frame in pixels.
         resolution (tuple[int, int]): Resolution of the on screen window.
+
+    Returns:
+        np.ndarray: Image frame with text and markers drawn in
     """
-    text2save = ""
+
     # Draw packet info
     for packet in registered_packets:
         if packet.disappeared == 0:
@@ -139,52 +138,9 @@ def draw_frame(
                 text_size,
             )
 
-            drawText(
-                image_frame,
-                packet.new_text,
-                (
-                    packet.centroid_px.x + 10,
-                    packet.centroid_px.y + int(-80 * text_size),
-                ),
-                text_size,
-            )
-
-            drawText(
-                image_frame,
-                packet.depth_text,
-                (
-                    packet.centroid_px.x + 10,
-                    packet.centroid_px.y + int(-45 * text_size),
-                ),
-                text_size,
-            )
-
             # Draw packet centroid value in milimeters
             packet_centroid_mm = packet.get_centroid_in_mm()
             text_centroid_mm = f"X: {round(packet_centroid_mm.x, 2)}, Y: {round(packet_centroid_mm.y, 2)} (mm)"
-
-            print(
-                f"Homography \tX:{round(packet_centroid_mm.x, 2)}, \tY: {round(packet_centroid_mm.y, 2)}"
-            )
-            packet_pos = np.array([packet_centroid_mm.x, packet_centroid_mm.y])
-            print(packet.avg_pos)
-            print(f"EXtrinsic \tX:{packet.avg_pos[0]}, Y:{packet.avg_pos[1]}")
-            dst = np.linalg.norm(packet.avg_pos - packet_pos)
-            print(f"L2 norm: {dst}")
-            text2save = (
-                "h_C_X: "
-                + str(packet_centroid_mm.x)
-                + "h_C_Y: "
-                + str(packet_centroid_mm.y)
-                + "GT_C_X: "
-                + str(packet.avg_pos[0])
-                + "GT_C_Y: "
-                + str(packet.avg_pos[1])
-                + "Norm: "
-                + str(dst)
-                + "\n"
-            )
-
             drawText(
                 image_frame,
                 text_centroid_mm,
@@ -233,7 +189,7 @@ def draw_frame(
     # Show frames on cv2 window
     cv2.imshow("Frame", image_frame)
 
-    return image_frame, text2save
+    return image_frame
 
 
 def process_key_input(
@@ -242,8 +198,6 @@ def process_key_input(
     toggles_dict: dict,
     is_rob_ready: bool,
     tracker: ItemTracker,
-    img_frame,
-    text2save,
 ) -> tuple[bool, dict]:
     """
     Process input from keyboard.
@@ -300,21 +254,9 @@ def process_key_input(
     if key == ord("c"):
         control_pipe.send(RcData(RcCommand.CONTINUE_PROGRAM))
 
-    # Stop program
-    if key == ord("s"):
-        control_pipe.send(RcData(RcCommand.STOP_PROGRAM))
-
     # Print info
     if key == ord("i"):
         print("[INFO]: Is robot ready = {}".format(is_rob_ready))
-
-    if key == ord("p"):
-        print("[INFO]: Saving the picture")
-        t = time.time()
-        new_line = text2save
-        cv2.imwrite(str(t) + ".jpg", img_frame)
-        with open("measurment.txt", "a") as f:
-            f.write(new_line)
 
     # Print info
     if key == ord("r"):
@@ -451,9 +393,7 @@ def main_multi_packets(
     frame_count = 1  # Counter of frames for homography update
     text_size = 1
     homography = None  # Homography matrix
-
-    with open("extrinsic_matrix.json", "r") as f:
-        transformation_marker = np.array(json.load(f))
+    key = 0  # Variable to store a keypress
 
     # Set home position from dictionary on startup
     control_pipe.send(RcData(RcCommand.SET_HOME_POS))
@@ -572,49 +512,104 @@ def main_multi_packets(
             depth_frame,
             frame_width,
             mask,
-            homography,
             encoder_pos,
         )
 
-        depth_frame_raw = camera.get_raw_depth_frame()
+        # depth_frame_raw = camera.get_raw_depth_frame()
+        # for packet in registered_packets:
+        #     center_px = [packet.centroid_px.x, packet.centroid_px.y]
+        #     center_e = np.array(
+        #         camera.pixel_to_3d_point(center_px, depth_frame_raw)
+        #     ).reshape(3, 1)
+        #     center_p = np.append(center_e, 1)
+
+        #     resolution = (1920, 1080)  # TODO fill somehow
+        #     ones = np.ones(resolution)
+        #     radius = 2
+        #     ones[packet.centroid_px.x, packet.centroid_px.y] = 0
+        #     dsts = ndimg.distance_transform_edt(ones)
+        #     close_idx = np.nonzero(dsts <= radius)
+        #     pts = np.vstack(close_idx)
+        #     # print(pts.shape)
+
+        #     _, num_pts = pts.shape
+        #     pts_p = np.zeros((4, num_pts))
+
+        #     for i in range(num_pts):
+        #         pixel = pts[:, i]
+        #         pt_e = np.array(
+        #             camera.pixel_to_3d_point(pixel, depth_frame_raw)
+        #         ).reshape(3, 1)
+        #         pt_p = np.append(pt_e, 1)
+        #         pts_p[:, i] = pt_p
+
+        #     frame_pts_p = transformation_marker @ pts_p
+        #     x_avg = np.mean(frame_pts_p[0, :]) * 1000
+        #     y_avg = np.mean(frame_pts_p[1, :]) * 1000
+        #     depth_avg = np.mean(frame_pts_p[2, :]) * 1000
+
+        #     frame_point_p = transformation_marker @ center_p
+        #     frame_point_p = frame_point_p.flatten() * 1000  # m2mm
+        #     transformed_text = f"X: {frame_point_p[0]:.2f}, Y: {frame_point_p[1]:.2f},Z: {frame_point_p[2]:.2f} (mm)"
+        #     packet.new_text = transformed_text
+        #     packet.depth_text = f"AVG Centroid: X {x_avg:.2f}, Y: {y_avg:.2f} (mm)"
+        #     packet.avg_pos = np.array([x_avg, y_avg])
+
         for packet in registered_packets:
-            center_px = [packet.centroid_px.x, packet.centroid_px.y]
-            center_e = np.array(
-                camera.pixel_to_3d_point(center_px, depth_frame_raw)
-            ).reshape(3, 1)
-            center_p = np.append(center_e, 1)
+            centroid_px = packet.get_centroid_in_px()
+            centroid_mm = packet.get_centroid_in_mm()
+            transformed_text, depth_text, avg_pos = camera.pixel_to_3d_conveyor_frame(
+                centroid_px
+            )
 
-            resolution = (1920, 1080)  # TODO fill somehow
-            ones = np.ones(resolution)
-            radius = 2
-            ones[packet.centroid_px.x, packet.centroid_px.y] = 0
-            dsts = ndimg.distance_transform_edt(ones)
-            close_idx = np.nonzero(dsts <= radius)
-            pts = np.vstack(close_idx)
-            # print(pts.shape)
+            print(
+                f"Homography \tX:{round(centroid_mm.x, 2)}, \tY: {round(centroid_mm.y, 2)}"
+            )
+            packet_pos = np.array([centroid_mm.x, centroid_mm.y])
+            dst = np.linalg.norm(avg_pos - packet_pos)
+            print(avg_pos)
+            print(f"EXtrinsic \tX:{avg_pos[0]}, Y:{avg_pos[1]}")
+            print(f"L2 norm: {dst}")
+            text2save = (
+                "h_C_X: "
+                + str(centroid_mm.x)
+                + "h_C_Y: "
+                + str(centroid_mm.y)
+                + "GT_C_X: "
+                + str(avg_pos[0])
+                + "GT_C_Y: "
+                + str(avg_pos[1])
+                + "Norm: "
+                + str(dst)
+                + "\n"
+            )
 
-            _, num_pts = pts.shape
-            pts_p = np.zeros((4, num_pts))
+            drawText(
+                image_frame,
+                transformed_text,
+                (
+                    centroid_px.x + 10,
+                    centroid_px.y + int(-80 * text_size),
+                ),
+                text_size,
+            )
 
-            for i in range(num_pts):
-                pixel = pts[:, i]
-                pt_e = np.array(
-                    camera.pixel_to_3d_point(pixel, depth_frame_raw)
-                ).reshape(3, 1)
-                pt_p = np.append(pt_e, 1)
-                pts_p[:, i] = pt_p
+            drawText(
+                image_frame,
+                depth_text,
+                (
+                    centroid_px.x + 10,
+                    centroid_px.y + int(-45 * text_size),
+                ),
+                text_size,
+            )
 
-            frame_pts_p = transformation_marker @ pts_p
-            x_avg = np.mean(frame_pts_p[0, :]) * 1000
-            y_avg = np.mean(frame_pts_p[1, :]) * 1000
-            depth_avg = np.mean(frame_pts_p[2, :]) * 1000
-
-            frame_point_p = transformation_marker @ center_p
-            frame_point_p = frame_point_p.flatten() * 1000  # m2mm
-            transformed_text = f"X: {frame_point_p[0]:.2f}, Y: {frame_point_p[1]:.2f},Z: {frame_point_p[2]:.2f} (mm)"
-            packet.new_text = transformed_text
-            packet.depth_text = f"AVG Centroid: X {x_avg:.2f}, Y: {y_avg:.2f} (mm)"
-            packet.avg_pos = np.array([x_avg, y_avg])
+            if key == ord("s"):
+                print("[INFO]: Saving the picture and data to file")
+                t = time.time()
+                cv2.imwrite(str(t) + ".jpg", img_frame)
+                with open("measurment.txt", "a") as f:
+                    f.write(text2save)
 
         # STATE MACHINE
         ###############
@@ -633,7 +628,7 @@ def main_multi_packets(
         # FRAME GRAPHICS
         ################
 
-        img_frame, text2save = draw_frame(
+        img_frame = draw_frame(
             rob_config,
             image_frame,
             registered_packets,
@@ -644,7 +639,6 @@ def main_multi_packets(
             colorized_depth,
             cycle_start_time,
             (frame_width, frame_height),
-            homography,
         )
 
         # KEYBOARD INPUTS
@@ -652,7 +646,11 @@ def main_multi_packets(
 
         key = cv2.waitKey(1)
         end_prog, toggles_dict = process_key_input(
-            key, control_pipe, toggles_dict, is_rob_ready, tracker, img_frame, text2save
+            key,
+            control_pipe,
+            toggles_dict,
+            is_rob_ready,
+            tracker,
         )
 
         # End main

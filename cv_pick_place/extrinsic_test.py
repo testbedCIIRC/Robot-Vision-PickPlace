@@ -263,58 +263,58 @@ if __name__ == "__main__":
         # TODO: Implement this transformation matrix in your code, give option to user if they want to use this
         # TODO: Homograpy or Extrinsic calibration
 
-        transformation_marker = np.eye(4)
+        # transformation_marker = np.eye(4)
 
-        for (tag_corners, tag_id) in zip(corners, ids):
+        # for (tag_corners, tag_id) in zip(corners, ids):
 
-            # calibration repect to tag id 1 assumping its origin of convyor
-            if tag_id == 1:
-                # Get (x, y) corners of the tag
-                corners = tag_corners.reshape((4, 2))
-                (top_left, top_right, bottom_right, bottom_left) = corners
+        #     # calibration repect to tag id 1 assumping its origin of convyor
+        #     if tag_id == 1:
+        #         # Get (x, y) corners of the tag
+        #         corners = tag_corners.reshape((4, 2))
+        #         (top_left, top_right, bottom_right, bottom_left) = corners
 
-                top_left = (int(top_left[0]), int(top_left[1]))
-                top_right = (int(top_right[0]), int(top_right[1]))
-                bottom_right = (int(bottom_right[0]), int(bottom_right[1]))
-                bottom_left = (int(bottom_left[0]), int(bottom_left[1]))
+        #         top_left = (int(top_left[0]), int(top_left[1]))
+        #         top_right = (int(top_right[0]), int(top_right[1]))
+        #         bottom_right = (int(bottom_right[0]), int(bottom_right[1]))
+        #         bottom_left = (int(bottom_left[0]), int(bottom_left[1]))
 
-                # Compute centroid
-                cX = int((top_left[0] + bottom_right[0]) / 2.0)
-                cY = int((top_left[1] + bottom_right[1]) / 2.0)
+        #         # Compute centroid
+        #         cX = int((top_left[0] + bottom_right[0]) / 2.0)
+        #         cY = int((top_left[1] + bottom_right[1]) / 2.0)
 
-                cv2.circle(image_frame, (cX, cY), 10, (255, 0, 0), -1)
+        #         cv2.circle(image_frame, (cX, cY), 10, (255, 0, 0), -1)
 
-                marker_centroid = [cX, cY]
-                rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(
-                    tag_corners, 0.0325, K, dist
-                )
-                tdp_marker_center = camera.pixel_to_3d_point(
-                    marker_centroid, camera.get_raw_depth_frame()
-                )
+        #         marker_centroid = [cX, cY]
+        #         rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(
+        #             tag_corners, 0.0325, K, dist
+        #         )
+        #         tdp_marker_center = camera.pixel_to_3d_point(
+        #             marker_centroid, camera.get_raw_depth_frame()
+        #         )
 
-                rotation_matrix, jacobian = cv2.Rodrigues(rvec)
+        #         rotation_matrix, jacobian = cv2.Rodrigues(rvec)
 
-                # print angles to see the orientation of marker
-                # angle_marker_w2c = rotation_angles(rotation_matrix, 'zyx')  # zxy
-                # print(angle_marker_w2c)
+        #         # print angles to see the orientation of marker
+        #         # angle_marker_w2c = rotation_angles(rotation_matrix, 'zyx')  # zxy
+        #         # print(angle_marker_w2c)
 
-                transformation_marker[:3, :3] = rotation_matrix
-                transformation_marker[:3, 3:] = tvec.reshape(3, 1)
+        #         transformation_marker[:3, :3] = rotation_matrix
+        #         transformation_marker[:3, 3:] = tvec.reshape(3, 1)
 
-                # convert it from w2c to c2w transformation
-                transformation_marker = np.linalg.inv(transformation_marker)
+        #         # convert it from w2c to c2w transformation
+        #         transformation_marker = np.linalg.inv(transformation_marker)
 
-                # project the centroid of marker to 3d space
-                marker_point = camera.pixel_to_3d_point(
-                    marker_centroid, camera.get_raw_depth_frame()
-                )
+        #         # project the centroid of marker to 3d space
+        #         marker_point = camera.pixel_to_3d_point(
+        #             marker_centroid, camera.get_raw_depth_frame()
+        #         )
 
-                # TO make sure they corresponds
-                # print(marker_point)
-                # print(tvec[0][0])
-                file = open("extrinsic_matrix.json", "w")
-                json.dump(transformation_marker.tolist(), file, indent=2)
-                file.close()
+        #         # TO make sure they corresponds
+        #         # print(marker_point)
+        #         # print(tvec[0][0])
+        #         # file = open("extrinsic_matrix.json", "w")
+        #         # json.dump(transformation_marker.tolist(), file, indent=2)
+        #         # file.close()
 
         file_tran = f = open("extrinsic_matrix.json", "r")
         transformation_marker = np.array(json.load(file_tran))
@@ -328,7 +328,7 @@ if __name__ == "__main__":
         for packet in detected_packets:
             # Draw packet centroid value in milimeters
             text_centroid = "X: {:.2f}, Y: {:.2f} (mm)".format(
-                packet.centroid_mm.x, packet.centroid_mm.y
+                packet.get_centroid_in_mm().x, packet.get_centroid_in_mm().y
             )
             drawText(
                 image_frame,
