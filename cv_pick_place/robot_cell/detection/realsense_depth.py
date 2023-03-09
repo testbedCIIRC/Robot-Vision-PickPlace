@@ -135,19 +135,11 @@ class DepthCamera:
         # Start video stream
         self.profile = self.pipeline.start(self.config)
 
-        profile = self.profile.get_stream(rs.stream.color)
-        self.intr = profile.as_video_stream_profile().get_intrinsics()
+        # Get intrinsic parameter
+        profile = self.profile.get_stream(rs.stream.color)  # Fetch stream profile for depth stream
+        self.intr = profile.as_video_stream_profile().get_intrinsics()  # Downcast to video_stream_profile and fetch intrinsics
+        # self.depth_scale = profile.get_device().first_depth_sensor().get_depth_scale()
 
-        # Code for getting camera intrinsic parameters
-        # self.stream_profile_color = self.profile.get_stream(rs.stream.color, 0)
-        # self.stream_profile_depth = self.profile.get_stream(rs.stream.depth, 0)
-        # self.video_stream_profile = self.stream_profile_color.as_video_stream_profile()
-        # ; = self.video_stream_profile.get_intrinsics()
-        # print("fx =", intrinsics.fx, "; fy =", intrinsics.fy)
-        # print("ppx =", intrinsics.ppx, "; ppy =", intrinsics.ppy)
-        # print("height =", intrinsics.height, "; width =", intrinsics.width)
-        # print("coeffs =", intrinsics.coeffs)
-        # print("model =", intrinsics.model)
 
     def get_frames(self) -> tuple[bool, np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -167,6 +159,7 @@ class DepthCamera:
 
         # Extract RGB and depth frames from frameset
         depth_frame = frameset.get_depth_frame()
+        depth_frame_raw = depth_frame
         color_frame = frameset.get_color_frame()
         frame_timestamp = frameset.get_timestamp()
 
