@@ -17,16 +17,22 @@
         "default": "config/D435_camera_config.json"
     },
 
-    "path_camera_config_demos": {
-        "help": "Path to file containing camera configuration for demo functions.",
-        "arg": "--path-camera-config-demos",
-        "default": "config/D435_camera_config_demos.json"
-    },
-
     "mode": {
         "help": "Selection of default mode. '0' or undefined mode allows mode selection, '1', '2' and '3' start specified program immediately.",
         "arg": "--mode",
-        "default": "2"
+        "default": "1"
+    },
+
+    "auto_exit": {
+        "help": "If True, the script exits after stopping the program. If False, mode selection appears after stopping the program.",
+        "arg": "--auto-exit",
+        "default": true
+    },
+
+    "detection_stop": {
+        "help": "If True, the script will delete all detections if Operational Stop is enabled in the PLC.",
+        "arg": "--detection-stop",
+        "default": false
     },
 
     "detector_type": {
@@ -44,7 +50,7 @@
     "homography_frame_count": {
         "help": "Number of frames between homography updates.",
         "arg": "--homography-frame-count",
-        "default": 500
+        "default": 100
     },
 
     "frame_limit": {
@@ -56,13 +62,13 @@
     "packet_depths": {
         "help": "List of minimal expected depth sizes in millimeters of each packet type. Index corresponds to type of packet.",
         "arg": "--packet-depths",
-        "default": [ 10.0, 3.0, 5.0, 5.0 ]
+        "default": [ 7.0, 3.0, 5.0, 5.0 ]
     },
 
     "min_pick_distance": {
         "help": "Minimal x position in millimeters for packet picking.",
         "arg": "--min-pick-distance",
-        "default": 600
+        "default": 800
     },
 
     "max_pick_distance": {
@@ -80,19 +86,19 @@
     "x_pick_offset": {
         "help": "X offset between prepick and pick position.",
         "arg": "--x-pick-offset",
-        "default": 70
+        "default": 45
     },
 
     "grip_time_offset": {
         "help": "X offset from current packet position to prepick position.",
         "arg": "--grip-time-offset",
-        "default": 350
+        "default": 180
     },
 
     "pick_start_x_offset": {
         "help": "Offset between robot and packet for starting the pick move.",
         "arg": "--pick-start-x-offset",
-        "default": 30
+        "default": 25
     },
 
     "max_z": {
@@ -239,58 +245,10 @@
         "default": 544
     },
 
-    "nn2_visual_threshold": {
-        "help": "Detections with a score under this threshold will be removed when using the NN2 detector.",
-        "arg": "--nn2-visual-threshold",
-        "default": 0.8
-    },
-
-    "nn2_traditional_nms": {
-        "help": "Whether to use traditional nms when using the NN2 detector.",
-        "arg": "--nn2-traditional-nms",
-        "default": false
-    },
-
-    "nn2_hide_mask": {
-        "help": "Hide masks in results of the NN2 detector.",
-        "arg": "--nn2-hide-mask",
-        "default": true
-    },
-
-    "nn2_hide_bbox": {
-        "help": "Hide boxes in results of the NN2 detector.",
-        "arg": "--nn2-hide-box",
-        "default": false
-    },
-
-    "nn2_hide_score": {
-        "help": "Hide scores in results of the NN2 detector.",
-        "arg": "--nn2-hide-score",
-        "default": false
-    },
-
-    "nn2_cutout": {
-        "help": "Cut out each object and save when using the NN2 detector.",
-        "arg": "--nn2-cutout",
-        "default": false
-    },
-
-    "nn2_save_lincomb": {
-        "help": "Show the generating process of masks when using the NN2 detector.",
-        "arg": "--nn2-save-lincomb",
-        "default": false
-    },
-
-    "nn2_no_crop": {
-        "help": "Do not crop the output masks with the predicted bounding box when using the NN2 detector.",
-        "arg": "--nn2-no-crop",
-        "default": false
-    },
-
-    "nn2_real_time": {
-        "help": "Show the detection results real-timely when using the NN2 detector.",
-        "arg": "--nn2-real-time",
-        "default": true
+    "nn2_example_value": {
+        "help": "Example Value.",
+        "arg": "--nn2-example-value",
+        "default": 1
     },
 
     "hsv_ignore_vertical": {

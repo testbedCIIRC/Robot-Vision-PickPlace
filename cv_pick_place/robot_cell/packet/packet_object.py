@@ -1,6 +1,9 @@
-from math import sqrt
 import numpy as np
+from math import sqrt
 from collections import namedtuple
+
+
+CM2MM = 10
 
 
 class Packet:
@@ -10,37 +13,13 @@ class Packet:
 
     def __init__(
         self,
-        box: np.ndarray = np.empty(()),
-        pack_type: int = None,
-        centroid: tuple[int, int] = (0, 0),
-        centroid_depth: int = 0,
-        angle: float = 0,
-        width: int = 0,
-        height: int = 0,
-        ymin: int = 0,
-        ymax: int = 0,
-        xmin: int = 0,
-        xmax: int = 0,
-        encoder_position: float = 0,
         crop_border_px: int = 50,
     ):
         """
         Packet object constructor.
 
         Args:
-            box (np.ndarray): Packet bounding box.
-            pack_type (bool): Class of detected packet.
-            centroid (tuple): Centroid of packet.
-            centroid_depth (int): Depth of centroid from depth frame.
-            angle (float): Angle of bounding box.
-            width (int): Width of bounding box.
-            height (int): Height of bounding box.
-            ymin (int):
-            ymax (int):
-            xmin (int):
-            xmax (int):
-            encoder_position (float): Position of encoder.
-            crop_border_px (int): Border around the packet that is included in the depth crop.
+            crop_border_px (int): Size of the border in pixels around the packet that is included in the depth crop.
         """
 
         # NAMED TUPLES
@@ -51,27 +30,34 @@ class Packet:
         #######################
         # ID of the packet for tracking between frames
         self.id = None
+
         # Type of the packet
         self.type = None
 
-        # X Y centroid value in frame pixels
-        # X increases from left to right
-        # Y increases from top to bottom
+        # X Y centroid value in frame pixels,
+        # of the position where the packet last last detected by the camera.
+        # X increases from left to right.
+        # Y increases from top to bottom.
         self.centroid_px = None
-        # X Y centroid value in milimeters
-        # Depends on detected apriltags and computed homography
-        self.centroid_mm = None
 
         # Width of horizontally aligned bounding box in pixels
-        self.width_bnd_px = None
-        # Width of horizontally aligned bounding box in milimeters
-        self.width_bnd_mm = None
+        self.bounding_width_px = None
         # Height of horizontally aligned bounding box in pixels
-        self.height_bnd_px = None
-        # Height of horizontally aligned bounding box in milimeters
-        self.height_bnd_mm = None
+        self.bounding_height_px = None
+
+        # A 3x3 homography matrix, which corresponds to the transformation
+        # from the pixels coordinates of the image frame where the packet was detected
+        # into real-world coordinates
+        self.homography_matrix = None
+
+        # Time in milliseconds, when the packet data was last updated
+        # It should correspond with the data capture timestamp,
+        # that is the time when the data used for packet parameters was captured.
+        # TODO: Implement packet timestamps
+        self.timestamp_ms = None
 
         # Binary mask for the depth detection
+        # TODO: Find out how mask is used
         self.mask = None
 
         # Ammount of extra pixels around each depth crop
@@ -81,175 +67,112 @@ class Packet:
         # Numpy array with average depth value for the packet
         self.avg_depth_crop = None
 
+        # The angle gives the rotation of packet contours from horizontal line in the frame
         # Number of averaged angles
         self.num_avg_angles = 0
         # Number with average angle of the packet
-        # The angle gives the rotation of packet contours from horizontal line in the frame
         self.avg_angle_deg = None
 
-        # First detected position of packet centroid in pixels
-        self.centroid_initial_px = None
-        # First detected position of encoder in pixels
-        self.encoder_initial_position = None
-        # Number of frames item has been tracked
+        # Last detected position of packet centroid in pixels
+        self.centroid_base_px = None
+
+        # Last detected position of encoder in pixels
+        self.encoder_base_position = None
+
+        # Number of frames the packet has been tracked for
         self.track_frame = 0
 
+        # Indicates if the packet is marked to be the next packet to be sorted
         self.in_pick_list = False
+
+        # Number of frames the packet has disappeared for
+        # TODO: Find out how "disappeared" counter is used
+        self.disappeared = 0
 
         # OBSOLETE PACKET PARAMETERS
         ############################
-        # Tuple of 2 numbers describing center of the packet
-        self.centroid = centroid
-
-        # List of angles for averaging
-        self.angles = [angle]
-        self.angle = angle
 
         # Width and height of packet bounding box
-        self.width = width
-        self.height = height
+        self.width = 0
+        self.height = 0
 
-        self.yminbbx = ymin
-        self.ymaxbbx = ymax
-        self.xminbbx = xmin
-        self.xmaxbbx = xmax
-
-        # Numpy array of cropped depth maps
-        self.depth_maps = np.empty(())
-        self.color_frames = np.empty(())
-
-        # Number of frames the packet has disappeared for
-        self.disappeared = 0
-
-        self.time_of_disappearance = None
-
-        self.box = box
-
-        self.pack_type = pack_type
-
-        # Encoder data
-        self.starting_encoder_position = encoder_position
-
-        # Used for offsetting centroid position calculated using encoder
-        self.first_centroid_position = centroid
-
-    def set_id(self, id: int) -> None:
+    def set_id(self, packet_id: int) -> None:
         """
         Sets packet ID.
 
         Args:
-            id (int): Unique integer greater then or equal to 0.
+            packet_id (int): Unique integer greater then or equal to 0.
         """
 
-        if not isinstance(id, int):
+        if packet_id < 0:
             print(
-                "[WARNING] Tried to set packet ID to {} (Should be integer)".format(id)
+                f"[WARNING] Tried to set packet ID to {packet_id} (Should be greater than or equal to 0)"
             )
             return
 
-        if id < 0:
-            print(
-                "[WARNING] Tried to set packet ID to {} (Should be greater than or equal to 0)".format(
-                    id
-                )
-            )
-            return
+        self.id = packet_id
 
-        self.id = id
-
-    def set_type(self, type: int) -> None:
+    def set_type(self, packet_type: int) -> None:
         """
         Sets packet type.
 
         Args:
-            type (int): Integer representing type of the packet.
+            packet_type (int): Integer representing type of the packet.
         """
 
-        # Check input validity
-        if not isinstance(type, int):
-            print(
-                "[WARNING] Tried to set packet TYPE to {} (Should be integer)".format(
-                    type
-                )
-            )
-            return
+        self.type = packet_type
 
-        # Set parameter
-        self.type = type
-
-        # OBSOLETE PARAM
-        self.pack_type = type
-
-    def set_centroid(
-        self, x: int, y: int, homography: np.ndarray = None, encoder_pos: int = None
-    ) -> None:
+    def set_centroid(self, x: int, y: int) -> None:
         """
         Sets packet centroid.
 
         Args:
             x (int): X coordinate of centroid in pixels.
-            x (int): Y coordinate of centroid in pixels.
-            homography (np.ndarray): Homography matrix converting from pixels to centimeters.
+            y (int): Y coordinate of centroid in pixels.
+        """
+
+        self.centroid_px = self.PointTuple(x, y)
+
+    def set_homography_matrix(self, homography_matrix: np.ndarray) -> None:
+        """
+        Sets a homography matrix corresponding to the transformation between pixels and centimeters.
+
+        Args:
+            homography_matrix (np.ndarray): 3x3 homography matrix.
+        """
+
+        self.homography_matrix = homography_matrix
+
+    def set_base_encoder_position(self, encoder_position: float) -> None:
+        """
+        Sets packet base encoder position and associated centroid position.
+
+        Args:
             encoder_pos (float): Position of encoder.
         """
 
-        # Check input validity
-        if not isinstance(x, int) or not isinstance(y, int):
-            print(
-                "[WARNING] Tried to set packet CENTROID to ({}, {}) (Should be integers)".format(
-                    x, y
-                )
-            )
-            return
+        self.centroid_base_px = self.centroid_px
+        self.encoder_base_position = encoder_position
 
-        # Set parameter
-        self.centroid_px = self.PointTuple(x, y)
+    def update_timestamp(self, timestamp: float) -> None:
+        """
+        Updates packet timestamp variable.
+        The time should correspond to the time when the data used for packet parameter computation was captured.
 
-        # Set initial values if not set
-        if encoder_pos is not None:
-            self.centroid_initial_px = self.centroid_px
-            self.encoder_initial_position = encoder_pos
+        Args:
+            timestamp (float): Time in milliseconds.
+        """
 
-        # Compute parameter in world coordinates
-        if homography is not None:
-            if not isinstance(homography, np.ndarray):
-                print(
-                    "[WARNING] Tried to compute packet CENTROID with homography \n{} \n(Not a np.ndarray)".format(
-                        homography
-                    )
-                )
-                return
+        self.timestamp_ms = timestamp
 
-            transformed_centroid = np.matmul(homography, np.array([x, y, 1]))
-            self.centroid_mm = self.PointTuple(
-                transformed_centroid[0] * 10, transformed_centroid[1] * 10
-            )
-        else:
-            self.centroid_mm = self.PointTuple(None, None)
-
-        # OBSOLETE PARAM
-        self.centroid = (x, y)
-
-    def set_bounding_size(
-        self, width: int, height: int, homography: np.ndarray = None
-    ) -> None:
+    def set_bounding_size(self, width: int, height: int) -> None:
         """
         Sets width and height of packet bounding box.
 
         Args:
             width (int): Width of the packet in pixels.
             height (int): Height of the packet in pixels.
-            homography (np.ndarray): Homography matrix converting from pixels to centimeters.
         """
-
-        # Check input validity
-        if not isinstance(width, int) or not isinstance(height, int):
-            print(
-                "[WARNING] Tried to set packet WIDTH and HEIGHT to ({}, {}) (Should be integers)".format(
-                    width, height
-                )
-            )
-            return
 
         if width <= 0 or height <= 0:
             print(
@@ -259,31 +182,11 @@ class Packet:
             )
             return
 
-        # Set parameters
-        self.width_bnd_px = width
-        self.height_bnd_px = height
-
-        # Compute parameter in world coordinates
-        if homography is not None:
-            if not isinstance(homography, np.ndarray):
-                print(
-                    "[WARNING] Tried to compute packet WIDTH and HEIGHT with homography \n{} \n(Not a np.ndarray)".format(
-                        homography
-                    )
-                )
-                return
-
-            self.width_bnd_mm = (
-                width * sqrt(homography[0, 0] ** 2 + homography[1, 0] ** 2) * 10
-            )
-            self.height_bnd_mm = (
-                height * sqrt(homography[0, 1] ** 2 + homography[1, 1] ** 2) * 10
-            )
-        else:
-            self.width_bnd_mm = None
-            self.height_bnd_mm = None
+        self.bounding_width_px = width
+        self.bounding_height_px = height
 
         # OBSOLETE PARAMS
+        # TODO: Replace packet width and height with bounding_width_px and bounding_height_px
         self.width = width
         self.height = height
 
@@ -318,15 +221,6 @@ class Packet:
             angle (int | float): Angle of packet contours from horizontal line in the frame.
         """
 
-        # Check input validity
-        if not isinstance(angle, int) and not isinstance(angle, float):
-            print(
-                "[WARNING] Tried to add packet ANGLE with value {} (Should be float or integer)".format(
-                    angle
-                )
-            )
-            return
-
         if not -90 <= angle <= 90:
             print(
                 "[WARNING] Tried to add packet ANGLE with value {} (Should be between -90 and 90)".format(
@@ -353,16 +247,6 @@ class Packet:
             depth_crop (np.ndarray): Frame containing depth values, has to have same size as previous depth frames
         """
 
-        # Check input validity
-        if not isinstance(depth_crop, np.ndarray):
-            print(
-                "[WARNING] Tried to add packet CROP of type {} (Not a np.ndarray)".format(
-                    type(depth_crop)
-                )
-            )
-            return
-
-        # Update average
         if self.avg_depth_crop is None:
             self.avg_depth_crop = depth_crop
         else:
@@ -391,23 +275,25 @@ class Packet:
             np.ndarray: Numpy array containing the cropped packet.
         """
 
-        # Check input validity
-        if not isinstance(frame, np.ndarray):
-            print(
-                "[WARNING] Tried to crop frame of type {} (Not a np.ndarray)".format(
-                    type(frame)
-                )
-            )
-            return None
-
-        # Compute crop
         if self.num_avg_depths == 0:
             crop = frame[
-                int(self.centroid_px.y - self.height // 2 - self.crop_border_px) : int(
-                    self.centroid_px.y + self.height // 2 + self.crop_border_px
+                int(
+                    self.centroid_px.y
+                    - self.bounding_height_px // 2
+                    - self.crop_border_px
+                ) : int(
+                    self.centroid_px.y
+                    + self.bounding_height_px // 2
+                    + self.crop_border_px
                 ),
-                int(self.centroid_px.x - self.width // 2 - self.crop_border_px) : int(
-                    self.centroid_px.x + self.width // 2 + self.crop_border_px
+                int(
+                    self.centroid_px.x
+                    - self.bounding_width_px // 2
+                    - self.crop_border_px
+                ) : int(
+                    self.centroid_px.x
+                    + self.bounding_width_px // 2
+                    + self.crop_border_px
                 ),
             ]
         else:
@@ -422,45 +308,77 @@ class Packet:
 
         return crop
 
-    def getCentroidFromEncoder(self, encoder_position: float) -> tuple[float, float]:
-        """
-        Computes actual centroid of packet from the encoder data.
+    def get_centroid_in_px(self) -> tuple[int, int]:
+        return self.centroid_px
 
-        Args:
-            encoder_position (float): current encoder position.
+    def get_centroid_in_mm(self) -> tuple[float, float]:
+        # Transform centroid from pixels to centimeters using a homography matrix
+        centroid_cm = np.matmul(
+            self.homography_matrix,
+            np.array([self.centroid_px.x, self.centroid_px.y, 1]),
+        )
+        # Transform centroid from centimeters to millimeters
+        centroid_mm = self.PointTuple(centroid_cm[0] * CM2MM, centroid_cm[1] * CM2MM)
+        return centroid_mm
 
-        Returns:
-            tuple[float, float]: Updated x, y packet centroid.
-
-        """
+    def get_centroid_from_encoder_in_px(
+        self, encoder_position: float
+    ) -> tuple[int, int]:
+        # k is a constant for translating
+        # from distance in mm computed from encoder data
+        # into frame pixels for a specific resolution
         # k = 0.8299  # 640 x 480
         # k = 1.2365  # 1280 x 720
         k = 1.8672  # 1440 x 1080
         # k = 1.2365  # 1080 x 720
-        return (
+
+        centroid_encoder_px = self.PointTuple(
             int(
-                k * (encoder_position - self.encoder_initial_position)
-                + self.centroid_initial_px.x
+                k * (encoder_position - self.encoder_base_position)
+                + self.centroid_base_px.x
             ),
             self.centroid_px.y,
         )
 
-    # OBSOLETE
-    def getCentroidInWorldFrame(self, homography: np.ndarray) -> float:
-        """
-        Converts centroid from image coordinates to real world coordinates.
+        return centroid_encoder_px
 
-        Args:
-            homography (np.ndarray): homography matrix.
-
-        Returns:
-            float: Updated x, y packet centroid in world coordinates.
-        """
-
+    def get_centroid_from_encoder_in_mm(
+        self, encoder_position: float
+    ) -> tuple[float, float]:
         centroid_robot_frame = np.matmul(
-            homography, np.array([self.centroid[0], self.centroid[1], 1])
+            self.homography_matrix,
+            np.array([self.centroid_px.x, self.centroid_px.y, 1]),
         )
 
-        packet_x = centroid_robot_frame[0] * 10
-        packet_y = centroid_robot_frame[1] * 10
+        packet_x = centroid_robot_frame[0] * CM2MM
+        packet_y = centroid_robot_frame[1] * CM2MM
         return packet_x, packet_y
+
+    def get_angle(self) -> float:
+        return self.avg_angle_deg
+
+    def get_width_in_px(self) -> int:
+        return self.bounding_width_px
+
+    def get_height_in_px(self) -> int:
+        return self.bounding_height_px
+
+    def get_width_in_mm(self) -> float:
+        bounding_width_mm = (
+            self.bounding_width_px
+            * sqrt(
+                self.homography_matrix[0, 0] ** 2 + self.homography_matrix[1, 0] ** 2
+            )
+            * CM2MM
+        )
+        return bounding_width_mm
+
+    def get_height_in_mm(self) -> float:
+        bounding_height_mm = (
+            self.bounding_height_px
+            * sqrt(
+                self.homography_matrix[0, 1] ** 2 + self.homography_matrix[1, 1] ** 2
+            )
+            * CM2MM
+        )
+        return bounding_height_mm

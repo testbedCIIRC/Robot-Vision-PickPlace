@@ -80,11 +80,11 @@ class PacketTracker:
 
         # Get packet specific crop from frame
         crop = frame[
-            (packet.centroid[1] - int(packet.height / 2) - self.guard) : (
-                packet.centroid[1] + int(packet.height / 2) + self.guard
+            (packet.centroid_px.y - int(packet.height / 2) - self.guard) : (
+                packet.centroid_px.y + int(packet.height / 2) + self.guard
             ),
-            (packet.centroid[0] - int(packet.width / 2) - self.guard) : (
-                packet.centroid[0] + int(packet.width / 2) + self.guard
+            (packet.centroid_px.x - int(packet.width / 2) - self.guard) : (
+                packet.centroid_px.x + int(packet.width / 2) + self.guard
             ),
         ]
         crop = np.expand_dims(crop, axis=2)
@@ -136,9 +136,9 @@ class PacketTracker:
             # grab the set of object IDs and corresponding centroids
             objectIDs = list(self.packets.keys())
             objectCentroids = [
-                self.packets[key].centroid for key in list(self.packets.keys())
+                self.packets[key].centroid_px for key in list(self.packets.keys())
             ]
-            inputCentroids = [packet.centroid for packet in detected_packets]
+            inputCentroids = [packet.centroid_px for packet in detected_packets]
             # compute the distance between each pair of object
             # centroids and input centroids, respectively -- our
             # goal will be to match an input centroid to an existing
@@ -176,7 +176,7 @@ class PacketTracker:
                 # counter
                 objectID = objectIDs[row]
 
-                self.packets[objectID].centroid = detected_packets[col].centroid
+                self.packets[objectID].centroid_px = detected_packets[col].centroid
                 self.packets[objectID].angles.append(detected_packets[col].angles[0])
                 self.packets[objectID].disappeared = 0
 

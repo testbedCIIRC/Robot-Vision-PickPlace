@@ -69,7 +69,10 @@ class ThresholdDetector:
         self.homography_determinant = np.linalg.det(homography_matrix[0:2, 0:2])
 
     def get_packet_from_contour(
-        self, contour: np.array, type: int, encoder_pos: float
+        self,
+        contour: np.array,
+        type: int,
+        encoder_pos: float,
     ) -> Packet:
         """
         Creates Packet object from a contour.
@@ -87,27 +90,15 @@ class ThresholdDetector:
         centroid = (int(rectangle[0][0]), int(rectangle[0][1]))
         box = np.int0(cv2.boxPoints(rectangle))
         angle = int(rectangle[2])
+        angle = 90 if angle == 0 else angle
         x, y, w, h = cv2.boundingRect(contour)
 
-        packet = Packet(
-            box=box,
-            pack_type=type,
-            centroid=centroid,
-            angle=angle,
-            ymin=y,
-            ymax=y + w,
-            xmin=x,
-            xmax=x + h,
-            width=w,
-            height=h,
-            encoder_position=encoder_pos,
-        )
-
+        packet = Packet()
         packet.set_type(type)
-        packet.set_centroid(
-            centroid[0], centroid[1], self.homography_matrix, encoder_pos
-        )
-        packet.set_bounding_size(w, h, self.homography_matrix)
+        packet.set_centroid(centroid[0], centroid[1])
+        packet.set_homography_matrix(self.homography_matrix)
+        packet.set_base_encoder_position(encoder_pos)
+        packet.set_bounding_size(w, h)
         packet.add_angle_to_average(angle)
 
         return packet
@@ -131,31 +122,21 @@ class ThresholdDetector:
         Returns:
             np.ndarray: Image frame with information drawn into it.
         """
-        if draw_box:
-            # Draw bounding rectangle
-            cv2.rectangle(
-                image_frame,
-                (
-                    packet.centroid[0] - int(packet.width / 2),
-                    packet.centroid[1] - int(packet.height / 2),
-                ),
-                (
-                    packet.centroid[0] + int(packet.width / 2),
-                    packet.centroid[1] + int(packet.height / 2),
-                ),
-                (255, 0, 0),
-                2,
-                lineType=cv2.LINE_AA,
-            )
-
-            # Draw item contours
-            cv2.drawContours(
-                image_frame, [packet.box], -1, (0, 255, 0), 2, lineType=cv2.LINE_AA
-            )
+        # TODO: Redo box drawing to not depend on the "box" variable
+        # if draw_box:
+        #     # Draw item contours
+        #     cv2.drawContours(
+        #         image_frame, [packet.box], -1, (0, 255, 0), 2, lineType=cv2.LINE_AA
+        #     )
 
         # Draw centroid
         cv2.drawMarker(
-            image_frame, packet.centroid, (0, 0, 255), cv2.MARKER_CROSS, 20, cv2.LINE_4
+            image_frame,
+            packet.get_centroid_in_px(),
+            (0, 0, 255),
+            cv2.MARKER_CROSS,
+            20,
+            cv2.LINE_4,
         )
 
         return image_frame
@@ -219,11 +200,11 @@ class ThresholdDetector:
             area_cm2 = abs(cv2.contourArea(contour) * self.homography_determinant)
             object_type = 0
 
-            if 110 > area_cm2 > 90:
+            if 130 > area_cm2 > 70:
                 object_type = 1
-            elif 180 > area_cm2 > 160:
+            elif 200 > area_cm2 > 140:
                 object_type = 2
-            elif 380 > area_cm2 > 350:
+            elif 430 > area_cm2 > 300:
                 object_type = 0
             else:
                 continue
@@ -239,12 +220,10 @@ class ThresholdDetector:
                 continue
 
             # Check if packet is far enough from edge
-            if packet.centroid[
-                0
-            ] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[
-                0
-            ] + packet.width / 2 > (
-                frame_width - self.ignore_horizontal_px
+            if (
+                packet.centroid_px.x - packet.width / 2 < self.ignore_horizontal_px
+                or packet.centroid_px.x + packet.width / 2
+                > frame_width - self.ignore_horizontal_px
             ):
                 continue
 
@@ -260,7 +239,7 @@ class ThresholdDetector:
             area_cm2 = abs(cv2.contourArea(contour) * self.homography_determinant)
             object_type = 0
 
-            if 165 > area_cm2 > 145:
+            if 195 > area_cm2 > 115:
                 object_type = 3
             else:
                 continue
@@ -276,12 +255,10 @@ class ThresholdDetector:
                 continue
 
             # Check if packet is far enough from edge
-            if packet.centroid[
-                0
-            ] - packet.width / 2 < self.ignore_horizontal_px or packet.centroid[
-                0
-            ] + packet.width / 2 > (
-                frame_width - self.ignore_horizontal_px
+            if (
+                packet.centroid_px.x - packet.width / 2 < self.ignore_horizontal_px
+                or packet.centroid_px.x + packet.width / 2
+                > (frame_width - self.ignore_horizontal_px)
             ):
                 continue
 

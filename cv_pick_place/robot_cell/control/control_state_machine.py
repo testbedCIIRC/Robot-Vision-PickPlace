@@ -46,6 +46,7 @@ class RobotStateMachine:
         self.is_in_home_pos = False
         self.packet_to_pick = None
         self.trajectory_dict = {}
+        self.previous_packet_type = 0
 
         # Init variables from inputs
         self.cp = control_pipe
@@ -90,13 +91,10 @@ class RobotStateMachine:
                         packet.in_pick_list = True
                         self.pick_list.append(packet)
 
-    def _prep_pick_list(self, homography: np.ndarray) -> list[int]:
+    def _prep_pick_list(self) -> list[int]:
         """
         Prepare the list for choosing a packet by updating packet positions
         and removing packets which are too far.
-
-        Args:
-            homography (np.ndarray): Homography matrix.
 
         Returns:
             pick_list_positions (list[int]): List of current positions of packets.
@@ -109,12 +107,13 @@ class RobotStateMachine:
 
         # Update pick list to current positions
         for packet in self.pick_list:
-            x, y = packet.getCentroidFromEncoder(encoder_pos)
-            packet.set_centroid(x, y, homography)
+            # TODO: Check why is this necessary
+            x, y = packet.get_centroid_from_encoder_in_px(encoder_pos)
+            packet.set_centroid(x, y)
 
         # Get list of current world x coordinates
         pick_list_positions = np.array(
-            [packet.centroid_mm.x for packet in self.pick_list]
+            [packet.get_centroid_in_mm().x for packet in self.pick_list]
         )
 
         # If item is too far remove it from list
@@ -148,7 +147,12 @@ class RobotStateMachine:
         return offset_z
 
     def _draw_depth_map(
-        self, packet: Packet, depth: float, pick_point: tuple[float, float]
+        self,
+        packet: Packet,
+        depth: float,
+        pick_point: tuple[float, float],
+        shift_x,
+        shift_y,
     ) -> None:
         """
         Draw depth map, position and depth of the grip used for grip estimation.
@@ -168,8 +172,18 @@ class RobotStateMachine:
             pick_point = int(dx * img_width), int(dy * img_height)
 
             cv2.drawMarker(
+                image_frame,
+                (int((img_width // 2) + shift_x), int((img_height // 2) + shift_y)),
+                (0, 0, 0),
+                cv2.MARKER_CROSS,
+                10,
+                cv2.LINE_4,
+            )
+
+            cv2.drawMarker(
                 image_frame, pick_point, (0, 0, 0), cv2.MARKER_CROSS, 10, cv2.LINE_4
             )
+
             # Draw packet depth value in milimeters
             text_centroid = "Z: {:.2f} (mm)".format(depth)
             drawText(
@@ -193,7 +207,7 @@ class RobotStateMachine:
         """
 
         # Set positions and Start robot
-        packet_x, pick_pos_y = packet_to_pick.centroid_mm
+        packet_x, pick_pos_y = packet_to_pick.get_centroid_in_mm()
         pick_pos_x = packet_x + self.constants["grip_time_offset"]
 
         angle = packet_to_pick.avg_angle_deg
@@ -219,10 +233,15 @@ class RobotStateMachine:
         ) = self.gpe.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
         if shift_x is not None:
             print(
-                f"[INFO]: Estimated optimal point:\n\tx, y shifts: {shift_x:.2f}, {shift_y:.2f},\
-                    \n\tz position: {pick_pos_z:.2f}\n\tRPY angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}"
+                f"[INFO]: Estimated optimal point:\n\tZ position: {pick_pos_z:.2f}\n\tRPY angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}"
             )
-            pick_pos_y += shift_y
+            # NOTE: Pick position is always centroid for now, position estimation pick offsets are ignored
+            # print(
+            #     f"[INFO]: Estimated optimal point:\n\tx, y shifts: {shift_x:.2f}, {shift_y:.2f},\
+            #         \n\tz position: {pick_pos_z:.2f}\n\tRPY angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}"
+            # )
+            # pick_pos_x += shift_x
+            # pick_pos_y += shift_y
         else:
             # No pick position has been found, skip packet
             return None
@@ -242,20 +261,20 @@ class RobotStateMachine:
         if pick_pos_z < 5:
             pick_pos_z = 5
 
-        self._draw_depth_map(packet_to_pick, pick_pos_z, pick_point)
+        # self._draw_depth_map(packet_to_pick, pick_pos_z, pick_point, shift_x, shift_y)
         # Change end points of robot
         trajectory_dict = {
             "x": pick_pos_x,
             "y": pick_pos_y,
-            "rot": angle,
-            "packet_type": packet_type,
-            "x_offset": self.constants["x_pick_offset"],
-            "pack_z": pick_pos_z,
+            "z": pick_pos_z,
             "a": roll,
             "b": pitch,
             "c": yaw,
+            "x_offset": self.constants["x_pick_offset"],
             "z_offset": self.constants["z_offset"],
-            "shift_x": shift_x,
+            "packet_type": packet_type,
+            "previous_packet_type": self.previous_packet_type,
+            "packet_angle": angle,
         }
 
         return trajectory_dict
@@ -280,9 +299,10 @@ class RobotStateMachine:
         trajectory_dict = self._get_pick_positions(packet_to_pick)
         if trajectory_dict:
             # Set trajectory
-            self.cp.send(RcData(RcCommand.CHANGE_SHORT_TRAJECTORY, trajectory_dict))
+            self.cp.send(RcData(RcCommand.CHANGE_TRAJECTORY, trajectory_dict))
             # Start robot program
             self.cp.send(RcData(RcCommand.START_PROGRAM, True))
+            self.previous_packet_type = trajectory_dict["packet_type"]
 
         return packet_to_pick, trajectory_dict
 
@@ -308,7 +328,8 @@ class RobotStateMachine:
         is_rob_ready: bool,
         registered_packets: list[Packet],
         encoder_vel: float,
-        pos: np.ndarray,
+        robot_interrupted: bool,
+        safe_operational_stop: bool,
     ) -> str:
         """
         Run one iteration of the state machine.
@@ -318,7 +339,6 @@ class RobotStateMachine:
             is_rob_ready (bool): Indication if robot is ready to start.
             registered_packets (list[Packet]): List of tracked packet objects.
             encoder_vel (float): Encoder velocity.
-            pos (np.ndarray): Current robot position.
 
         Returns:
             state (str): Current state.
@@ -328,7 +348,7 @@ class RobotStateMachine:
 
         # Robot is ready to recieve commands
         if self.state == "READY" and is_rob_ready and homography is not None:
-            pick_list_positions = self._prep_pick_list(homography)
+            pick_list_positions = self._prep_pick_list()
             # Choose a item for picking
             if (
                 self.pick_list
@@ -339,70 +359,60 @@ class RobotStateMachine:
                     pick_list_positions
                 )
                 if self.trajectory_dict:
-                    # Save prepick position for use in TO_PREPICK state
+                    # Save prepick position for use in WAIT_FOR_PACKET state
                     self.prepick_xyz_coords = np.array(
                         [
                             self.trajectory_dict["x"],
                             self.trajectory_dict["y"],
-                            self.trajectory_dict["pack_z"] + self.constants["z_offset"],
+                            self.trajectory_dict["z"] + self.constants["z_offset"],
                         ]
                     )
-                    self.is_in_home_pos = False
-                    self.state = "TO_PREPICK"
+                    self.state = "WAIT_FOR_PACKET"
                     if self.verbose:
-                        print("[INFO]: State: TO_PREPICK")
+                        print("[INFO]: State: WAIT_FOR_PACKET")
             # Send robot to home position if it isn't home already
-            elif not self.is_in_home_pos:
-                self.cp.send(RcData(RcCommand.GO_TO_HOME))
-                self.state = "TO_HOME_POS"
-                if self.verbose:
-                    print("[INFO]: State: TO_HOME_POS")
-
-        # Moving to home position
-        if self.state == "TO_HOME_POS":
-            if is_rob_ready and self._is_rob_in_pos(pos, self.home_xyz_coords):
-                self.is_in_home_pos = True
-                self.state = "READY"
-                if self.verbose:
-                    print("[INFO]: State: READY")
-
-        # Moving to prepick position
-        if self.state == "TO_PREPICK":
-            # Check if robot arrived to prepick position
-            if self._is_rob_in_pos(pos, self.prepick_xyz_coords):
-                self.state = "WAIT_FOR_PACKET"
-                if self.verbose:
-                    print("[INFO]: State: WAIT_FOR_PACKET")
+            # elif not self.is_in_home_pos:
+            #     self.cp.send(RcData(RcCommand.GO_TO_HOME))
+            #     self.state = "TO_HOME_POS"
+            #     if self.verbose:
+            #         print("[INFO]: State: TO_HOME_POS")
 
         # Waiting for packet
         if self.state == "WAIT_FOR_PACKET":
             encoder_pos = self.enc_pos.value
             # Check encoder and activate robot
-            x, y = self.packet_to_pick.getCentroidFromEncoder(encoder_pos)
-            self.packet_to_pick.set_centroid(x, y, homography)
-            packet_pos_x = self.packet_to_pick.centroid_mm.x
+            # TODO: Use the new function get_centroid_from_encoder_in_mm() here
+            x, y = self.packet_to_pick.get_centroid_from_encoder_in_px(encoder_pos)
+            self.packet_to_pick.set_centroid(x, y)
+            packet_pos_x = self.packet_to_pick.get_centroid_in_mm().x
             # If packet is too far abort and return to ready
             if (
                 packet_pos_x
                 > self.trajectory_dict["x"] + self.constants["x_pick_offset"]
+                and robot_interrupted
             ):
                 self.cp.send(RcData(RcCommand.CONTINUE_PROGRAM))
-                self.cp.send(RcData(RcCommand.ABORT_PROGRAM))
                 self.cp.send(RcData(RcCommand.GRIPPER, False))
                 self.state = "READY"
                 if self.verbose:
-                    print("[INFO]: missed packet, State: READY")
+                    print("[INFO]: Missed packet, State: READY")
             # If packet is close enough continue picking operation
             elif (
                 packet_pos_x
-                > self.trajectory_dict["x"]
-                - self.constants["pick_start_x_offset"]
-                - self.trajectory_dict["shift_x"]
+                > self.trajectory_dict["x"] - self.constants["pick_start_x_offset"]
+                and robot_interrupted
             ):
                 self.cp.send(RcData(RcCommand.CONTINUE_PROGRAM))
                 self.state = "PLACING"
                 if self.verbose:
                     print("[INFO]: State: PLACING")
+
+            if safe_operational_stop:
+                self.state = "READY"
+                if self.verbose:
+                    print(
+                        "[WARNING]: Unable to start program in the PLC due to Operational Stop"
+                    )
 
         # Placing packet
         if self.state == "PLACING":

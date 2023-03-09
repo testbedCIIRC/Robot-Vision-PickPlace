@@ -2,21 +2,35 @@ import numpy as np
 import cv2
 
 
-def colorizeDepthFrame(depth_frame: np.ndarray) -> np.ndarray:
+def colorizeDepthFrame(
+    depth_frame: np.ndarray, camera_belt_dist_mm: int = 785
+) -> np.ndarray:
     """
     Colorizes provided one channel depth frame into RGB image.
 
     Args:
         depth_frame (np.ndarray): Depth frame.
+        camera_belt_dist_mm (int): Distance from camera to conveyor belt in millimeters.
 
     Returns:
         np.ndarray: Colorized depth frame.
     """
 
-    clahe = cv2.createCLAHE(clipLimit=20.0, tileGridSize=(5, 5))
-    depth_frame_hist = clahe.apply(depth_frame.astype(np.uint8))
-    colorized_depth_frame = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
-    return colorized_depth_frame
+    # clahe = cv2.createCLAHE(clipLimit=20.0, tileGridSize=(5, 5))
+    # depth_frame_hist = clahe.apply(depth_frame.astype(np.uint8))
+    # colorized_depth_frame = cv2.applyColorMap(depth_frame_hist, cv2.COLORMAP_JET)
+    depth_frame = np.clip(
+        depth_frame, camera_belt_dist_mm + 30 - 255, camera_belt_dist_mm + 30
+    )
+    depth_frame -= camera_belt_dist_mm + 30 - 255
+    depth_frame = depth_frame.astype(np.uint8)
+    max_val = np.max(depth_frame)
+    min_val = np.min(depth_frame)
+    depth_frame = (depth_frame - min_val) * (255 / (max_val - min_val)) * (-1) + 255
+    depth_frame = depth_frame.astype(np.uint8)
+    colored = cv2.applyColorMap(depth_frame, cv2.COLORMAP_JET)
+
+    return colored
 
 
 def drawText(

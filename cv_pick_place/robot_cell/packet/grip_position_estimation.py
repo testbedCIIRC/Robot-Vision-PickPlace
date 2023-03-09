@@ -133,7 +133,14 @@ class GripPositionEstimation:
         Returns:
             o3d.geometry.PointCloud: Pointcloud.
         """
-
+        print("INTRINSICS")
+        print(
+            o3d.camera.PinholeCameraIntrinsic(
+                o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault
+            ).intrinsic_matrix
+        )
+        print("____")
+        print(o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault)
         depth = o3d.geometry.Image(np.ascontiguousarray(depth_frame).astype(np.uint16))
         pcd = o3d.geometry.PointCloud.create_from_depth_image(
             depth,
@@ -817,8 +824,8 @@ class GripPositionEstimation:
 
         depth_exist = depth_frame is not None
         point_exists = False
-        mm_width = packet.width_bnd_mm
-        mm_height = packet.height_bnd_mm
+        mm_width = packet.bounding_width_px
+        mm_height = packet.bounding_height_px
 
         if depth_exist:
             mask = packet.mask
@@ -829,12 +836,12 @@ class GripPositionEstimation:
                 np.save(f"depth_array{packet.id}_precrop_mask.npy", mask)
 
             # Cropping of depth map and mask in case of packet being on the edge of the conveyor belt
-            pack_y_max = pack_y + packet.height_bnd_mm / 2
-            pack_y_min = pack_y - packet.height_bnd_mm / 2
+            pack_y_max = pack_y + packet.get_height_in_mm() / 2
+            pack_y_min = pack_y - packet.get_height_in_mm() / 2
             dims = depth_frame.shape
             ratio = 0.5
             if pack_y_max > y_max:
-                ratio_over = abs(pack_y_max - y_max) / packet.height_bnd_mm
+                ratio_over = abs(pack_y_max - y_max) / packet.get_height_in_mm()
                 k = 1 - ratio_over
                 mm_height *= k
                 depth_frame = depth_frame[: int(k * dims[0]), :]
@@ -842,7 +849,7 @@ class GripPositionEstimation:
                 mask = mask[: int(k * dims[0]), :]
 
             if pack_y_min < y_min:
-                ratio_over = abs(pack_y_min - y_min) / packet.height_bnd_mm
+                ratio_over = abs(pack_y_min - y_min) / packet.get_height_in_mm()
                 k = 1 - ratio_over
                 mm_height *= k
                 depth_frame = depth_frame[int(ratio_over * dims[0]) :, :]
@@ -870,7 +877,7 @@ class GripPositionEstimation:
                 dx, dy, z = point_relative
                 shift_x, shift_y = -1 * dx * mm_width, -1 * dy * mm_height
                 # Changes the z value to be positive ,converts m to mm and shifts by the conv2cam_dist
-                pack_z = abs(-1.0 * M2MM * z + self.th_val * M2MM) - 5.0
+                pack_z = abs(-1.0 * M2MM * z + self.th_val * M2MM) - 8.0
                 pack_z = np.clip(pack_z, z_min, z_max)
                 roll, pitch, yaw = self._vectors2RPYrot(normal)
                 point_relative[0] += anchor[0]

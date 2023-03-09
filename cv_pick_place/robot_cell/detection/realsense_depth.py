@@ -1,6 +1,5 @@
 import json
 
-import cv2
 import numpy as np
 import pyrealsense2 as rs
 
@@ -119,8 +118,8 @@ class DepthCamera:
         # Setup RGB and Depth stream resolution, format and FPS
         # Maximal supported Depth stream resolution of D435 camera is 1280 x 720
         # Maximal supported RGB stream resolution of D435 camera is 1920 x 1080
-        self.config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
-        self.config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
+        self.config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 15)
+        self.config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 15)
 
         # Create object for aligning depth frame to RGB frame, so that they have equal resolution
         self.align = rs.align(rs.stream.color)
@@ -130,7 +129,8 @@ class DepthCamera:
         self.hole_filling.set_option(rs.option.holes_fill, 2)
 
         # Create object for colorizing depth frames
-        self.clahe = cv2.createCLAHE(clipLimit=20.0, tileGridSize=(5, 5))
+        self.colorizer = rs.colorizer()
+        self.colorizer.set_option(rs.option.color_scheme, 0)
 
         # Start video stream
         self.profile = self.pipeline.start(self.config)
@@ -147,6 +147,7 @@ class DepthCamera:
 
         Returns:
             bool: True if frame was succesfully read
+            float: Time in milliseconds when the frame was captured
             np.ndarray: RGB frame
             np.ndarray: Depth frame
             np.ndarray: Colorized depth frame
@@ -160,6 +161,7 @@ class DepthCamera:
         depth_frame = frameset.get_depth_frame()
         depth_frame_raw = depth_frame
         color_frame = frameset.get_color_frame()
+        frame_timestamp = frameset.get_timestamp()
 
         if not depth_frame or not color_frame:
             return False, None, None, None
@@ -167,31 +169,28 @@ class DepthCamera:
         # Apply hole filling filter
         depth_frame = self.hole_filling.process(depth_frame)
 
-
+        colorized_depth_frame = np.asanyarray(
+            self.colorizer.colorize(depth_frame).get_data()
+        )
         depth_frame = np.asanyarray(depth_frame.get_data())
         color_frame = np.asanyarray(color_frame.get_data())
 
-        # Colorize depth frame
-        colorized_depth_hist = self.clahe.apply(depth_frame.astype(np.uint8))
-        colorized_depth_frame = cv2.applyColorMap(
-            colorized_depth_hist, cv2.COLORMAP_JET
-        )
-
-        return True, depth_frame, color_frame, colorized_depth_frame
+        return True, frame_timestamp, depth_frame, color_frame, colorized_depth_frame
 
     def get_raw_depth_frame(self):
         frameset = self.pipeline.wait_for_frames()
         frameset = self.align.process(frameset)
         return frameset.get_depth_frame()
 
-    def pixel_to_3d_point(self, pixel, depth_frame):
-
+    def pixel_to_3d_point(self, pixel: list[int, int], depth_frame: rs.depth_frame):
         dist = depth_frame.get_distance(pixel[0], pixel[1])
-        coordinates_3d = rs.rs2_deproject_pixel_to_point(self.intr, [pixel[0], pixel[1]], dist)
-        coordinates_3d = [coordinates_3d[0],coordinates_3d[1],coordinates_3d[2]]
+        coordinates_3d = rs.rs2_deproject_pixel_to_point(
+            self.intr, [pixel[0], pixel[1]], dist
+        )
+        coordinates_3d = [coordinates_3d[0], coordinates_3d[1], coordinates_3d[2]]
 
         return coordinates_3d
-
+    
     def release(self):
         """
         Disconnects the camera.

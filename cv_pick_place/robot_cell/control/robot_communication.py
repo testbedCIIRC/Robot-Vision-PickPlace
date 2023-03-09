@@ -21,12 +21,27 @@ class RobotCommunication:
         Connects OPCUA Client to Server on PLC.
 
         """
+        self.connected = False
         password = "CIIRC"
+        address = "10.35.91.101:4840"
+        timeout = 4  # Every request expects answer in this time (in seconds)
+        secure_channel_timeout = 300000  # Timeout for the secure channel (in milliseconds), it should be equal to the timeout set on the PLC
+        session_timeout = 30000  # Timeout for the session (in milliseconds), it should be equal to the timeout set on the PLC
+
         self.client = opcua.Client(
-            "opc.tcp://user:" + str(password) + "@10.35.91.101:4840/"
+            "opc.tcp://user:" + str(password) + "@" + str(address) + "/",
+            timeout,
         )
-        self.client.connect()
-        print("[INFO]: Client connected.")
+        self.client.secure_channel_timeout = secure_channel_timeout
+        self.client.session_timeout = session_timeout
+        try:
+            self.connected = True
+            self.client.connect()
+            self.client.load_type_definitions()
+            print("[INFO] OPCUA client connected to server at", str(address))
+        except:
+            self.connected = False
+            print("[WARN] OPCUA client failed to connect")
 
     def get_nodes(self):
         """
@@ -36,220 +51,57 @@ class RobotCommunication:
         """
 
         # fmt: off
-        self.Start_Prog = self.client.get_node(
-            'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."start"')
-        self.Conti_Prog = self.client.get_node(
-            'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."continue"')
-        self.Stop_Prog = self.client.get_node(
-            'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."command"."interrupt"')
-        self.Abort_Prog = self.client.get_node(
-            'ns=3;s="HMIKuka"."robot"."powerRobot"."command"."abort"')
-        self.Prog_Done = self.client.get_node(
-            'ns=3;s="HMIKuka"."robot"."example"."pickPlace"."status"."done"')
-        self.Stop_Active = self.client.get_node(
-            'ns=3;s="InstPickPlace"."instInterrupt"."BrakeActive"')
-        self.Rob_Stopped = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instAutomaticExternal"."ROB_STOPPED"')
+        # General
+        self.Safe_Operational_Stop = self.client.get_node(
+            'ns=3;s="Robot_Data"."Status"."Safe_Operational_Stop"')
         self.Conveyor_Left = self.client.get_node(
-            'ns=3;s="conveyor_left"')
+            'ns=3;s="Program_Data"."OPCUA"."Conveyor_Left"')
         self.Conveyor_Right = self.client.get_node(
-            'ns=3;s="conveyor_right"')
+            'ns=3;s="Program_Data"."OPCUA"."Conveyor_Right"')
         self.Gripper_State = self.client.get_node(
-            'ns=3;s="gripper_control"')
+            'ns=3;s="Program_Data"."OPCUA"."Gripper"')
         self.Encoder_Vel = self.client.get_node(
             'ns=3;s="Encoder_1".ActualVelocity')
         self.Encoder_Pos = self.client.get_node(
             'ns=3;s="Encoder_1".ActualPosition')
-        self.Laser_Enable = self.client.get_node(
-            'ns=3;s="laser_field_enable"')
-        self.Pick_Place_Select = self.client.get_node(
-            'ns=3;s="pick_place_select"')
-        self.Go_to_home = self.client.get_node(
-            'ns=3;s="go_to_home"')
-        self.Robot_speed_override = self.client.get_node(
-            'ns=3;s="HMIKuka"."robot"."powerRobot"."status"."override"."actualOverride"')
 
-        self.Act_Pos_X = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."X"')
-        self.Act_Pos_Y = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."Y"')
-        self.Act_Pos_Z = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."Z"')
-        self.Act_Pos_A = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."A"')
-        self.Act_Pos_B = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."B"')
-        self.Act_Pos_C = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."C"')
-        self.Act_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."Turn"')
-        self.Act_Pos_Status = self.client.get_node(
-            'ns=3;s="InstKukaControl"."instReadActualPos"."Status"')
+        # Pick & Place Program
+        self.Start_Prog = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Control"."Start"')
+        self.Conti_Prog = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Control"."Continue"')
+        self.Prog_Done = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Status"."Done"')
+        self.Prog_Busy = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Status"."Busy"')
+        self.Prog_Interrupted = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Status"."Interrupted"')
 
-        self.Home_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."X"')
-        self.Home_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Y"')
-        self.Home_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Z"')
-        self.Home_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."A"')
-        self.Home_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."B"')
-        self.Home_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."C"')
-        self.Home_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Status"')
-        self.Home_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[0]."E6POS"."Turn"')
+        self.Pos_Start = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Start"')
+        self.Pos_PrePick = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PrePick"')
+        self.Pos_Pick = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Pick"')
+        self.Pos_PostPick = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."PostPick"')
+        self.Pos_Place = self.client.get_node(
+            'ns=3;s="Robot_Data"."Pick_Place"."Positions"."Place"')
 
-        self.PrePick_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."X"')
-        self.PrePick_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Y"')
-        self.PrePick_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Z"')
-        self.PrePick_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."A"')
-        self.PrePick_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."B"')
-        self.PrePick_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."C"')
-        self.PrePick_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Status"')
-        self.PrePick_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[1]."E6POS"."Turn"')
-
-        self.Pick_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."X"')
-        self.Pick_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."Y"')
-        self.Pick_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."Z"')
-        self.Pick_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."A"')
-        self.Pick_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."B"')
-        self.Pick_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."C"')
-        self.Pick_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."Status"')
-        self.Pick_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[2]."E6POS"."Turn"')
-
-        self.Place_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."X"')
-        self.Place_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."Y"')
-        self.Place_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."Z"')
-        self.Place_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."A"')
-        self.Place_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."B"')
-        self.Place_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."C"')
-        self.Place_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."Status"')
-        self.Place_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[3]."E6POS"."Turn"')
-
-        self.ShPrePick_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."X"')
-        self.ShPrePick_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Y"')
-        self.ShPrePick_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Z"')
-        self.ShPrePick_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."A"')
-        self.ShPrePick_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."B"')
-        self.ShPrePick_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."C"')
-        self.ShPrePick_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Status"')
-        self.ShPrePick_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[4]."E6POS"."Turn"')
-
-        self.ShPick_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."X"')
-        self.ShPick_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Y"')
-        self.ShPick_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Z"')
-        self.ShPick_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."A"')
-        self.ShPick_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."B"')
-        self.ShPick_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."C"')
-        self.ShPick_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Status"')
-        self.ShPick_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[5]."E6POS"."Turn"')
-
-        self.ShPostPick_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."X"')
-        self.ShPostPick_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Y"')
-        self.ShPostPick_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Z"')
-        self.ShPostPick_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."A"')
-        self.ShPostPick_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."B"')
-        self.ShPostPick_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."C"')
-        self.ShPostPick_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Status"')
-        self.ShPostPick_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[6]."E6POS"."Turn"')
-
-        self.ShPlace_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."X"')
-        self.ShPlace_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Y"')
-        self.ShPlace_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Z"')
-        self.ShPlace_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."A"')
-        self.ShPlace_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."B"')
-        self.ShPlace_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."C"')
-        self.ShPlace_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Status"')
-        self.ShPlace_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[7]."E6POS"."Turn"')
-
-        self.ShHome_Pos_X = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."X"')
-        self.ShHome_Pos_Y = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Y"')
-        self.ShHome_Pos_Z = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Z"')
-        self.ShHome_Pos_A = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."A"')
-        self.ShHome_Pos_B = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."B"')
-        self.ShHome_Pos_C = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."C"')
-        self.ShHome_Pos_Status = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Status"')
-        self.ShHome_Pos_Turn = self.client.get_node(
-            'ns=3;s="InstPickPlace"."positions"[8]."E6POS"."Turn"')
-
-        self.PrePick_Done = self.client.get_node(
-            'ns=3;s="InstPickPlace"."instPrePickPos"."Done"')
-        self.Place_Done = self.client.get_node(
-            'ns=3;s="InstPickPlace"."instPlacePos"."Done"')
+        # Tracking Program
+        self.Tracking_Exec_Prog = self.client.get_node(
+            'ns=3;s="Robot_Data"."Tracking"."Control"."Execute"')
+        self.Tracking_Prog_Active = self.client.get_node(
+            'ns=3;s="Robot_Data"."Tracking"."Status"."Actuve"')
+        self.Tracking_Pos_Track = self.client.get_node(
+            'ns=3;s="Robot_Data"."Tracking"."Positions"."Track"')
         # fmt: on
 
         # Register all nodes for faster read / write access.
         # The client.register_nodes() only takes a list of nodes as input, and returns list of
         # registered nodes as output, so single node is wrapped in a list and then received
         # as first element of a list.
-        for key, value in self.__dict__.items():
+        for _, value in self.__dict__.items():
             if type(value) == opcua.Node:
                 value = self.client.register_nodes([value])[0]
 
@@ -270,28 +122,43 @@ class RobotCommunication:
 
         # Connect server and get nodes
         self.connect_OPCUA_server()
+
+        if not self.connected:
+            manag_encoder_val.value = 0.0
+            manag_info_dict["encoder_vel"] = 0.0
+            manag_info_dict["conveyor_left"] = False
+            manag_info_dict["conveyor_right"] = False
+            manag_info_dict["gripper_state"] = False
+            manag_info_dict["start_prog"] = False
+            manag_info_dict["conti_prog"] = False
+            manag_info_dict["prog_busy"] = False
+            manag_info_dict["prog_interrupted"] = False
+            manag_info_dict["prog_done"] = False
+            manag_info_dict["safe_operational_stop"] = False
+            manag_info_dict["tracking_prog_active"] = False
+            while True:
+                time.sleep(0.1)
+                pass
+
         self.get_nodes()
         time.sleep(0.5)
 
         # Define list of nodes read by this server
         nodes = [
-            self.Act_Pos_X,
-            self.Act_Pos_Y,
-            self.Act_Pos_Z,
-            self.Act_Pos_A,
-            self.Act_Pos_B,
-            self.Act_Pos_C,
-            self.Act_Pos_Status,
-            self.Act_Pos_Turn,
-            self.Encoder_Vel,
             self.Encoder_Pos,
+            self.Encoder_Vel,
+            self.Conveyor_Left,
+            self.Conveyor_Right,
+            self.Gripper_State,
             self.Start_Prog,
-            self.Abort_Prog,
-            self.Rob_Stopped,
-            self.Stop_Active,
+            self.Conti_Prog,
+            self.Prog_Busy,
+            self.Prog_Interrupted,
             self.Prog_Done,
-            self.Robot_speed_override,
+            self.Safe_Operational_Stop,
+            self.Tracking_Prog_Active,
         ]
+
         while True:
             try:
                 # Get values from defined nodes
@@ -299,26 +166,20 @@ class RobotCommunication:
                 val = self.client.get_values(nodes)
 
                 # Assign values from returned list to variables
-                manag_info_dict["pos"] = (
-                    round(val[0], 2),  # X
-                    round(val[1], 2),  # Y
-                    round(val[2], 2),  # Z
-                    round(val[3], 2),  # A
-                    round(val[4], 2),  # B
-                    round(val[5], 2),  # X
-                    val[6],  # Robot Status
-                    val[7],  # Robot Turn
-                )
-                manag_info_dict["encoder_vel"] = round(val[8], 2)
-                manag_encoder_val.value = round(val[9], 2)
-                manag_info_dict["start"] = val[10]
-                manag_info_dict["abort"] = val[11]
-                manag_info_dict["rob_stopped"] = val[12]
-                manag_info_dict["stop_active"] = val[13]
-                manag_info_dict["prog_done"] = val[14]
-                manag_info_dict["speed_override"] = val[15]
+                manag_encoder_val.value = round(val[0], 2)
+                manag_info_dict["encoder_vel"] = round(val[1], 2)
+                manag_info_dict["conveyor_left"] = val[2]
+                manag_info_dict["conveyor_right"] = val[3]
+                manag_info_dict["gripper_state"] = val[4]
+                manag_info_dict["start_prog"] = val[5]
+                manag_info_dict["conti_prog"] = val[6]
+                manag_info_dict["prog_busy"] = val[7]
+                manag_info_dict["prog_interrupted"] = val[8]
+                manag_info_dict["prog_done"] = val[9]
+                manag_info_dict["safe_operational_stop"] = val[10]
+                manag_info_dict["tracking_prog_active"] = val[11]
 
             except Exception as e:
                 print("[ERROR]", e)
-                print("[INFO] OPCUA disconnected")
+                print("[INFO] OPCUA Data Server disconnected")
                 break

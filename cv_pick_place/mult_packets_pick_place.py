@@ -3,10 +3,12 @@ import time
 import multiprocessing
 import multiprocessing.connection
 import multiprocessing.managers
+import json
 
 # Third party libraries
 import cv2
 import numpy as np
+import scipy.ndimage as ndimg
 
 # Local
 from robot_cell.control.control_state_machine import RobotStateMachine
@@ -51,7 +53,7 @@ def packet_tracking(
 
     # Update tracked packets from detected packets
     labeled_packets = tracker.track_items(detected_packets)
-    tracker.update_tracked_item_list(labeled_packets, homography, encoder_pos)
+    tracker.update_tracked_item_list(labeled_packets, encoder_pos)
 
     # Update depth frames of tracked packets
     for item in tracker.tracked_item_list:
@@ -74,6 +76,7 @@ def packet_tracking(
 
 
 def draw_frame(
+    cell_config: dict,
     image_frame: np.ndarray,
     registered_packets: list[Packet],
     encoder_pos: int,
@@ -81,10 +84,9 @@ def draw_frame(
     toggles_dict: dict,
     info_dict: dict,
     colorized_depth: np.ndarray,
-    start_time: float,
-    frame_width: int,
-    frame_height: int,
+    cycle_start_time: float,
     resolution: tuple[int, int],
+    homography_matrix: np.ndarray,
 ) -> None:
     """
     Draw information on image frame.
@@ -97,19 +99,19 @@ def draw_frame(
         toggles_dict (dict): Dictionary of variables toggling various drawing functions.
         info_dict (dict): Dictionary of variables containing information about the cell.
         colorized_depth (np.ndarray): Frame containing colorized depth values.
-        start_time (float): Start time of current frame. Should be measured at start of every while loop.
+        cycle_start_time (float): Start time of current frame. Should be measured at start of every while loop.
         frame_width (int): Width of the camera frame in pixels.
         frame_height (int): Height of the camera frame in pixels.
         resolution (tuple[int, int]): Resolution of the on screen window.
     """
-
+    text2save = ""
     # Draw packet info
     for packet in registered_packets:
         if packet.disappeared == 0:
             # Draw centroid estimated with encoder position
             cv2.drawMarker(
                 image_frame,
-                packet.getCentroidFromEncoder(encoder_pos),
+                packet.get_centroid_from_encoder_in_px(encoder_pos),
                 (255, 255, 0),
                 cv2.MARKER_CROSS,
                 10,
@@ -117,7 +119,7 @@ def draw_frame(
             )
 
             # Draw packet ID and type
-            text_id = "ID {}, Type {}".format(packet.id, packet.type)
+            text_id = f"ID {packet.id}, Type {packet.type}"
             drawText(
                 image_frame,
                 text_id,
@@ -126,24 +128,80 @@ def draw_frame(
             )
 
             # Draw packet centroid value in pixels
-            text_centroid = "X: {}, Y: {} (px)".format(
-                packet.centroid_px.x, packet.centroid_px.y
+            packet_centroid_px = packet.get_centroid_in_px()
+            text_centroid_px = (
+                f"X: {packet_centroid_px.x}, Y: {packet_centroid_px.y} (px)"
             )
             drawText(
                 image_frame,
-                text_centroid,
+                text_centroid_px,
                 (packet.centroid_px.x + 10, packet.centroid_px.y + int(45 * text_size)),
                 text_size,
             )
 
-            # Draw packet centroid value in milimeters
-            text_centroid = "X: {:.2f}, Y: {:.2f} (mm)".format(
-                packet.centroid_mm.x, packet.centroid_mm.y
-            )
             drawText(
                 image_frame,
-                text_centroid,
+                packet.new_text,
+                (
+                    packet.centroid_px.x + 10,
+                    packet.centroid_px.y + int(-80 * text_size),
+                ),
+                text_size,
+            )
+
+            drawText(
+                image_frame,
+                packet.depth_text,
+                (
+                    packet.centroid_px.x + 10,
+                    packet.centroid_px.y + int(-45 * text_size),
+                ),
+                text_size,
+            )
+
+            # Draw packet centroid value in milimeters
+            packet_centroid_mm = packet.get_centroid_in_mm()
+            text_centroid_mm = f"X: {round(packet_centroid_mm.x, 2)}, Y: {round(packet_centroid_mm.y, 2)} (mm)"
+
+            print(
+                f"Homography \tX:{round(packet_centroid_mm.x, 2)}, \tY: {round(packet_centroid_mm.y, 2)}"
+            )
+            packet_pos = np.array([packet_centroid_mm.x, packet_centroid_mm.y])
+            print(packet.avg_pos)
+            print(f"EXtrinsic \tX:{packet.avg_pos[0]}, Y:{packet.avg_pos[1]}")
+            dst = np.linalg.norm(packet.avg_pos - packet_pos)
+            print(f"L2 norm: {dst}")
+            text2save = (
+                "h_C_X: "
+                + str(packet_centroid_mm.x)
+                + "h_C_Y: "
+                + str(packet_centroid_mm.y)
+                + "GT_C_X: "
+                + str(packet.avg_pos[0])
+                + "GT_C_Y: "
+                + str(packet.avg_pos[1])
+                + "Norm: "
+                + str(dst)
+                + "\n"
+            )
+
+            drawText(
+                image_frame,
+                text_centroid_mm,
                 (packet.centroid_px.x + 10, packet.centroid_px.y + int(80 * text_size)),
+                text_size,
+            )
+
+            # Draw packet angle
+            packet_angle = packet.get_angle()
+            text_angle = f"Angle: {round(packet_angle, 2)} (deg)"
+            drawText(
+                image_frame,
+                text_angle,
+                (
+                    packet.centroid_px.x + 10,
+                    packet.centroid_px.y + int(115 * text_size),
+                ),
                 text_size,
             )
 
@@ -158,12 +216,12 @@ def draw_frame(
 
     # Show depth frame overlay
     if toggles_dict["show_depth_map"]:
-        image_frame = cv2.addWeighted(image_frame, 0.8, colorized_depth, 0.3, 0)
+        image_frame = cv2.addWeighted(image_frame, 0.8, colorized_depth, 0.8, 0)
 
     # Show FPS and robot position data
     if toggles_dict["show_frame_data"]:
         # Draw FPS to screen
-        text_fps = "FPS: {:.2f}".format(1.0 / (time.time() - start_time))
+        text_fps = "FPS: {:.2f}".format(1.0 / (time.time() - cycle_start_time))
         drawText(image_frame, text_fps, (10, int(35 * text_size)), text_size)
 
         # Draw OPCUA data to screen
@@ -175,12 +233,17 @@ def draw_frame(
     # Show frames on cv2 window
     cv2.imshow("Frame", image_frame)
 
+    return image_frame, text2save
+
 
 def process_key_input(
     key: int,
     control_pipe: multiprocessing.connection.PipeConnection,
     toggles_dict: dict,
     is_rob_ready: bool,
+    tracker: ItemTracker,
+    img_frame,
+    text2save,
 ) -> tuple[bool, dict]:
     """
     Process input from keyboard.
@@ -245,7 +308,21 @@ def process_key_input(
     if key == ord("i"):
         print("[INFO]: Is robot ready = {}".format(is_rob_ready))
 
-    if key == 27:  # Esc
+    if key == ord("p"):
+        print("[INFO]: Saving the picture")
+        t = time.time()
+        new_line = text2save
+        cv2.imwrite(str(t) + ".jpg", img_frame)
+        with open("measurment.txt", "a") as f:
+            f.write(new_line)
+
+    # Print info
+    if key == ord("r"):
+        tracker.tracked_item_list = []
+        tracker.next_item_id = 0
+        print("[INFO]: Cleared tracked object list")
+
+    if key in [27, ord("q")]:  # Esc
         end_prog = True
 
     return end_prog, toggles_dict
@@ -342,7 +419,7 @@ def main_multi_packets(
         print("[INFO] NN1 detector started")
     elif rob_config.detector_type == "NN2":
         show_boot_screen("STARTING NEURAL NET...")
-        detector = None  # TODO Implement new deep detector
+        detector = None  # TODO: Implement new deep detector (init)
         print("[INFO] NN2 detector started")
     elif rob_config.detector_type == "HSV":
         detector = ThresholdDetector(
@@ -375,35 +452,45 @@ def main_multi_packets(
     text_size = 1
     homography = None  # Homography matrix
 
-    # Tell PLC to use different set of robot instructions
-    control_pipe.send(RcData(RcCommand.PICK_PLACE_SELECT, False))
+    with open("extrinsic_matrix.json", "r") as f:
+        transformation_marker = np.array(json.load(f))
 
     # Set home position from dictionary on startup
-    control_pipe.send(RcData(RcCommand.SET_HOME_POS_SH))
+    control_pipe.send(RcData(RcCommand.SET_HOME_POS))
 
     while True:
         # Start timer for FPS estimation
-        start_time = time.time()
+        cycle_start_time = time.time()
 
         # READ DATA
         ###################
 
-        # Read data dict from OPCUA server
+        # Read data from OPCUA server
         try:
-            rob_stopped = manag_info_dict["rob_stopped"]
-            stop_active = manag_info_dict["stop_active"]
-            prog_done = manag_info_dict["prog_done"]
-            encoder_vel = manag_info_dict["encoder_vel"]
-            pos = manag_info_dict["pos"]
-            speed_override = manag_info_dict["speed_override"]
             encoder_pos = manag_encoder_val.value
+            encoder_vel = manag_info_dict["encoder_vel"]
+            conveyor_left = manag_info_dict["conveyor_left"]
+            conveyor_right = manag_info_dict["conveyor_right"]
+            gripper_state = manag_info_dict["gripper_state"]
+            start_prog = manag_info_dict["start_prog"]
+            conti_prog = manag_info_dict["conti_prog"]
+            prog_busy = manag_info_dict["prog_busy"]
+            prog_interrupted = manag_info_dict["prog_interrupted"]
+            prog_done = manag_info_dict["prog_done"]
+            safe_operational_stop = manag_info_dict["safe_operational_stop"]
             if encoder_pos is None:
                 continue
         except:
             continue
 
         # Get frames from camera
-        success, depth_frame, rgb_frame, colorized_depth = camera.get_frames()
+        (
+            success,
+            frame_timestamp,
+            depth_frame,
+            rgb_frame,
+            colorized_depth,
+        ) = camera.get_frames()
         if not success:
             continue
 
@@ -457,7 +544,7 @@ def main_multi_packets(
 
         # Detect packets using neural network
         elif rob_config.detector_type == "NN2":
-            # TODO Implement new deep detector
+            # TODO: Implement new deep detector (detection)
             detected_packets = []
 
         # Detect packets using HSV thresholding
@@ -473,6 +560,12 @@ def main_multi_packets(
         else:
             detected_packets = []
 
+        # Disable detection during safe operational stop
+        # This is to allow packet placement in front of camera
+        # without detection glitches from hand movement
+        if safe_operational_stop and rob_config.detection_stop:
+            detected_packets = []
+
         registered_packets = packet_tracking(
             tracker,
             detected_packets,
@@ -483,19 +576,65 @@ def main_multi_packets(
             encoder_pos,
         )
 
+        depth_frame_raw = camera.get_raw_depth_frame()
+        for packet in registered_packets:
+            center_px = [packet.centroid_px.x, packet.centroid_px.y]
+            center_e = np.array(
+                camera.pixel_to_3d_point(center_px, depth_frame_raw)
+            ).reshape(3, 1)
+            center_p = np.append(center_e, 1)
+
+            resolution = (1920, 1080)  # TODO fill somehow
+            ones = np.ones(resolution)
+            radius = 2
+            ones[packet.centroid_px.x, packet.centroid_px.y] = 0
+            dsts = ndimg.distance_transform_edt(ones)
+            close_idx = np.nonzero(dsts <= radius)
+            pts = np.vstack(close_idx)
+            # print(pts.shape)
+
+            _, num_pts = pts.shape
+            pts_p = np.zeros((4, num_pts))
+
+            for i in range(num_pts):
+                pixel = pts[:, i]
+                pt_e = np.array(
+                    camera.pixel_to_3d_point(pixel, depth_frame_raw)
+                ).reshape(3, 1)
+                pt_p = np.append(pt_e, 1)
+                pts_p[:, i] = pt_p
+
+            frame_pts_p = transformation_marker @ pts_p
+            x_avg = np.mean(frame_pts_p[0, :]) * 1000
+            y_avg = np.mean(frame_pts_p[1, :]) * 1000
+            depth_avg = np.mean(frame_pts_p[2, :]) * 1000
+
+            frame_point_p = transformation_marker @ center_p
+            frame_point_p = frame_point_p.flatten() * 1000  # m2mm
+            transformed_text = f"X: {frame_point_p[0]:.2f}, Y: {frame_point_p[1]:.2f},Z: {frame_point_p[2]:.2f} (mm)"
+            packet.new_text = transformed_text
+            packet.depth_text = f"AVG Centroid: X {x_avg:.2f}, Y: {y_avg:.2f} (mm)"
+            packet.avg_pos = np.array([x_avg, y_avg])
+
         # STATE MACHINE
         ###############
 
         # Robot ready when programs are fully finished and it isn't moving
-        is_rob_ready = prog_done and (rob_stopped or not stop_active)
+        is_rob_ready = not prog_busy
         state_machine.run(
-            homography, is_rob_ready, registered_packets, encoder_vel, pos
+            homography,
+            is_rob_ready,
+            registered_packets,
+            encoder_vel,
+            prog_interrupted,
+            safe_operational_stop,
         )
 
         # FRAME GRAPHICS
         ################
 
-        draw_frame(
+        img_frame, text2save = draw_frame(
+            rob_config,
             image_frame,
             registered_packets,
             encoder_pos,
@@ -503,16 +642,17 @@ def main_multi_packets(
             toggles_dict,
             manag_info_dict,
             colorized_depth,
-            start_time,
-            frame_width,
-            frame_height,
+            cycle_start_time,
             (frame_width, frame_height),
+            homography,
         )
 
-        # Keyboard inputs
+        # KEYBOARD INPUTS
+        #################
+
         key = cv2.waitKey(1)
         end_prog, toggles_dict = process_key_input(
-            key, control_pipe, toggles_dict, is_rob_ready
+            key, control_pipe, toggles_dict, is_rob_ready, tracker, img_frame, text2save
         )
 
         # End main

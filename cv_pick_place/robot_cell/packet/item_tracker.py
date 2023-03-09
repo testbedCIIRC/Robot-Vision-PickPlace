@@ -61,7 +61,6 @@ class ItemTracker:
         self,
         new_item: Packet,
         tracked_item: Packet,
-        homography: np.ndarray,
         encoder_pos: int,
     ) -> Packet:
         """
@@ -70,7 +69,6 @@ class ItemTracker:
         Args:
             new_item (Packet): New packet object whose parameters are transferred.
             tracked_item (Packet): Packet object whose parameters are updated.
-            homography (np.ndarray): Homography matrix converting from pixels to centimeters.
             encoder_pos (float): Position of encoder.
 
         Returns:
@@ -81,31 +79,24 @@ class ItemTracker:
             print("[WARNING] Tried to update two items with different IDs together")
             return
 
-        # NEW parameters
-        tracked_item.set_centroid(
-            new_item.centroid_px.x, new_item.centroid_px.y, homography, encoder_pos
-        )
-
-        tracked_item.width_bnd_px = new_item.width_bnd_px
-        tracked_item.width_bnd_mm = new_item.width_bnd_mm
-        tracked_item.height_bnd_px = new_item.height_bnd_px
-        tracked_item.height_bnd_mm = new_item.height_bnd_mm
-
+        tracked_item.centroid_px = new_item.centroid_px
+        tracked_item.type = new_item.type
+        tracked_item.homography_matrix = new_item.homography_matrix
+        tracked_item.bounding_width_px = new_item.bounding_width_px
+        tracked_item.bounding_height_px = new_item.bounding_height_px
         tracked_item.add_angle_to_average(new_item.avg_angle_deg)
+        tracked_item.set_base_encoder_position(encoder_pos)
+        tracked_item.disappeared = 0
 
-        # OLD parameters
+        # OBSOLETE parameters
         tracked_item.width = new_item.width
         tracked_item.height = new_item.height
-        tracked_item.centroid = new_item.centroid
-        tracked_item.disappeared = 0
-        tracked_item.box = new_item.box
 
         return tracked_item
 
     def update_tracked_item_list(
         self,
         labeled_item_list: list[Packet],
-        homography: np.ndarray,
         encoder_pos: int,
     ):
         """
@@ -115,7 +106,6 @@ class ItemTracker:
 
         Args:
             labeled_item_list (list[Packet]): List of detected Packet objects with id == id of nearest tracked item.
-            homography (np.ndarray): Homography matrix converting from pixels to centimeters.
             encoder_pos (float): Position of encoder.
         """
 
@@ -133,13 +123,13 @@ class ItemTracker:
             for tracked_item_index, tracked_item in enumerate(self.tracked_item_list):
                 if labeled_item.id == tracked_item.id:
                     self.tracked_item_list[tracked_item_index] = self.update_item(
-                        labeled_item, tracked_item, homography, encoder_pos
+                        labeled_item, tracked_item, encoder_pos
                     )
                     break
 
         # Check for items ready to be deregistered
         for tracked_item in self.tracked_item_list:
-            if tracked_item.disappeared > self.max_disappeared_frames:
+            if tracked_item.disappeared > self.max_disappeared_frames and self.max_disappeared_frames >= 1:
                 self.deregister_item(tracked_item.id)
 
     def track_items(self, detected_item_list: list[Packet]) -> list[Packet]:
