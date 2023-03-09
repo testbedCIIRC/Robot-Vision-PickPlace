@@ -135,6 +135,9 @@ class DepthCamera:
         # Start video stream
         self.profile = self.pipeline.start(self.config)
 
+        profile = self.profile.get_stream(rs.stream.color)
+        self.intr = profile.as_video_stream_profile().get_intrinsics()
+
         # Code for getting camera intrinsic parameters
         # self.stream_profile_color = self.profile.get_stream(rs.stream.color, 0)
         # self.stream_profile_depth = self.profile.get_stream(rs.stream.depth, 0)
@@ -181,6 +184,20 @@ class DepthCamera:
 
         return True, frame_timestamp, depth_frame, color_frame, colorized_depth_frame
 
+    def get_raw_depth_frame(self):
+        frameset = self.pipeline.wait_for_frames()
+        frameset = self.align.process(frameset)
+        return frameset.get_depth_frame()
+
+    def pixel_to_3d_point(self, pixel: list[int, int], depth_frame: rs.depth_frame):
+        dist = depth_frame.get_distance(pixel[0], pixel[1])
+        coordinates_3d = rs.rs2_deproject_pixel_to_point(
+            self.intr, [pixel[0], pixel[1]], dist
+        )
+        coordinates_3d = [coordinates_3d[0], coordinates_3d[1], coordinates_3d[2]]
+
+        return coordinates_3d
+    
     def release(self):
         """
         Disconnects the camera.
