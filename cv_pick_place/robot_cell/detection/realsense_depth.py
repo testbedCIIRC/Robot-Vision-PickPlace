@@ -135,6 +135,12 @@ class DepthCamera:
         # Start video stream
         self.profile = self.pipeline.start(self.config)
 
+        # Get intrinsic parameter
+        profile = self.profile.get_stream(rs.stream.color)  # Fetch stream profile for depth stream
+        self.intr = profile.as_video_stream_profile().get_intrinsics()  # Downcast to video_stream_profile and fetch intrinsics
+        # self.depth_scale = profile.get_device().first_depth_sensor().get_depth_scale()
+
+
     def get_frames(self) -> tuple[bool, np.ndarray, np.ndarray, np.ndarray]:
         """
         Reads and processes frames from connected camera.
@@ -152,6 +158,7 @@ class DepthCamera:
 
         # Extract RGB and depth frames from frameset
         depth_frame = frameset.get_depth_frame()
+        depth_frame_raw = depth_frame
         color_frame = frameset.get_color_frame()
 
         if not depth_frame or not color_frame:
@@ -159,6 +166,7 @@ class DepthCamera:
 
         # Apply hole filling filter
         depth_frame = self.hole_filling.process(depth_frame)
+
 
         depth_frame = np.asanyarray(depth_frame.get_data())
         color_frame = np.asanyarray(color_frame.get_data())
@@ -170,6 +178,19 @@ class DepthCamera:
         )
 
         return True, depth_frame, color_frame, colorized_depth_frame
+
+    def get_raw_depth_frame(self):
+        frameset = self.pipeline.wait_for_frames()
+        frameset = self.align.process(frameset)
+        return frameset.get_depth_frame()
+
+    def pixel_to_3d_point(self, pixel, depth_frame):
+
+        dist = depth_frame.get_distance(pixel[0], pixel[1])
+        coordinates_3d = rs.rs2_deproject_pixel_to_point(self.intr, [pixel[0], pixel[1]], dist)
+        coordinates_3d = [coordinates_3d[0],coordinates_3d[1],coordinates_3d[2]]
+
+        return coordinates_3d
 
     def release(self):
         """
