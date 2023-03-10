@@ -92,6 +92,11 @@ class Packet:
         # OBSOLETE PACKET PARAMETERS
         ############################
 
+        self.camera_centroid_x = None
+        self.camera_base_centroid_x = None
+        self.camera_centroid_y = None
+        self.camera_centroid_z = None
+
         # Width and height of packet bounding box
         self.width = 0
         self.height = 0
@@ -331,7 +336,7 @@ class Packet:
         # k = 1.2365  # 1280 x 720
         k = 1.8672  # 1440 x 1080
         # k = 1.2365  # 1080 x 720
-
+        # TODO: Implement this function
         centroid_encoder_px = self.PointTuple(
             int(
                 k * (encoder_position - self.encoder_base_position)
@@ -345,6 +350,7 @@ class Packet:
     def get_centroid_from_encoder_in_mm(
         self, encoder_position: float
     ) -> tuple[float, float]:
+        # TODO: Implement this function
         centroid_robot_frame = np.matmul(
             self.homography_matrix,
             np.array([self.centroid_px.x, self.centroid_px.y, 1]),
@@ -382,3 +388,7 @@ class Packet:
             * CM2MM
         )
         return bounding_height_mm
+
+    def update_camera_centroid_from_encoder(self, encoder_position: float):
+        encoder_change = encoder_position - self.encoder_base_position
+        self.camera_centroid_x = self.camera_base_centroid_x - encoder_change

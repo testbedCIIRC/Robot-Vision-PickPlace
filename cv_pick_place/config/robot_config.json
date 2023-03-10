@@ -41,6 +41,12 @@
         "default": "HSV"
     },
 
+    "3D_trasnformation": {
+        "help": "Selection of 3D transformation for pixels to real-world coordinates. Valid values are 'HOMOGRAPHY' and 'CAMERA'",
+        "arg": "--3D-trasnformation",
+        "default": "HOMOGRAPHY"
+    },
+
     "verbose": {
         "help": "If extra information should be printed to the console.",
         "arg": "--verbose",

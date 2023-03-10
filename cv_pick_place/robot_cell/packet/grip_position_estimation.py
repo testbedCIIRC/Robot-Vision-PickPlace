@@ -133,12 +133,12 @@ class GripPositionEstimation:
         Returns:
             o3d.geometry.PointCloud: Pointcloud.
         """
-        print("INTRINSICS")
-        print(
-            o3d.camera.PinholeCameraIntrinsic(
-                o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault
-            ).intrinsic_matrix
-        )
+        # print("INTRINSICS")
+        # print(
+        #     o3d.camera.PinholeCameraIntrinsic(
+        #         o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault
+        #     ).intrinsic_matrix
+        # )
         print("____")
         print(o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault)
         depth = o3d.geometry.Image(np.ascontiguousarray(depth_frame).astype(np.uint16))

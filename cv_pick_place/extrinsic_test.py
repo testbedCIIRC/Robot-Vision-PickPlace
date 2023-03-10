@@ -339,7 +339,7 @@ if __name__ == "__main__":
 
             pixel = [packet.centroid_px.x, packet.centroid_px.y]
             threed_point = np.array(
-                camera.pixel_to_3d_point(pixel, camera.get_raw_depth_frame())
+                camera.pixel_to_3d_point(pixel, camera.depth_frame_raw)
             ).reshape(3, 1)
             threed_point = np.append(threed_point, 1)
 

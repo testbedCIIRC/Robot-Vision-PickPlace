@@ -540,7 +540,7 @@ def main_multi_packets(
         #         pt_e = np.array(
         #             camera.pixel_to_3d_point(pixel, depth_frame_raw)
         #         ).reshape(3, 1)
-        #         pt_p = np.append(pt_e, 1)
+        # pt_p = np.append(pt_e, 1)
         #         pts_p[:, i] = pt_p
 
         #     frame_pts_p = transformation_marker @ pts_p
@@ -556,60 +556,67 @@ def main_multi_packets(
         #     packet.avg_pos = np.array([x_avg, y_avg])
 
         for packet in registered_packets:
-            centroid_px = packet.get_centroid_in_px()
-            centroid_mm = packet.get_centroid_in_mm()
-            transformed_text, depth_text, avg_pos = camera.pixel_to_3d_conveyor_frame(
-                centroid_px
-            )
+            if packet.disappeared == 0:
+                centroid_px = packet.get_centroid_in_px()
+                centroid_mm = packet.get_centroid_in_mm()
+                x, y, z = camera.pixel_to_3d_conveyor_frame(centroid_px)
 
-            print(
-                f"Homography \tX:{round(centroid_mm.x, 2)}, \tY: {round(centroid_mm.y, 2)}"
-            )
-            packet_pos = np.array([centroid_mm.x, centroid_mm.y])
-            dst = np.linalg.norm(avg_pos - packet_pos)
-            print(avg_pos)
-            print(f"EXtrinsic \tX:{avg_pos[0]}, Y:{avg_pos[1]}")
-            print(f"L2 norm: {dst}")
-            text2save = (
-                "h_C_X: "
-                + str(centroid_mm.x)
-                + "h_C_Y: "
-                + str(centroid_mm.y)
-                + "GT_C_X: "
-                + str(avg_pos[0])
-                + "GT_C_Y: "
-                + str(avg_pos[1])
-                + "Norm: "
-                + str(dst)
-                + "\n"
-            )
+                packet.camera_centroid_x = x
+                packet.camera_base_centroid_x = x
+                packet.camera_centroid_y = y
+                packet.camera_centroid_z = z
 
-            drawText(
-                image_frame,
-                transformed_text,
-                (
-                    centroid_px.x + 10,
-                    centroid_px.y + int(-80 * text_size),
-                ),
-                text_size,
-            )
+                camera_text = f"Camera: X {x:.2f}, Y: {y:.2f}, Z: {z:.2f} (mm)"
+                avg_pos = np.array([x, y])
 
-            drawText(
-                image_frame,
-                depth_text,
-                (
-                    centroid_px.x + 10,
-                    centroid_px.y + int(-45 * text_size),
-                ),
-                text_size,
-            )
+                # print(
+                #     f"Homography \tX:{round(centroid_mm.x, 2)}, \tY: {round(centroid_mm.y, 2)}"
+                # )
+                packet_pos = np.array([centroid_mm.x, centroid_mm.y])
+                dst = np.linalg.norm(avg_pos - packet_pos)
+                # print(avg_pos)
+                # print(f"EXtrinsic \tX:{avg_pos[0]}, Y:{avg_pos[1]}")
+                # print(f"L2 norm: {dst}")
+                text2save = (
+                    "h_C_X: "
+                    + str(centroid_mm.x)
+                    + "h_C_Y: "
+                    + str(centroid_mm.y)
+                    + "GT_C_X: "
+                    + str(avg_pos[0])
+                    + "GT_C_Y: "
+                    + str(avg_pos[1])
+                    + "Norm: "
+                    + str(dst)
+                    + "\n"
+                )
 
-            if key == ord("s"):
-                print("[INFO]: Saving the picture and data to file")
-                t = time.time()
-                cv2.imwrite(str(t) + ".jpg", img_frame)
-                with open("measurment.txt", "a") as f:
-                    f.write(text2save)
+                # drawText(
+                #     image_frame,
+                #     transformed_text,
+                #     (
+                #         centroid_px.x + 10,
+                #         centroid_px.y + int(-80 * text_size),
+                #     ),
+                #     text_size,
+                # )
+
+                drawText(
+                    image_frame,
+                    camera_text,
+                    (
+                        centroid_px.x + 10,
+                        centroid_px.y + int(-45 * text_size),
+                    ),
+                    text_size,
+                )
+
+                if key == ord("s"):
+                    print("[INFO]: Saving the picture and data to file")
+                    t = time.time()
+                    cv2.imwrite(str(t) + ".jpg", img_frame)
+                    with open("measurment.txt", "a") as f:
+                        f.write(text2save)
 
         # STATE MACHINE
         ###############

@@ -110,6 +110,7 @@ class RobotStateMachine:
             # TODO: Check why is this necessary
             x, y = packet.get_centroid_from_encoder_in_px(encoder_pos)
             packet.set_centroid(x, y)
+            packet.update_camera_centroid_from_encoder(encoder_pos)
 
         # Get list of current world x coordinates
         pick_list_positions = np.array(
@@ -206,8 +207,25 @@ class RobotStateMachine:
             trajectory_dict (dict): Dictionary of parameters for changing trajectory .
         """
 
+        print(
+            f"[INFO]: Camera point:\n\tX: {packet_to_pick.camera_centroid_x:.2f}\n\tY: {packet_to_pick.camera_centroid_y:.2f}"
+        )
+        print(
+            f"[INFO]: Homography point:\n\tX: {packet_to_pick.get_centroid_in_mm().x:.2f}\n\tY: {packet_to_pick.get_centroid_in_mm().y:.2f}"
+        )
+
+        if (
+            packet_to_pick.camera_centroid_x is not None
+            and packet_to_pick.camera_centroid_y is not None
+            and False
+        ):
+            packet_x = packet_to_pick.camera_centroid_x
+            pick_pos_y = packet_to_pick.camera_centroid_y
+            print("[INFO]: Changed packet pick coordinates for camera computed ones")
+        else:
+            packet_x, pick_pos_y = packet_to_pick.get_centroid_in_mm()
+
         # Set positions and Start robot
-        packet_x, pick_pos_y = packet_to_pick.get_centroid_in_mm()
         pick_pos_x = packet_x + self.constants["grip_time_offset"]
 
         angle = packet_to_pick.avg_angle_deg
@@ -231,6 +249,10 @@ class RobotStateMachine:
             yaw,
             pick_point,
         ) = self.gpe.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
+
+        if packet_to_pick.camera_centroid_z is not None:
+            pick_pos_z = packet_to_pick.camera_centroid_z
+
         if shift_x is not None:
             print(
                 f"[INFO]: Estimated optimal point:\n\tZ position: {pick_pos_z:.2f}\n\tRPY angles: {roll:.2f}, {pitch:.2f}, {yaw:.2f}"
@@ -257,9 +279,10 @@ class RobotStateMachine:
         # Offset pick height by position on belt
         pick_pos_z = self._offset_packet_depth_by_x(pick_pos_x, pick_pos_z)
         pick_pos_z -= 5
+        if pick_pos_z < 8:
+            pick_pos_z = 8
 
-        if pick_pos_z < 5:
-            pick_pos_z = 5
+        pick_pos_z = 5
 
         # self._draw_depth_map(packet_to_pick, pick_pos_z, pick_point, shift_x, shift_y)
         # Change end points of robot
@@ -385,6 +408,11 @@ class RobotStateMachine:
             x, y = self.packet_to_pick.get_centroid_from_encoder_in_px(encoder_pos)
             self.packet_to_pick.set_centroid(x, y)
             packet_pos_x = self.packet_to_pick.get_centroid_in_mm().x
+            # print(f"Homography centroid: {packet_pos_x}")
+            if self.packet_to_pick.camera_base_centroid_x is not None:
+                self.packet_to_pick.update_camera_centroid_from_encoder(encoder_pos)
+                packet_pos_x = self.packet_to_pick.camera_centroid_x
+                # print(f"Camera centroid: {packet_pos_x}")
             # If packet is too far abort and return to ready
             if (
                 packet_pos_x

@@ -122,6 +122,7 @@ class DepthCamera:
         # Setup RGB and Depth stream resolution, format and FPS
         # Maximal supported Depth stream resolution of D435 camera is 1280 x 720
         # Maximal supported RGB stream resolution of D435 camera is 1920 x 1080
+        # 848x
         self.config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 15)
         self.config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 15)
 
@@ -138,6 +139,8 @@ class DepthCamera:
 
         # Start video stream
         self.profile = self.pipeline.start(self.config)
+
+        self.depth_frame_raw = None
 
         # Get intrinsic parameter
         profile = self.profile.get_stream(
@@ -166,7 +169,7 @@ class DepthCamera:
 
         # Extract RGB and depth frames from frameset
         depth_frame = frameset.get_depth_frame()
-        depth_frame_raw = depth_frame
+        self.depth_frame_raw = depth_frame
         color_frame = frameset.get_color_frame()
         frame_timestamp = frameset.get_timestamp()
 
@@ -189,57 +192,101 @@ class DepthCamera:
         frameset = self.align.process(frameset)
         return frameset.get_depth_frame()
 
+    def get_intrinsices(self):
+        intrinsic = self.intr
+        camera_parameter = [intrinsic.fx, intrinsic.fy, intrinsic.ppx, intrinsic.ppy]
+        fx, fy, cx, cy = camera_parameter
+        K = np.array([fx, 0, cx, 0, fy, cy, 0, 0, 1]).reshape(3, 3)
+
+        return K
+
     def pixel_to_3d_point(self, pixel: list[int, int], depth_frame: rs.depth_frame):
+        # print(pixel)
         dist = depth_frame.get_distance(pixel[0], pixel[1])
+        # print(dist)
+        # K = self.get_intrinsices()
         coordinates_3d = rs.rs2_deproject_pixel_to_point(
             self.intr, [pixel[0], pixel[1]], dist
         )
-        coordinates_3d = [coordinates_3d[0], coordinates_3d[1], coordinates_3d[2]]
+        # coordinates_3d = [coordinates_3d[0], coordinates_3d[1], coordinates_3d[2]]
 
         return coordinates_3d
 
     def pixel_to_3d_conveyor_frame(self, pixel: tuple[int, int]):
-        depth_frame_raw = self.get_raw_depth_frame()
+        if self.depth_frame_raw is None:
+            x_avg = 0
+            y_avg = 0
+            z_avg = 0
+            return x_avg, y_avg, z_avg
 
-        center_e = np.array(self.pixel_to_3d_point(pixel, depth_frame_raw)).reshape(
-            3, 1
-        )
-        center_p = np.append(center_e, 1)
+        depth_frame_raw = self.depth_frame_raw
 
-        resolution = (1920, 1080)  # TODO fill somehow
-        radius = 2
+        # center_e = np.array(self.pixel_to_3d_point(pixel, depth_frame_raw)).reshape(
+        #     3, 1
+        # )
+        # center_p = np.append(center_e, 1)
 
-        ones = np.ones(resolution)
-        ones[pixel.x, pixel.y] = 0
-        dsts = ndimg.distance_transform_edt(ones)
-        close_idx = np.nonzero(dsts <= radius)
-        pts = np.vstack(close_idx)
-        # print(pts.shape)
+        # resolution = (1920, 1080)  # TODO fill somehow
+        # radius = 2
 
-        _, num_pts = pts.shape
-        pts_p = np.zeros((4, num_pts))
+        # ones = np.ones(resolution)
+        # ones[pixel.x, pixel.y] = 0
+        # dsts = ndimg.distance_transform_edt(ones)
+        # close_idx = np.nonzero(dsts <= radius)
+        # pts = np.vstack(close_idx)
+        # # print(pts.shape)
 
-        for i in range(num_pts):
-            pixel = pts[:, i]
-            pt_e = np.array(self.pixel_to_3d_point(pixel, depth_frame_raw)).reshape(
-                3, 1
-            )
+        # _, num_pts = pts.shape
+        # pts_p = np.zeros((4, num_pts))
+
+        # for i in range(num_pts):
+        #     pixel = pts[:, i]
+        #     pt_e = np.array(self.pixel_to_3d_point(pixel, depth_frame_raw)).reshape(
+        #         3, 1
+        #     )
+        #     pt_p = np.append(pt_e, 1)
+        #     pts_p[:, i] = pt_p
+
+        # frame_pts_p = self.transformation_marker @ pts_p
+        # x_avg = np.mean(frame_pts_p[0, :]) * 1000
+        # y_avg = np.mean(frame_pts_p[1, :]) * 1000
+        # z_avg = np.mean(frame_pts_p[2, :]) * 1000
+
+        pts_p = np.zeros((4, 4))
+        # pts_p[:2, :] = np.array(
+        #     [
+        #         [pixel[0] - 1, pixel[0] + 1, pixel[0], pixel[0]],
+        #         [pixel[1], pixel[1], pixel[1] - 1, pixel[1] + 1],
+        #     ]
+        # )
+
+        neighbors = [
+            [pixel[0] - 1, pixel[1]],
+            [pixel[0] + 1, pixel[1]],
+            [pixel[0], pixel[1] - 1],
+            [pixel[0], pixel[1] + 1],
+        ]
+        # print(neighbors)
+        for i in range(4):
+            px = neighbors[i]
+            pt_e = np.array(self.pixel_to_3d_point(px, depth_frame_raw))
             pt_p = np.append(pt_e, 1)
+            # print(pt_p)
             pts_p[:, i] = pt_p
+            # print(pts_p)
 
         frame_pts_p = self.transformation_marker @ pts_p
+        # print(frame_pts_p)
         x_avg = np.mean(frame_pts_p[0, :]) * 1000
         y_avg = np.mean(frame_pts_p[1, :]) * 1000
-        depth_avg = np.mean(frame_pts_p[2, :]) * 1000
+        z_avg = np.mean(frame_pts_p[2, :]) * 1000
+        # print(f"X: {x_avg}")
 
-        frame_point_p = self.transformation_marker @ center_p
-        frame_point_p = frame_point_p.flatten() * 1000  # m2mm
+        # x_avg = 0
+        # y_avg = 0
+        # z_avg = 0
 
-        transformed_text = f"X: {frame_point_p[0]:.2f}, Y: {frame_point_p[1]:.2f},Z: {frame_point_p[2]:.2f} (mm)"
-        depth_text = f"AVG Centroid: X {x_avg:.2f}, Y: {y_avg:.2f} (mm)"
-        avg_pos = np.array([x_avg, y_avg])
-
-        return transformed_text, depth_text, avg_pos
+        return x_avg, y_avg, z_avg
 
     def release(self):
         """
