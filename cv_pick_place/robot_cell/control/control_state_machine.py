@@ -91,7 +91,7 @@ class RobotStateMachine:
                         packet.in_pick_list = True
                         self.pick_list.append(packet)
 
-    def _prep_pick_list(self) -> list[int]:
+    def _prep_pick_list(self, encoder_pos: float) -> list[int]:
         """
         Prepare the list for choosing a packet by updating packet positions
         and removing packets which are too far.
@@ -101,9 +101,9 @@ class RobotStateMachine:
         """
 
         # Read and check encoder position
-        encoder_pos = self.enc_pos.value
-        if encoder_pos is None:
-            return []
+        # encoder_pos = self.enc_pos.value
+        # if encoder_pos is None:
+        #     return []
 
         # Update pick list to current positions
         for packet in self.pick_list:
@@ -327,6 +327,7 @@ class RobotStateMachine:
         homography: np.ndarray,
         is_rob_ready: bool,
         registered_packets: list[Packet],
+        encoder_pos: float,
         encoder_vel: float,
         robot_interrupted: bool,
         safe_operational_stop: bool,
@@ -348,7 +349,7 @@ class RobotStateMachine:
 
         # Robot is ready to recieve commands
         if self.state == "READY" and is_rob_ready and homography is not None:
-            pick_list_positions = self._prep_pick_list()
+            pick_list_positions = self._prep_pick_list(encoder_pos)
             # Choose a item for picking
             if (
                 self.pick_list
@@ -379,7 +380,7 @@ class RobotStateMachine:
 
         # Waiting for packet
         if self.state == "WAIT_FOR_PACKET":
-            encoder_pos = self.enc_pos.value
+            # encoder_pos = self.enc_pos.value
             # Check encoder and activate robot
             # TODO: Use the new function get_centroid_from_encoder_in_mm() here
             x, y = self.packet_to_pick.get_centroid_from_encoder_in_px(encoder_pos)

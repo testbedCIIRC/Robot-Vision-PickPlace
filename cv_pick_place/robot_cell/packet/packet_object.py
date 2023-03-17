@@ -229,15 +229,17 @@ class Packet:
             )
             return
 
-        # Update average
-        if self.avg_angle_deg is None:
-            self.avg_angle_deg = angle
-        else:
-            self.avg_angle_deg = (self.num_avg_angles * self.avg_angle_deg + angle) / (
-                self.num_avg_angles + 1
-            )
+        self.avg_angle_deg = angle
 
-        self.num_avg_angles += 1
+        # Update average
+        # if self.avg_angle_deg is None:
+        #     self.avg_angle_deg = angle
+        # else:
+        #     self.avg_angle_deg = (self.num_avg_angles * self.avg_angle_deg + angle) / (
+        #         self.num_avg_angles + 1
+        #     )
+
+        # self.num_avg_angles += 1
 
     def add_depth_crop_to_average(self, depth_crop: np.ndarray) -> None:
         """

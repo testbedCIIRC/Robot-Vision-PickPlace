@@ -518,6 +518,7 @@ def main_multi_packets(
             homography,
             is_rob_ready,
             registered_packets,
+            encoder_pos,
             encoder_vel,
             prog_interrupted,
             safe_operational_stop,

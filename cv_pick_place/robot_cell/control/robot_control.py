@@ -187,8 +187,8 @@ class RobotControl(RobotCommunication):
         prepick_E6POS.Y = y
         prepick_E6POS.Z = z + z_offset
         prepick_E6POS.A = a
-        prepick_E6POS.B = b
-        prepick_E6POS.C = c
+        prepick_E6POS.B = self.rob_dict["place_pos"][packet_type]["b"]
+        prepick_E6POS.C = self.rob_dict["place_pos"][packet_type]["c"]
         prepick_E6POS.Status = 2
         prepick_E6POS.Turn = 0
         values.append(opcua.ua.DataValue(prepick_E6POS))
@@ -199,8 +199,8 @@ class RobotControl(RobotCommunication):
         pick_E6POS.Y = y
         pick_E6POS.Z = z
         pick_E6POS.A = a
-        pick_E6POS.B = b
-        pick_E6POS.C = c
+        pick_E6POS.B = self.rob_dict["place_pos"][packet_type]["b"]
+        pick_E6POS.C = self.rob_dict["place_pos"][packet_type]["c"]
         pick_E6POS.Status = 2
         pick_E6POS.Turn = 0
         values.append(opcua.ua.DataValue(pick_E6POS))
@@ -211,8 +211,8 @@ class RobotControl(RobotCommunication):
         postpick_E6POS.Y = y
         postpick_E6POS.Z = z + z_offset
         postpick_E6POS.A = a
-        postpick_E6POS.B = b
-        postpick_E6POS.C = c
+        postpick_E6POS.B = self.rob_dict["place_pos"][packet_type]["b"]
+        postpick_E6POS.C = self.rob_dict["place_pos"][packet_type]["c"]
         postpick_E6POS.Status = 2
         postpick_E6POS.Turn = 0
         values.append(opcua.ua.DataValue(postpick_E6POS))
