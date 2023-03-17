@@ -10,6 +10,7 @@ import scipy.linalg
 
 CM2MM = 10
 
+
 def transform_with_homography(homography_matrix, point_px):
     point_cm = np.matmul(homography_matrix, np.array([point_px[0], point_px[1], 1]))
     point_mm = (point_cm[0] * CM2MM, point_cm[1] * CM2MM)
@@ -61,17 +62,27 @@ y_idx = 0
 for x_coord in x_range:
     for y_coord in y_range:
         x_homog, y_homog = transform_with_homography(homography, (x_coord, y_coord))
-        x_frame_homography[x_idx, y_idx] = x_homog
-        y_frame_homography[x_idx, y_idx] = y_homog
         x_camera, y_camera, _ = camera.pixel_to_3d_conveyor_frame((x_coord, y_coord))
         y_err = -0.00155943 * x_coord - 0.02827615 * y_coord + 0.92666205
         # y_err = 3.06703596e-02 + 5.21174391e-03 * x_coord + 9.66156093e-03 * y_coord - 6.01595281e-06 * x_coord * y_coord - 2.10701093e-06 * x_coord**2 - 8.60501561e-06 * y_coord**2
-        y_camera = y_camera + y_err
+        # y_camera = y_camera + y_err
+
+        if x_homog - x_camera > 30:
+            x_homog = 0
+            x_camera = 0
+
+        if y_camera - y_homog > 30:
+            y_homog = 0
+            y_camera = 0
+
+        x_frame_homography[x_idx, y_idx] = x_homog
+        y_frame_homography[x_idx, y_idx] = y_homog
         x_frame_camera[x_idx, y_idx] = x_camera
         y_frame_camera[x_idx, y_idx] = y_camera
         fit_data[(x_idx + 1) * y_idx, 0] = x_coord
         fit_data[(x_idx + 1) * y_idx, 1] = y_coord
         fit_data[(x_idx + 1) * y_idx, 2] = y_homog - y_camera
+
         y_idx += 1
     x_idx += 1
     y_idx = 0
@@ -87,13 +98,13 @@ print("Plane fit coefficients:", C)
 # print("Plane fit coefficients:", C)
 
 # Plot
-fig = plt.figure()
-ax11 = fig.add_subplot(231, projection="3d")
-ax12 = fig.add_subplot(232, projection="3d")
-ax13 = fig.add_subplot(233, projection="3d")
-ax21 = fig.add_subplot(234, projection="3d")
-ax22 = fig.add_subplot(235, projection="3d")
-ax23 = fig.add_subplot(236, projection="3d")
+# fig = plt.figure()
+# ax11 = fig.add_subplot(231, projection="3d")
+# ax12 = fig.add_subplot(232, projection="3d")
+# ax13 = fig.add_subplot(233, projection="3d")
+# ax21 = fig.add_subplot(234, projection="3d")
+# ax22 = fig.add_subplot(235, projection="3d")
+# ax23 = fig.add_subplot(236, projection="3d")
 _x = np.arange(num_x)
 _y = np.arange(num_y)
 _xx, _yy = np.meshgrid(_x, _y)
@@ -101,42 +112,66 @@ x, y = _xx.ravel(), _yy.ravel()
 
 # fitted_diff = C[0] * _xx + C[1] * _yy + C[2]
 
-top = x_frame_homography.ravel("C")
-bottom = np.zeros_like(top)
-width = depth = 1
-ax11.bar3d(x, y, bottom, width, depth, top, shade=True)
-ax11.set_title("X Homography")
+# top = x_frame_homography.ravel("C")
+# bottom = np.zeros_like(top)
+# width = depth = 1
+# ax11.bar3d(x, y, bottom, width, depth, top, shade=True)
+# ax11.set_title("X Homography")
 
-top = y_frame_homography.ravel("F")
-bottom = np.zeros_like(top)
-width = depth = 1
-ax21.bar3d(x, y, bottom, width, depth, top, shade=True)
-ax21.set_title("Y Homography")
+# top = y_frame_homography.ravel("F")
+# bottom = np.zeros_like(top)
+# width = depth = 1
+# ax21.bar3d(x, y, bottom, width, depth, top, shade=True)
+# ax21.set_title("Y Homography")
 
-top = x_frame_camera.ravel("C")
-bottom = np.zeros_like(top)
-width = depth = 1
-ax12.bar3d(x, y, bottom, width, depth, top, shade=True)
-ax12.set_title("X Camera")
+# top = x_frame_camera.ravel("C")
+# bottom = np.zeros_like(top)
+# width = depth = 1
+# ax12.bar3d(x, y, bottom, width, depth, top, shade=True)
+# ax12.set_title("X Camera")
 
-top = y_frame_camera.ravel("F")
-bottom = np.zeros_like(top)
-width = depth = 1
-ax22.bar3d(x, y, bottom, width, depth, top, shade=True)
-ax22.set_title("Y Camera")
+# top = y_frame_camera.ravel("F")
+# bottom = np.zeros_like(top)
+# width = depth = 1
+# ax22.bar3d(x, y, bottom, width, depth, top, shade=True)
+# ax22.set_title("Y Camera")
 
+# top = (x_frame_homography - x_frame_camera).ravel("C")
+# bottom = np.zeros_like(top)
+# width = depth = 1
+# ax13.bar3d(x, y, bottom, width, depth, top, shade=True)
+# ax13.set_title("X Difference")
+
+# top = (y_frame_camera - y_frame_homography).ravel("F")
+# bottom = np.zeros_like(top)
+# width = depth = 1
+# ax23.bar3d(x, y, bottom, width, depth, top, shade=True)
+# ax23.set_title("Y Difference")
+
+# plt.show(block=True)
+
+fig = plt.figure()
+ax = fig.gca(projection="3d")
 top = (x_frame_homography - x_frame_camera).ravel("C")
+top = np.clip(top, 0, np.max(top))
 bottom = np.zeros_like(top)
 width = depth = 1
-ax13.bar3d(x, y, bottom, width, depth, top, shade=True)
-ax13.set_title("X Difference")
+ax.bar3d(x, y, bottom, width, depth, top, shade=True)
+ax.set_xlabel("Conveyor X coordinate [dm]")
+ax.set_ylabel("Conveyor Y coordinate [dm]")
+ax.set_zlabel("Difference [mm]")
+plt.show(block=False)
 
+fig = plt.figure()
+ax = fig.gca(projection="3d")
 top = (y_frame_camera - y_frame_homography).ravel("F")
+top = np.clip(top, 0, np.max(top))
 bottom = np.zeros_like(top)
 width = depth = 1
-ax23.bar3d(x, y, bottom, width, depth, top, shade=True)
-ax23.set_title("Y Difference")
-
+ax.bar3d(x, y, bottom, width, depth, top, shade=True)
+ax.set_xlabel("Conveyor X coordinate [dm]")
+ax.set_ylabel("Conveyor Y coordinate [dm]")
+ax.set_zlabel("Difference [mm]")
 plt.show(block=True)
 
 # fig = plt.figure()
