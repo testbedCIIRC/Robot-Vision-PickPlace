@@ -136,10 +136,13 @@ class DepthCamera:
         self.profile = self.pipeline.start(self.config)
 
         # Get intrinsic parameter
-        profile = self.profile.get_stream(rs.stream.color)  # Fetch stream profile for depth stream
-        self.intr = profile.as_video_stream_profile().get_intrinsics()  # Downcast to video_stream_profile and fetch intrinsics
-        # self.depth_scale = profile.get_device().first_depth_sensor().get_depth_scale()
-
+        self.color_stream = self.profile.get_stream(
+            rs.stream.color
+        )  # Fetch stream profile for color stream
+        self.intr = (
+            self.color_stream.as_video_stream_profile().get_intrinsics()
+        )  # Downcast to video_stream_profile and fetch intrinsics
+        # self.depth_scale = self.depth_stream.get_device().first_depth_sensor().get_depth_scale()
 
     def get_frames(self) -> tuple[bool, np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -159,9 +162,8 @@ class DepthCamera:
 
         # Extract RGB and depth frames from frameset
         depth_frame = frameset.get_depth_frame()
-        depth_frame_raw = depth_frame
         color_frame = frameset.get_color_frame()
-        frame_timestamp = frameset.get_timestamp()
+        # frame_timestamp = frameset.get_timestamp()
 
         if not depth_frame or not color_frame:
             return False, None, None, None
@@ -175,22 +177,8 @@ class DepthCamera:
         depth_frame = np.asanyarray(depth_frame.get_data())
         color_frame = np.asanyarray(color_frame.get_data())
 
-        return True, frame_timestamp, depth_frame, color_frame, colorized_depth_frame
+        return True, depth_frame, color_frame, colorized_depth_frame
 
-    def get_raw_depth_frame(self):
-        frameset = self.pipeline.wait_for_frames()
-        frameset = self.align.process(frameset)
-        return frameset.get_depth_frame()
-
-    def pixel_to_3d_point(self, pixel: list[int, int], depth_frame: rs.depth_frame):
-        dist = depth_frame.get_distance(pixel[0], pixel[1])
-        coordinates_3d = rs.rs2_deproject_pixel_to_point(
-            self.intr, [pixel[0], pixel[1]], dist
-        )
-        coordinates_3d = [coordinates_3d[0], coordinates_3d[1], coordinates_3d[2]]
-
-        return coordinates_3d
-    
     def release(self):
         """
         Disconnects the camera.
