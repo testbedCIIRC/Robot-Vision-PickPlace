@@ -316,7 +316,7 @@ if __name__ == "__main__":
         #         # json.dump(transformation_marker.tolist(), file, indent=2)
         #         # file.close()
 
-        file_tran = f = open("extrinsic_matrix.json", "r")
+        file_tran = f = open("extrinsic_matrix_backup.json", "r")
         transformation_marker = np.array(json.load(file_tran))
 
         image_frame = apriltag.draw_tags(image_frame)

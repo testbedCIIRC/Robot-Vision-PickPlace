@@ -1,5 +1,6 @@
 __pycache__/
 recording_*.npy
+*.csv
 
 .vscode/
 cv_pick_place/robot_cell/packet/data/

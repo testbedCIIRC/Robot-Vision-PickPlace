@@ -15,6 +15,9 @@ from robot_cell.detection.apriltag_detection import ProcessingApriltag
 import numpy as np
 import cv2
 
+target_depth = 1
+best_depth_error = None
+
 
 def rotation_angles(matrix, order):
     """
@@ -93,6 +96,64 @@ def rotation_angles(matrix, order):
     theta3 = theta3 * 180 / np.pi
 
     return (theta1, theta2, theta3)
+
+
+def Rz(angle: float):
+    """
+    Rotation matrix around z-axis
+    Args:
+        angle (float): Rotation angle in radians
+    Returns:
+        np.ndarray: Rotation matrix in 3x3 array
+    """
+    return np.array(
+        [
+            [np.cos(angle), -np.sin(angle), 0],
+            [np.sin(angle), np.cos(angle), 0],
+            [0, 0, 1],
+        ]
+    )
+
+
+def Ry(angle: float):
+    """
+    Rotation matrix around y-axis
+    Args:
+        angle (float): Rotation angle in radians
+    Returns:
+        np.ndarray: Rotation matrix in 3x3 array
+    """
+    return np.array(
+        [
+            [np.cos(angle), 0, np.sin(angle)],
+            [0, 1, 0],
+            [-np.sin(angle), 0, np.cos(angle)],
+        ]
+    )
+
+
+def Rx(angle: float):
+    """
+    Rotation matrix around x-axis
+    Args:
+        angle (float): Rotation angle in radians
+    Returns:
+        np.ndarray: Rotation matrix in 3x3 array
+    """
+    return np.array(
+        [
+            [1, 0, 0],
+            [0, np.cos(angle), -np.sin(angle)],
+            [0, np.sin(angle), np.cos(angle)],
+        ]
+    )
+
+
+def R_from_eulers(z, y, x):
+    z = np.deg2rad(z)
+    y = np.deg2rad(y)
+    x = np.deg2rad(x)
+    return Rz(x) @ Ry(y) @ Rx(z)
 
 
 def drawText(
@@ -229,7 +290,12 @@ if __name__ == "__main__":
     K = np.array([fx, 0, cx, 0, fy, cy, 0, 0, 1]).reshape(3, 3)
     dist = np.array(camera.intr.coeffs)
     print(K)
+    marker_centroid_2 = [0, 0]
 
+    marker_centroid_points = {"4": [], "5": [], "6": [], "7": []}
+    marker_homo_points = {"4": [], "5": [], "6": [], "7": []}
+    camera_point_dict = {"4": [], "5": [], "6": [], "7": []}
+    best_total_error = np.inf
     while True:
 
         # Get frames from camera
@@ -282,12 +348,10 @@ if __name__ == "__main__":
                     cX = int((top_left[0] + bottom_right[0]) / 2.0)
                     cY = int((top_left[1] + bottom_right[1]) / 2.0)
 
-                    cv2.circle(image_frame, (cX, cY), 10, (255, 0, 0), -1)
-
                     marker_centroid = [cX, cY]
                     # # rvec, tvec, markerPoints =cv2.aruco.estimatePoseSingleMarkers(tag_corners, 0.0332, K, dist)
                     rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(
-                        tag_corners, 0.029, K, dist
+                        tag_corners, 0.0279, K, dist
                     )
 
                     tdp_marker_center = camera.pixel_to_3d_point(
@@ -295,23 +359,72 @@ if __name__ == "__main__":
                     )
                     # rotation_matrix, jacobian = cv2.Rodrigues(rvec)
                     # transformation_marker[:3, :3] = rotation_matrix
-                    # transformation_marker[:3, 3:] = np.array(tvec).reshape(3,1)
-                    transformation_marker[:3, 3:] = np.array(tdp_marker_center).reshape(
-                        3, 1
-                    )
-
+                    transformation_marker[:3, 3:] = np.array(tvec).reshape(3, 1)
+                    # transformation_marker[:3, 3:] = np.array(tdp_marker_center).reshape(
+                    #     3, 1)
                     # print("tvec of marker 1", tvec)
                     # print("3d point of marker", tdp_marker_center)
                     # print(transformation_marker)
 
                 if tag_id == 2:
                     # rvec, tvec, markerPoints =cv2.aruco.estimatePoseSingleMarkers(tag_corners, 0.0332, K, dist)
+                    corners = tag_corners.reshape((4, 2))
+                    (top_left, top_right, bottom_right, bottom_left) = corners
+
+                    top_left = (int(top_left[0]), int(top_left[1]))
+                    top_right = (int(top_right[0]), int(top_right[1]))
+                    bottom_right = (int(bottom_right[0]), int(bottom_right[1]))
+                    bottom_left = (int(bottom_left[0]), int(bottom_left[1]))
+
+                    # Compute centroid
+                    cX = int((top_left[0] + bottom_right[0]) / 2.0)
+                    cY = int((top_left[1] + bottom_right[1]) / 2.0)
+
+                    marker_centroid_2 = [cX, cY]
                     rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(
-                        tag_corners, 0.16, K, dist
+                        tag_corners, 0.1606, K, dist
                     )
 
                     rotation_matrix, jacobian = cv2.Rodrigues(rvec)
+                    rotation_angle = rotation_angles(rotation_matrix, "zyx")
+                    print("rotation angle is ", rotation_angle)
+
+                    # rtx = np.copy(rotation_matrix)
+                    # rotation_matrix = R_from_eulers(*rotation_angle)
+                    # print("rota", rotation_angles(rotation_matrix, "zyx"))
+                    # print(rotation_matrix - rtx)
+
                     transformation_marker[:3, :3] = rotation_matrix
+                    # print(transformation_marker)
+
+                if str(tag_id[0]) in marker_centroid_points.keys():
+                    corners = tag_corners.reshape((4, 2))
+                    (top_left, top_right, bottom_right, bottom_left) = corners
+
+                    top_left = (int(top_left[0]), int(top_left[1]))
+                    top_right = (int(top_right[0]), int(top_right[1]))
+                    bottom_right = (int(bottom_right[0]), int(bottom_right[1]))
+                    bottom_left = (int(bottom_left[0]), int(bottom_left[1]))
+
+                    # Compute centroid
+                    cX = int((top_left[0] + bottom_right[0]) / 2.0)
+                    cY = int((top_left[1] + bottom_right[1]) / 2.0)
+                    marker_centroid_points[str(tag_id[0])] = [cX, cY]
+                    cv2.circle(rgb_frame, (cX, cY), 10, (0, 255, 0), -1)
+
+                # else:
+                #     corners = tag_corners.reshape((4, 2))
+                #     (top_left, top_right, bottom_right, bottom_left) = corners
+
+                #     top_left = (int(top_left[0]), int(top_left[1]))
+                #     top_right = (int(top_right[0]), int(top_right[1]))
+                #     bottom_right = (int(bottom_right[0]), int(bottom_right[1]))
+                #     bottom_left = (int(bottom_left[0]), int(bottom_left[1]))
+
+                #     # Compute centroid
+                #     cX = int((top_left[0] + bottom_right[0]) / 2.0)
+                #     cY = int((top_left[1] + bottom_right[1]) / 2.0)
+                #     cv2.circle(rgb_frame,(cX, cY), 10, (255,0,0), -1 )
 
         transformation_marker = np.linalg.inv(transformation_marker)
         # # file_tran = f = open('extrinsic_matrix.json','r')
@@ -323,55 +436,127 @@ if __name__ == "__main__":
             rgb_frame, 0, True
         )
 
-        for packet in detected_packets:
-            # Draw packet centroid value in milimeters
-            text_centroid = "X: {:.2f}, Y: {:.2f} (mm)".format(
-                packet.get_centroid_in_mm().x, packet.get_centroid_in_mm().y
-            )
-            drawText(
-                image_frame,
-                text_centroid,
-                (
-                    packet.get_centroid_in_px().x + 10,
-                    packet.get_centroid_in_px().y + int(80 * text_size),
-                ),
-                text_size,
-            )
+        # for packet in detected_packets:
+        #     # Draw packet centroid value in milimeters
+        #     text_centroid = "X: {:.2f}, Y: {:.2f} (mm)".format(
+        #         packet.get_centroid_in_mm().x, packet.get_centroid_in_mm().y
+        #     )
+        #     drawText(
+        #         image_frame,
+        #         text_centroid,
+        #         (
+        #             packet.get_centroid_in_px().x + 10,
+        #             packet.get_centroid_in_px().y + int(80 * text_size),
+        #         ),
+        #         text_size,
+        #     )
 
-            pixel = [packet.get_centroid_in_px().x, packet.get_centroid_in_px().y]
-            raw_depth_frame = camera.get_raw_depth_frame()
+        # pixel = [packet.get_centroid_in_px().x, packet.get_centroid_in_px().y]
+        raw_depth_frame = camera.get_raw_depth_frame()
+        total_distance_error = 0
+        offset_x = 0
+        offset_y = 1
+        print(transformation_marker)
+        for tag_id in marker_centroid_points:
+            distance_error = 0
+            distance_error_x = 0
+            distance_error_y = 0
+            centroid_pixel = np.array(
+                [
+                    marker_centroid_points[tag_id][0],
+                    marker_centroid_points[tag_id][1],
+                    1,
+                ]
+            ).reshape(3, 1)
+
+            homo_point = homography @ centroid_pixel
+            marker_homo_points[tag_id] = homo_point.reshape(1, 3)[0][0:2]
+
             threed_point = np.array(
-                camera.pixel_to_3d_point(pixel, raw_depth_frame)
+                camera.pixel_to_3d_point(centroid_pixel[0:2], raw_depth_frame)
             ).reshape(3, 1)
             threed_point = np.append(threed_point, 1)
-
             transformed_3d_point = np.matmul(transformation_marker, threed_point)
-            # print(transformed_3d_point * 1000)
+            # scaling to cms
+            transformed_3d_point = transformed_3d_point[0:2] * 100
+            # offset in x
+            transformed_3d_point[0] = transformed_3d_point[0] - offset_x
+            # offset in y
+            transformed_3d_point[1] = transformed_3d_point[1] - offset_y
 
-            homo_point = [packet.get_centroid_in_mm().x, packet.get_centroid_in_mm().y]
+            camera_point_dict[tag_id] = transformed_3d_point
 
-            transformed_3d_point_2d = transformed_3d_point[0:2] * 1000
+            distance_error = np.linalg.norm(
+                transformed_3d_point - homo_point.reshape(1, 3)[0][0:2]
+            )
 
-            ## distance between homo and 3d point
-            distance = np.linalg.norm(transformed_3d_point_2d - homo_point)
-            packet_height = transformed_3d_point[2] * 1000
-            print(packet_height)
-            # print(transformed_3d_point_2d)
+            distance_error_x = np.linalg.norm(
+                transformed_3d_point[0] - homo_point.reshape(1, 3)[0][0]
+            )
 
-            ## distance is less than 10 mm and height of paper is less than 2mm save matrix
-            if packet_height > 2 and packet_height < 10:
-                print("matrix saved")
-                file = open("extrinsic_matrix.json", "w")
-                json.dump(transformation_marker.tolist(), file, indent=2)
-                file.close()
+            distance_error_y = np.linalg.norm(
+                transformed_3d_point[1] - homo_point.reshape(1, 3)[0][1]
+            )
+            total_distance_error += distance_error
+            # print("distance error of ", tag_id, "is ", distance_error)
+            print(
+                f"distance_err of {tag_id}:\t X:{distance_error_x:3.2f}\t Y:{distance_error_y:3.2f}\t D:{distance_error:3.2f}"
+            )
+            # print("distance error in x", distance_error_x)
+            # print("distance error in y", distance_error_y)
 
-            # find the difference between homoggraphy and the april points
+        # print('homo points ', marker_homo_points['4'])
+        # print('camera points ', camera_point_dict['4'])
+        print("total distance error", total_distance_error)
+
+        if total_distance_error < best_total_error:
+            best_total_error = total_distance_error
+            print("matrix saved")
+            file = open("extrinsic_matrix.json", "w")
+            json.dump(transformation_marker.tolist(), file, indent=2)
+            file.close()
+
+        # if total_distance_error > 0 and (
+        #     best_depth_error is None or depth_error < best_depth_error
+        # ):
+        #     best_depth_error = depth_error
+        #     print("matrix saved")
+        #     file = open("extrinsic_matrix.json", "w")
+        #     json.dump(transformation_marker.tolist(), file, indent=2)
+        #     file.close()
+
+        # transformed_3d_point = np.matmul(transformation_marker, threed_point)
+        # print(transformed_3d_point * 1000)
+
+        # # homo_point = [packet.get_centroid_in_mm().x, packet.get_centroid_in_mm().y]
+
+        # transformed_3d_point_2d = transformed_3d_point[0:2]
+
+        # ## distance between homo and 3d point
+        # distance = np.linalg.norm(transformed_3d_point_2d - homo_point)
+        # packet_height = transformed_3d_point[2] * 1000
+        # #print(packet_height)
+        # # print(transformed_3d_point_2d)
+        # print(f"Depth: {packet_height:.2f}, Distance: {distance:.2f}")
+
+        # depth_error = np.abs(target_depth - packet_height)
+        # if packet_height > 0 and (
+        #     best_depth_error is None or depth_error < best_depth_error
+        # ):
+        #     best_depth_error = depth_error
+        #     print("matrix saved")
+        #     file = open("extrinsic_matrix.json", "w")
+        #     json.dump(transformation_marker.tolist(), file, indent=2)
+        #     file.close()
+
+        # find the difference between homoggraphy and the april points
 
         image_frame = cv2.resize(image_frame, (960, 540))
         cv2.imshow("window_name", image_frame)
 
         # Press Q on keyboard to  exit
         if cv2.waitKey(25) & 0xFF == ord("q"):
+            print(best_total_error)
             break
 
         # if cv2.waitKey(25) & 0xFF == ord("s"):

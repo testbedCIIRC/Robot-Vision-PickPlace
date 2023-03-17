@@ -221,10 +221,10 @@ class DepthCamera:
 
         depth_frame_raw = self.depth_frame_raw
 
-        # center_e = np.array(self.pixel_to_3d_point(pixel, depth_frame_raw)).reshape(
-        #     3, 1
-        # )
-        # center_p = np.append(center_e, 1)
+        center_e = np.array(self.pixel_to_3d_point(pixel, depth_frame_raw)).reshape(
+            3, 1
+        )
+        center_p = np.append(center_e, 1)
 
         # resolution = (1920, 1080)  # TODO fill somehow
         # radius = 2
@@ -252,7 +252,7 @@ class DepthCamera:
         # y_avg = np.mean(frame_pts_p[1, :]) * 1000
         # z_avg = np.mean(frame_pts_p[2, :]) * 1000
 
-        pts_p = np.zeros((4, 4))
+        pts_p = np.zeros((4, 5))
         # pts_p[:2, :] = np.array(
         #     [
         #         [pixel[0] - 1, pixel[0] + 1, pixel[0], pixel[0]],
@@ -274,7 +274,7 @@ class DepthCamera:
             # print(pt_p)
             pts_p[:, i] = pt_p
             # print(pts_p)
-
+        pts_p[:, 4] = center_p
         frame_pts_p = self.transformation_marker @ pts_p
         # print(frame_pts_p)
         x_avg = np.mean(frame_pts_p[0, :]) * 1000

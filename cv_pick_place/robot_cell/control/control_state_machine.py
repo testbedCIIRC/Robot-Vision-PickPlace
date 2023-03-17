@@ -110,7 +110,7 @@ class RobotStateMachine:
             # TODO: Check why is this necessary
             x, y = packet.get_centroid_from_encoder_in_px(encoder_pos)
             packet.set_centroid(x, y)
-            packet.update_camera_centroid_from_encoder(encoder_pos)
+            packet.update_camera_centroid_from_encoder(encoder_pos - 20)
 
         # Get list of current world x coordinates
         pick_list_positions = np.array(
@@ -217,10 +217,9 @@ class RobotStateMachine:
         if (
             packet_to_pick.camera_centroid_x is not None
             and packet_to_pick.camera_centroid_y is not None
-            and False
         ):
-            packet_x = packet_to_pick.camera_centroid_x
-            pick_pos_y = packet_to_pick.camera_centroid_y
+            packet_x = packet_to_pick.camera_centroid_x - 20
+            pick_pos_y = packet_to_pick.camera_centroid_y - 20
             print("[INFO]: Changed packet pick coordinates for camera computed ones")
         else:
             packet_x, pick_pos_y = packet_to_pick.get_centroid_in_mm()
@@ -251,7 +250,8 @@ class RobotStateMachine:
         ) = self.gpe.estimate_from_packet(packet_to_pick, z_lims, y_lims, packet_coords)
 
         if packet_to_pick.camera_centroid_z is not None:
-            pick_pos_z = packet_to_pick.camera_centroid_z
+            # pick_pos_z = packet_to_pick.camera_centroid_z
+            pick_pos_z = packet_to_pick.avg_camera_centroid_z
 
         if shift_x is not None:
             print(
@@ -411,7 +411,7 @@ class RobotStateMachine:
             # print(f"Homography centroid: {packet_pos_x}")
             if self.packet_to_pick.camera_base_centroid_x is not None:
                 self.packet_to_pick.update_camera_centroid_from_encoder(encoder_pos)
-                packet_pos_x = self.packet_to_pick.camera_centroid_x
+                packet_pos_x = self.packet_to_pick.camera_centroid_x - 20
                 # print(f"Camera centroid: {packet_pos_x}")
             # If packet is too far abort and return to ready
             if (

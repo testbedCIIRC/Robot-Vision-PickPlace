@@ -118,18 +118,18 @@ def draw_frame(
             )
 
             # Draw packet ID and type
-            text_id = f"ID {packet.id}, Type {packet.type}"
-            drawText(
-                image_frame,
-                text_id,
-                (packet.centroid_px.x + 10, packet.centroid_px.y),
-                text_size,
-            )
+            # text_id = f"ID {packet.id}, Type {packet.type}"
+            # drawText(
+            #     image_frame,
+            #     text_id,
+            #     (packet.centroid_px.x + 10, packet.centroid_px.y),
+            #     text_size,
+            # )
 
             # Draw packet centroid value in pixels
             packet_centroid_px = packet.get_centroid_in_px()
             text_centroid_px = (
-                f"X: {packet_centroid_px.x}, Y: {packet_centroid_px.y} (px)"
+                f"X: {packet_centroid_px.x}, Y: {packet_centroid_px.y} [px]"
             )
             drawText(
                 image_frame,
@@ -140,7 +140,7 @@ def draw_frame(
 
             # Draw packet centroid value in milimeters
             packet_centroid_mm = packet.get_centroid_in_mm()
-            text_centroid_mm = f"X: {round(packet_centroid_mm.x, 2)}, Y: {round(packet_centroid_mm.y, 2)} (mm)"
+            text_centroid_mm = f"X: {round(packet_centroid_mm.x, 2)}, Y: {round(packet_centroid_mm.y, 2)} [mm] (Apriltags)"
             drawText(
                 image_frame,
                 text_centroid_mm,
@@ -149,17 +149,17 @@ def draw_frame(
             )
 
             # Draw packet angle
-            packet_angle = packet.get_angle()
-            text_angle = f"Angle: {round(packet_angle, 2)} (deg)"
-            drawText(
-                image_frame,
-                text_angle,
-                (
-                    packet.centroid_px.x + 10,
-                    packet.centroid_px.y + int(115 * text_size),
-                ),
-                text_size,
-            )
+            # packet_angle = packet.get_angle()
+            # text_angle = f"Angle: {round(packet_angle, 2)} (deg)"
+            # drawText(
+            #     image_frame,
+            #     text_angle,
+            #     (
+            #         packet.centroid_px.x + 10,
+            #         packet.centroid_px.y + int(115 * text_size),
+            #     ),
+            #     text_size,
+            # )
 
     # Draw packet depth crop to separate frame
     cv2.imshow("Depth Crop", np.zeros((650, 650)))
@@ -560,13 +560,21 @@ def main_multi_packets(
                 centroid_px = packet.get_centroid_in_px()
                 centroid_mm = packet.get_centroid_in_mm()
                 x, y, z = camera.pixel_to_3d_conveyor_frame(centroid_px)
+                # y_err = -0.00155943 * x - 0.02827615 * y + 0.92666205
+                # y_err = -0.00055943 * x - 0.06827615 * y + 0.92666205
+                # y_err = 0.00133671 * x -0.00323533 * y + 0.2803812
+                # y_err = -0.00595943 * x - 0.05827615 * y + 6
+                # y_err = -0.0029 * x - 0.058 * y + 5 # Under 6mm all
+                y_err = -0.0025 * x - 0.06 * y + 5
+                y = y + y_err
 
                 packet.camera_centroid_x = x
                 packet.camera_base_centroid_x = x
                 packet.camera_centroid_y = y
                 packet.camera_centroid_z = z
+                packet.add_camera_z_to_average(z)
 
-                camera_text = f"Camera: X {x:.2f}, Y: {y:.2f}, Z: {z:.2f} (mm)"
+                camera_text = f"X {packet.camera_centroid_x:.2f}, Y: {packet.camera_centroid_y:.2f} [mm] (Camera)"
                 avg_pos = np.array([x, y])
 
                 # print(
@@ -601,12 +609,28 @@ def main_multi_packets(
                 #     text_size,
                 # )
 
+                diff = np.linalg.norm(
+                    np.array(
+                        [
+                            packet.get_centroid_in_mm().x - x,
+                            packet.get_centroid_in_mm().y - y,
+                        ]
+                    )
+                )
+                text_difference = f"Difference: {diff:.2f} [mm]"
+                drawText(
+                    image_frame,
+                    text_difference,
+                    (packet.centroid_px.x + 10, packet.centroid_px.y),
+                    text_size,
+                )
+
                 drawText(
                     image_frame,
                     camera_text,
                     (
                         centroid_px.x + 10,
-                        centroid_px.y + int(-45 * text_size),
+                        centroid_px.y + int(115 * text_size),
                     ),
                     text_size,
                 )

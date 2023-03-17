@@ -97,6 +97,9 @@ class Packet:
         self.camera_centroid_y = None
         self.camera_centroid_z = None
 
+        self.num_avg_camera_centroid_z = 0
+        self.avg_camera_centroid_z = None
+
         # Width and height of packet bounding box
         self.width = 0
         self.height = 0
@@ -243,6 +246,17 @@ class Packet:
             )
 
         self.num_avg_angles += 1
+
+    def add_camera_z_to_average(self, z: float) -> None:
+        # Update average
+        if self.avg_camera_centroid_z is None:
+            self.avg_camera_centroid_z = z
+        else:
+            self.avg_camera_centroid_z = (
+                self.num_avg_camera_centroid_z * self.avg_camera_centroid_z + z
+            ) / (self.num_avg_camera_centroid_z + 1)
+
+        self.num_avg_camera_centroid_z += 1
 
     def add_depth_crop_to_average(self, depth_crop: np.ndarray) -> None:
         """
