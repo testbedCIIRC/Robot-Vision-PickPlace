@@ -74,7 +74,7 @@
     "max_pick_distance": {
         "help": "Maximal x position in millimeters for packet picking.",
         "arg": "--max-pick-distance",
-        "default": 1900
+        "default": 1800
     },
 
     "z_offset": {
