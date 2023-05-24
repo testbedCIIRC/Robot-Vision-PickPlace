@@ -877,7 +877,7 @@ class GripPositionEstimation:
                 dx, dy, z = point_relative
                 shift_x, shift_y = -1 * dx * mm_width, -1 * dy * mm_height
                 # Changes the z value to be positive ,converts m to mm and shifts by the conv2cam_dist
-                pack_z = abs(-1.0 * M2MM * z + self.th_val * M2MM) - 8.0
+                pack_z = abs(-1.0 * M2MM * z + self.th_val * M2MM) + 0  # - 8.0
                 pack_z = np.clip(pack_z, z_min, z_max)
                 roll, pitch, yaw = self._vectors2RPYrot(normal)
                 point_relative[0] += anchor[0]
