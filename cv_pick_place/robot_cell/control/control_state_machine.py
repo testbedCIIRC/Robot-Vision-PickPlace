@@ -261,6 +261,8 @@ class RobotStateMachine:
         if pick_pos_z < 5:
             pick_pos_z = 5
 
+        pick_pos_z = np.clip(pick_pos_z, *z_lims)
+        
         # self._draw_depth_map(packet_to_pick, pick_pos_z, pick_point, shift_x, shift_y)
         # Change end points of robot
         trajectory_dict = {
