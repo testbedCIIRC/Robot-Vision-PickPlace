@@ -882,7 +882,8 @@ class GripPositionEstimation:
                 roll, pitch, yaw = self._vectors2RPYrot(normal)
                 point_relative[0] += anchor[0]
                 point_relative[1] += anchor[1]
-
+        dw, dh = depth_frame.shape
+        pack_z = -1 * depth_frame[int(dw / 2), int(dh / 2)] + 777 - 8.0
         if self.verbose:
             print(f"[INFO]: Optimal point found: {depth_exist and  point_exists}")
             if not depth_exist:
